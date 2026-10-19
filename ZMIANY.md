@@ -1,11 +1,13 @@
 # Historia wersji: Armia Liczb
 
 Najnowsza wersja jest na górze. Numer wersji widać w grze, na dole menu.
-Do każdej wersji można wrócić: w repozytorium jest oznaczona jako `v1`, `v2` itd.
+Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu w repozytorium (np. `64a4bae`).
 
 ---
 
 ## Wersja 2 (19 października 2026)
+
+Zapis w repozytorium: `ca6c2ff`
 
 ### Dodane
 - **8 klas po 40 gier (razem 320 gier).** Każda klasa ma 8 tematów zgodnych z programem nauczania tej klasy. Każdy temat to 4 gry coraz trudniejsze i jedna powtórka. Gra 40 to sprawdzian z całej klasy.
@@ -44,6 +46,8 @@ Do każdej wersji można wrócić: w repozytorium jest oznaczona jako `v1`, `v2`
 ---
 
 ## Wersja 1 (19 października 2026)
+
+Zapis w repozytorium: `64a4bae`
 
 Pierwsza grywalna wersja.
 

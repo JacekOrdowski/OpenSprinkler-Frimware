@@ -10,7 +10,8 @@ Gdy zmiany w grze są gotowe i zapisywane w repozytorium:
 1. Podnieś numer `WERSJA` na początku `gra.js` o 1.
 2. Dopisz na górze `ZMIANY.md` nową sekcję „Wersja N (data)” z podziałem na **Dodane**, **Zmienione**, **Usunięte**
    (i ewentualnie **Do sprawdzenia**), prostym językiem, tak jak w poprzednich wpisach.
-3. Zrób commit i oznacz go tagiem `vN` (`git tag vN`, potem `git push origin vN`).
+3. Zrób commit. Jego skrót (pierwsze 7 znaków) wpisz w `ZMIANY.md` przy tej wersji jako „Zapis w repozytorium”,
+   w następnym commicie. Tagów nie używaj: w sesjach w chmurze GitHub ich nie przyjmuje.
 
 ## Zadania matematyczne
 
