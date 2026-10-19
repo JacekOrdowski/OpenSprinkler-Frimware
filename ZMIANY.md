@@ -7,6 +7,8 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 
 ## Wersja 3 (20 października 2026)
 
+Zapis w repozytorium: `dde3488`
+
 ### Zmienione
 - **Walka z potworem idzie w rundach.** Każda odpowiedź to jedna runda: najpierw posiłki (po dobrej odpowiedzi), potem strzał armii, a na końcu cios potwora. Po złej albo spóźnionej odpowiedzi potwór dorzuca kulę ognia.
 - **Szybkość odpowiedzi nie ma już znaczenia**, liczy się tylko to, czy jest dobra (i czy zmieści się w czasie).
