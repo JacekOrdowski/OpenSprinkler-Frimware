@@ -55,6 +55,7 @@ Postęp (gwiazdki, otwarte gry) zapisuje się w telefonie, na którym grasz.
 
 ## Pliki
 
+- `ZMIANY.md` – historia wersji: co dodano, zmieniono i usunięto
 - `index.html` – wygląd ekranów
 - `zadania.js` – wszystkie zadania dla klas 1–8
 - `gra.js` – sama gra: bieg, walka z potworem, grafika, muzyka

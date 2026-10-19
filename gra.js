@@ -4,6 +4,7 @@
 'use strict';
 const HAS_DOM = typeof document !== 'undefined';
 const Z = globalThis.Zadania;
+const WERSJA = 2;          // numer wersji gry; opis zmian w ZMIANY.md
 
 /* ============================================================
    Helpers
@@ -1036,6 +1037,7 @@ function show(name) { for (const k in screens) screens[k].hidden = k !== name; }
 function goMenu() {
   mode = 'menu'; game = createGame(0, 0, true); hud.hidden = true; fight.hidden = true; view.hudBottom = 0; layout();
   $('btnPlay').textContent = `Graj · ${stageLabel(save.next[0], save.next[1])}`;
+  $('menuVersion').textContent = `Wersja ${WERSJA}`;
   updateSoundBtns(); show('menu'); Snd.play('menu'); Snd.duck(false);
 }
 function openIntro(c, s) {
