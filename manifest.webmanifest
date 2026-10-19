@@ -1,0 +1,16 @@
+{
+  "name": "Armia Liczb",
+  "short_name": "Armia Liczb",
+  "description": "Gra, w której rozwiązujesz działania w biegu i powiększasz swoją armię.",
+  "lang": "pl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1a5f9e",
+  "theme_color": "#1a5f9e",
+  "icons": [
+    { "src": "ikona-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "ikona-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
