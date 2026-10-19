@@ -6,15 +6,18 @@ Armia biegnie po moście. Przed każdą bramką pojawia się działanie, a na br
 Wbiegasz w bramkę z dobrym wynikiem i dostajesz tylu żołnierzy, ile pokazuje zielona liczba (na przykład +14).
 Zła odpowiedź zabiera tyle samo. Między bramkami czekają oddziały wroga i beczki z nagrodą.
 
-Na końcu mostu walczysz z potworem. Armia strzela, potwór atakuje, a na dole ekranu pojawiają się kolejne zadania:
-dobra odpowiedź to posiłki, zła albo spóźniona to atak potwora.
+Na końcu mostu walczysz z potworem. Walka idzie w rundach: na dole ekranu pojawia się zadanie,
+a każda odpowiedź to jedna runda. Dobra odpowiedź przynosi posiłki, potem armia strzela, a na końcu potwór oddaje cios.
+Zła albo spóźniona odpowiedź: nie ma posiłków, a potwór dorzuca kulę ognia. Szybkość odpowiedzi nie ma znaczenia,
+liczy się tylko to, czy jest dobra (i czy zmieści się w czasie).
 
 ## Jak trudny jest potwór
 
 Siła potwora jest liczona osobno dla każdej gry. Według symulacji (tysiące rozegranych gier):
 
-- wszystkie bramki dobrze, a w walce odpowiedzi na chybił trafił: wygrana średnio w około 31% gier,
-- wszystkie odpowiedzi dobre, na bramkach i w walce: wygrana w 100% gier.
+- wszystkie bramki dobrze, a w walce odpowiedzi na chybił trafił: wygrana średnio w około 32% gier,
+- wszystkie odpowiedzi w walce dobre: wygrana zawsze, niezależnie od tego, jak szybko się odpowiada.
+  Cios potwora nigdy nie zabiera więcej żołnierzy, niż daje dobra odpowiedź.
 
 ## Klasy i gry
 

@@ -4,7 +4,7 @@
 'use strict';
 const HAS_DOM = typeof document !== 'undefined';
 const Z = globalThis.Zadania;
-const WERSJA = 2;          // numer wersji gry; opis zmian w ZMIANY.md
+const WERSJA = 3;          // numer wersji gry; opis zmian w ZMIANY.md
 
 /* ============================================================
    Helpers
@@ -45,10 +45,13 @@ const ROAD = 4;           // half width of the lanes
 const XMAX = 3.2;         // how far the army centre can go sideways
 const FORM = 0.27;        // spacing of the formation
 const FIGHT_DIST = 11;    // the army stops this far in front of the monster
-const DPS = 1;            // damage per soldier per second
-const ATK_EVERY = 2.2;    // seconds between monster attacks (on average)
-const ATK_FRAC = 0.075;   // one attack kills this share of the expected army
-const HP_K = 1.62;        // monster strength: with every gate right and fight answers at random it wins about 2 times in 3
+// The fight goes in rounds: every answer (or a run-out clock) is one round.
+// The army fires (each soldier takes 1 point of life), then the monster strikes back.
+// Speed does not matter, only whether the answer is right.
+const ATK_FRAC = 0.075;   // the monster's blow kills this share of the expected army, never more than the smallest reward,
+                          // so a right answer always brings at least as many soldiers as the blow takes
+const ROUNDS = 6;         // monster life ≈ this many volleys of the expected army
+const HP_K = 2.0;         // monster strength: with every gate right and fight answers at random it wins about 2 times in 3
 const OX = new Float32Array(CAP), OZ = new Float32Array(CAP);
 for (let i = 0; i < CAP; i++) { const r = FORM * Math.sqrt(i + 0.35), t = i * 2.39996; OX[i] = Math.cos(t) * r; OZ[i] = Math.sin(t) * r * 0.9; }
 const radius = n => FORM * Math.sqrt(clamp(n, 1, CAP)) + 0.3;
@@ -98,14 +101,14 @@ function createGame(cls, s, attract) {
     const [z0, z1] = spans[order[i]], hp = Math.round(avgR * (0.6 + 0.5 * cfg.enemyMul)) + randi(0, 3);
     g.barrels.push({ x: pick([-2.6, 2.6]), z: z0 + (z1 - z0) * 0.2, hp, max: hp, reward: randi(cfg.rLo, cfg.rHi), hit: -1 });
   }
-  g.monster = { x: 0, z: z + tail, hp: 1, max: 1, kind: cls, atk: ATK_EVERY + 1.2, atkK: 2, anim: -9, hit: -9, dead: false, deadAt: 0 };
+  g.monster = { x: 0, z: z + tail, hp: 1, max: 1, kind: cls, atkK: 2, anim: -9, hit: -9, dead: false, deadAt: 0 };
   g.finishZ = g.monster.z + 6;
   // Monster strength follows the army a player would bring with every gate right (a few quick test runs of this very stage)
   let N0 = 0;
   for (let i = 0; i < 3; i++) N0 += perfectRunArmy(g) / 3;
   N0 = Math.max(12, N0);
-  const atkK = Math.max(2, Math.round(N0 * ATK_FRAC));
-  const hp = Math.max(60, Math.round(HP_K * DPS * ATK_EVERY * N0 * N0 / (2 * atkK) / 10) * 10);
+  const atkK = clamp(Math.round(N0 * ATK_FRAC), 2, cfg.rLo);
+  const hp = Math.max(60, Math.round(HP_K * ROUNDS * N0 / 10) * 10);
   Object.assign(g.monster, { hp, max: hp, atkK });
   return g;
 }
@@ -156,7 +159,7 @@ function bulletHit(g, b, zPrev) {
 function startFight(g) {
   g.state = 'fight';
   g.army.tx = 0;
-  g.fight = { p: null, r: 0, left: true, done: true, next: g.time + 1.6, deadline: 0, shownAt: 0, count: 0 };
+  g.fight = { p: null, r: 0, left: true, done: true, next: g.time + 1.6, deadline: 0, shownAt: 0, count: 0, volleyUntil: 0 };
   g.events.push({ type: 'fight' });
 }
 function nextFightProblem(g) {
@@ -169,13 +172,13 @@ function nextFightProblem(g) {
 function answerFight(g, left) {
   const f = g.fight;
   if (!f || !f.p || f.done || g.state !== 'fight') return;
-  f.done = true; f.next = g.time + 0.95; g.answered++;
-  const ok = left === f.left;
+  f.done = true; f.next = g.time + 1.9; f.volleyUntil = g.time + 0.6; g.answered++;
+  const ok = left === f.left, t = g.time, M = g.monster;
   if (ok) { g.correct++; grow(g, f.r); }
-  else {
-    g.mistakes.push({ q: f.p.q, a: f.p.a, w: left === null ? null : f.p.w, sol: f.p.sol, ask: f.p.ask });
-    g.hits.push({ at: g.time + 0.55, n: f.r, kind: 'blast' });
-  }
+  else g.mistakes.push({ q: f.p.q, a: f.p.a, w: left === null ? null : f.p.w, sol: f.p.sol, ask: f.p.ask });
+  // The round: army volley, then the monster's blow (and a fireball after a wrong answer)
+  g.hits.push({ at: t + 0.6, kind: 'volley' }, { at: t + 0.65, kind: 'growl', fire: !ok }, { at: t + 1.2, kind: 'stomp', n: M.atkK });
+  if (!ok) g.hits.push({ at: t + 1.2, kind: 'blast', n: f.r });
   g.events.push({ type: 'fightAnswer', ok, timeout: left === null, p: f.p, r: f.r });
 }
 
@@ -206,9 +209,10 @@ function step(g, dt) {
     }
   }
 
-  // Shooting
-  if (a.n > 0 && (g.state === 'run' || g.state === 'fight')) {
-    g.fire += (2 + Math.sqrt(a.n)) * dt;
+  // Shooting (in the fight only during the volley after an answer)
+  const volley = g.state === 'fight' && g.time < g.fight.volleyUntil;
+  if (a.n > 0 && (g.state === 'run' || volley)) {
+    g.fire += (volley ? Math.min(40, 8 + a.n / 3) : 2 + Math.sqrt(a.n)) * dt;
     const sq = squeeze(a.n);
     while (g.fire >= 1) {
       g.fire -= 1;
@@ -250,24 +254,19 @@ function step(g, dt) {
   // Monster fight
   if (g.state === 'fight') {
     const f = g.fight;
-    M.hp = Math.max(0, M.hp - DPS * Math.min(a.n, 400) * dt);
-    M.atk -= dt;
-    if (M.atk <= 0 && a.n > 0) {
-      M.atk = ATK_EVERY * rand(0.8, 1.2); M.anim = g.time;
-      g.hits.push({ at: g.time + 0.45, n: M.atkK, kind: 'stomp' });
-      ev.push({ type: 'growl' });
-    }
     if (f.p && !f.done && g.time >= f.deadline) answerFight(g, null);
     if (f.done && g.time >= f.next && M.hp > 0) nextFightProblem(g);
   }
-  for (let i = g.hits.length - 1; i >= 0; i--) {
-    const h = g.hits[i];
-    if (g.time < h.at) continue;
-    g.hits.splice(i, 1);
+  while (g.hits.length && g.hits[0].at <= g.time) {
+    const h = g.hits.shift();
     if (g.state !== 'fight') continue;
-    const k = Math.min(h.n, a.n);
-    a.n -= k;
-    ev.push({ type: h.kind, n: k });
+    if (h.kind === 'volley') {
+      const dmg = Math.min(M.hp, a.n);
+      M.hp -= dmg; M.hit = g.time;
+      ev.push({ type: 'volley', n: dmg });
+      if (M.hp <= 0) { g.hits.length = 0; break; }     // a beaten monster does not strike back
+    } else if (h.kind === 'growl') { M.anim = g.time; ev.push({ type: 'growl', fire: h.fire }); }
+    else { const k = Math.min(h.n, a.n); a.n -= k; ev.push({ type: h.kind, n: k }); }
   }
 
   // End of the stage
@@ -456,6 +455,7 @@ const Snd = (() => {
     tap: fx('tap', 0.03, t => tone('triangle', 560, t, 0.05, 0.08, sfxBus)),
     reinforce: fx('reinforce', 0, t => { [72, 76, 79, 84, 88].forEach((m, i) => tone('square', mtof(m), t + i * 0.065, 0.14, 0.09, sfxBus, 0, 3600)); }),
     stomp: fx('stomp', 0.2, t => { tone('sine', 120, t, 0.4, 0.55, sfxBus, 32); hiss(t, 0.32, 0.3, sfxBus, 'lowpass', 420); }),
+    hit: fx('hit', 0.1, t => { hiss(t, 0.28, 0.32, sfxBus, 'lowpass', 2400); tone('square', 230, t, 0.14, 0.08, sfxBus, 100, 1600); }),
     boom: fx('boom', 0.2, t => { hiss(t, 0.65, 0.42, sfxBus, 'lowpass', 1300); tone('sine', 95, t, 0.45, 0.42, sfxBus, 30); }),
     growl: fx('growl', 0.5, t => { tone('sawtooth', 95, t, 0.45, 0.09, sfxBus, 70, 600); hiss(t, 0.4, 0.07, sfxBus, 'bandpass', 380, 1.2); }),
     roar: fx('roar', 0, t => {
@@ -921,10 +921,19 @@ function drawMonsterBar(g) {
   const k = M.hp / M.max;
   if (k > 0) { ctx.beginPath(); rr(ctx, x, y - h / 2, Math.max(h, w * k), h, h / 2); ctx.fillStyle = k > 0.5 ? '#3ad06e' : k > 0.25 ? '#ffc531' : '#ff4d40'; ctx.fill(); }
   if (h >= 12) { ctx.font = `${h * 0.95}px ${FD}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#ffffff'; ctx.fillText(group(Math.ceil(M.hp)), P0.x, y + 1); }
+  // damage of the last volley, rising from the bar
+  for (let i = hitTexts.length - 1; i >= 0; i--) {
+    const f = hitTexts[i]; f.t += hitDt;
+    if (f.t > 1.1) { hitTexts.splice(i, 1); continue; }
+    ctx.globalAlpha = clamp(1.6 - f.t * 1.5, 0, 1);
+    outlined(f.text, P0.x + w * 0.3, y + 56 - f.t * 30, 30, '#ffe066', '#15233b');
+    ctx.globalAlpha = 1;
+  }
 }
 
 /* ---------- effects ---------- */
-const parts = [], floats = [], confetti = [], rings = [], balls = [];
+const parts = [], floats = [], confetti = [], rings = [], balls = [], hitTexts = [];
+let hitDt = 0;
 const fx = { flash: 0, flashColor: '0,0,0', shake: 0 };
 function burst(x, z, colors, n, y) {
   if (parts.length > 600) return;
@@ -977,7 +986,7 @@ function drawEffects(g, dt) {
   }
   const a = g.army;
   if (g.state === 'run') for (const s of g.squads) if (s.men.length && s.z - a.z < 60 && proj(s.x, 1.9, s.z + 0.3, P0) && P0.y > view.hudBottom) bubble(P0.x, P0.y, String(s.men.length), '#e5463b', clamp(0.55 * P0.s, 13, 22));
-  drawMonsterBar(g);
+  hitDt = dt; drawMonsterBar(g);
   if (a.n > 0 && proj(a.x, 1.75, a.z + radius(a.n) * 0.55, P0)) {
     bubble(P0.x, P0.y, String(a.n), '#2f7df6', 24);
     for (let i = floats.length - 1; i >= 0; i--) {
@@ -1057,7 +1066,7 @@ function openIntro(c, s) {
 function startStage(g) {
   game = g; mode = 'play'; pending = null;
   ui.shownGate = null; ui.until = 0;
-  parts.length = 0; floats.length = 0; confetti.length = 0; rings.length = 0; balls.length = 0;
+  parts.length = 0; floats.length = 0; confetti.length = 0; rings.length = 0; balls.length = 0; hitTexts.length = 0;
   show(null); hud.hidden = false; fight.hidden = true; probCard.hidden = false; view.k = 0;
   $('hudLevel').textContent = stageLabel(g.cls, g.s);
   $('hudScore').textContent = '0';
@@ -1151,7 +1160,7 @@ function handleEvents(g) {
       case 'smash': burst(e.x, e.z, WOOD, 16); if (e.n > 0) floatText(MINUS + e.n, '#ff6a5e'); Snd.bad(); fx.shake = 0.25; break;
       case 'fight':
         probCard.hidden = true; fight.hidden = false;
-        setFight('Walka!', `Pokonaj potwora. ${MONSTERS[g.cls].name} ma ${group(M.max)} punktów życia.`, 'boss');
+        setFight('Walka!', 'Każda odpowiedź to runda: armia strzela, potem atakuje potwór.', 'boss');
         ansL.innerHTML = ansR.innerHTML = '…'; ansL.disabled = ansR.disabled = true;
         view.fightY = fight.getBoundingClientRect().top - 14;
         Snd.play('fight'); Snd.roar(); fx.shake = 0.3;
@@ -1165,10 +1174,13 @@ function handleEvents(g) {
         else {
           setFight(solved(e.p), e.timeout ? 'Za późno! Potwór atakuje' : `Twoja odpowiedź: ${e.p.w}`, 'bad');
           Snd.bad(); Snd.roar();
-          balls.push({ t: 0, x0: M.x, z0: M.z - 1.5, x1: a.x, z1: a.z });
         }
         break;
-      case 'growl': Snd.growl(); break;
+      case 'volley': if (e.n > 0) { hitTexts.push({ text: MINUS + group(e.n), t: 0 }); Snd.hit(); } break;
+      case 'growl':
+        Snd.growl();
+        if (e.fire) balls.push({ t: 0, x0: M.x, z0: M.z - 1.5, x1: a.x, z1: a.z });
+        break;
       case 'stomp':
         rings.push({ x: M.x, z: M.z - 2, t: 0, size: 9, c: 'rgba(255,255,255,0.9)' });
         if (e.n > 0) { floatText(MINUS + e.n, '#ff6a5e'); burst(a.x, a.z + radius(a.n) * 0.6, BLUE, 10); }

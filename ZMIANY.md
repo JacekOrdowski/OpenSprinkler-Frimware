@@ -5,7 +5,25 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 
 ---
 
-## Wersja 2 (19 października 2026)
+## Wersja 3 (20 października 2026)
+
+### Zmienione
+- **Walka z potworem idzie w rundach.** Każda odpowiedź to jedna runda: najpierw posiłki (po dobrej odpowiedzi), potem strzał armii, a na końcu cios potwora. Po złej albo spóźnionej odpowiedzi potwór dorzuca kulę ognia.
+- **Szybkość odpowiedzi nie ma już znaczenia**, liczy się tylko to, czy jest dobra (i czy zmieści się w czasie).
+  Powód: w wersji 2 potwór atakował co ok. 2 sekundy bez względu na odpowiedzi. Kto liczył spokojnie, mógł przegrać mimo samych dobrych odpowiedzi. Zgłoszony przypadek: klasa 6, gra 1, 11 dobrych odpowiedzi na 11, a mimo to przegrana. W symulacji takie przegrane zdarzały się w 14–25% gier przy odpowiedziach po 8–10 s.
+- **Same dobre odpowiedzi w walce zawsze dają wygraną.** Cios potwora nigdy nie zabiera więcej żołnierzy, niż daje dobra odpowiedź.
+- Siła potwora dobrana na nowo. Przy wszystkich bramkach dobrze i zgadywaniu w walce wygrywa się średnio w 32% gier (symulacja 4000 gier we wszystkich klasach).
+
+### Dodane
+- Liczba obrażeń nad paskiem życia potwora po każdym strzale armii (np. −101) i dźwięk trafienia.
+- Na początku walki wyjaśnienie: „Każda odpowiedź to runda: armia strzela, potem atakuje potwór”.
+
+### Usunięte
+- Ciągłe strzelanie do potwora i jego ataki co kilka sekund, niezależne od odpowiedzi.
+
+---
+
+## Wersja 2 (20 października 2026)
 
 Zapis w repozytorium: `ca6c2ff`
 
@@ -45,7 +63,7 @@ Zapis w repozytorium: `ca6c2ff`
 
 ---
 
-## Wersja 1 (19 października 2026)
+## Wersja 1 (20 października 2026)
 
 Zapis w repozytorium: `64a4bae`
 
