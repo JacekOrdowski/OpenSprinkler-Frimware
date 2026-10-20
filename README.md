@@ -31,7 +31,8 @@ liczy się tylko to, czy jest dobra (i czy zmieści się w czasie).
 
 Po złej odpowiedzi gra się zatrzymuje, włącza spokojną muzykę i pokazuje podpowiedź: sposób liczenia,
 w którym ostatni wynik jest zostawiony jako „?”. Gotowej odpowiedzi podpowiedź nie podaje.
-Potem jest ćwiczenie bez odliczania czasu. Na środku jest pasek: dobra odpowiedź przesuwa go o jedno pole w prawo (zielone),
+Potem jest ćwiczenie: przez pierwsze 20 sekund każdego zadania bez pośpiechu, potem pojawia się napis „Ale bez przesady”
+i pasek czasu jak w zwykłej grze (gdy się skończy, liczy się to jak zła odpowiedź). Na środku jest pasek odpowiedzi: dobra odpowiedź przesuwa go o jedno pole w prawo (zielone),
 zła o jedno pole w lewo (czerwone). Trzy pola w prawo: gra toczy się dalej. Trzy pola w lewo: koniec gry
 z napisem „Chyba śmierdzi Ci spod pachy!”. Po złej odpowiedzi jest podpowiedź do tego zadania i nowe zadanie.
 Za każde dobrze rozwiązane zadanie jest +3 złota.

@@ -2299,10 +2299,12 @@ function handleEvents(g) {
    After a mistake: how to calculate it in your head, then practice of the same kind
    ============================================================ */
 const GOAL = 3;   // the bar: 3 fields to the right (right answers) to go back to the game, 3 to the left end the game
+const CALM = 20;  // seconds of calm for every practice task; then "Ale bez przesady" and the usual time bar of the game
 let lesson = null;
 const le = {
   card: $('leCard'), eyebrow: $('leEyebrow'), solved: $('leSolved'), your: $('leYour'), title: $('leTitle'), steps: $('leSteps'), method: $('leMethod'),
   task: $('leTask'), q: $('leQ'), sub: $('leSub'), L: $('leL'), R: $('leR'), msg: $('leMsg'), next: $('leNext'), bar: $('leBar'),
+  timebar: $('leTimebar'), time: $('leTime'),
 };
 // "{…}" in a step is a calculation, shown in bold
 const stepHTML = s => s.split(/(\{[^}]*\})/).map(x => x[0] === '{' ? `<b class="calc${plain(x).length < 20 ? ' nw' : ''}">${richHTML(x.slice(1, -1))}</b>` : richHTML(x)).join('');
@@ -2339,8 +2341,8 @@ function nextTask() {
   const L = lesson;
   if (L.n >= L.tasks.length) L.tasks.push(...Z.practice(L.p, 4));
   const t = L.cur = L.tasks[L.n++] || L.tasks[(L.n - 1) % L.tasks.length];
-  L.left = Math.random() < 0.5; L.busy = false;
-  le.eyebrow.textContent = 'Ćwiczenie bez pośpiechu';
+  L.left = Math.random() < 0.5; L.busy = false; L.t = 0; L.hurry = false;
+  le.eyebrow.textContent = 'Ćwiczenie bez pośpiechu'; le.timebar.hidden = true;
   le.solved.hidden = le.your.hidden = true; le.method.hidden = true;
   le.q.innerHTML = richHTML(t.q);
   const len = plain(t.q).length;
@@ -2351,12 +2353,24 @@ function nextTask() {
   le.task.hidden = false; setMsg(''); le.next.hidden = true;
   le.card.scrollTop = 0;
 }
+// The clock of a practice task runs only while the card is on screen: 20 calm seconds, then the game's time bar
+function lessonTick(dt) {
+  const L = lesson;
+  if (!L || !L.cur || L.busy || le.task.hidden) return;
+  L.t += dt;
+  if (L.t < CALM) return;
+  const think = game.cfg.think;
+  if (!L.hurry) { L.hurry = true; le.eyebrow.textContent = 'Ale bez przesady'; le.timebar.hidden = false; Snd.tap(); }
+  le.time.style.transform = `scaleX(${clamp(1 - (L.t - CALM) / think, 0, 1)})`;
+  if (L.t >= CALM + think) lessonPick(null);
+}
+// left: true / false = the button picked; null = the time ran out (it counts as a wrong answer)
 function lessonPick(left) {
   const L = lesson;
   if (!L || !L.cur || L.busy || le.task.hidden) return;
   Snd.unlock();
-  L.busy = true; le.L.disabled = le.R.disabled = true;
-  const btn = left ? le.L : le.R;
+  L.busy = true; le.L.disabled = le.R.disabled = true; le.timebar.hidden = true;
+  const btn = left === null ? null : left ? le.L : le.R;
   if (left === L.left) {
     L.pos++; setBar(L.pos); btn.classList.add('right'); Snd.good(); Snd.coin();
     game.gold += GOLD.practice; updGold(game);     // practice after a mistake earns gold too
@@ -2364,10 +2378,11 @@ function lessonPick(left) {
     if (L.pos < GOAL) { setMsg('Dobrze!' + gold, 'good'); later(0.9, nextTask); }
     else { setMsg('Super! Grasz dalej.' + gold, 'good'); Snd.reinforce(); later(1.4, closeLesson); }
   } else {
-    L.pos--; setBar(L.pos); btn.classList.add('picked'); Snd.bad(); shakeCard();
+    L.pos--; setBar(L.pos); if (btn) btn.classList.add('picked'); Snd.bad(); shakeCard();
     if (L.pos <= -GOAL) { setMsg('Chyba śmierdzi Ci spod pachy!', 'bad'); later(1.8, lessonLost); }
     else {
-      setMsg('Jeszcze nie.<small>Spójrz na podpowiedź i spróbuj z nowym zadaniem.</small>', 'bad');
+      setMsg(left === null ? 'Za długo!<small>To liczy się jak zła odpowiedź. Spójrz na podpowiedź i spróbuj z nowym zadaniem.</small>'
+        : 'Jeszcze nie.<small>Spójrz na podpowiedź i spróbuj z nowym zadaniem.</small>', 'bad');
       showHint(L.cur);                              // a hint for this task, the answer stays hidden
       le.next.textContent = 'Następne zadanie'; le.next.hidden = false;
     }
@@ -2752,7 +2767,8 @@ function frame(now) {
       const q = ui.lessonQ; ui.lessonQ = null;
       if (game.state === 'run' || game.state === 'fight') openLesson(q.p, q.your);
     }
-  } else if (mode !== 'pause' && mode !== 'lesson') {
+  } else if (mode === 'lesson') lessonTick(dt);
+  else if (mode !== 'pause') {
     step(game, dt);
     handleEvents(game);
   }
