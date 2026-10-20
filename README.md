@@ -73,7 +73,8 @@ W Zbrojowni kupuje się ulepszenia na stałe, jak w grze Archero. Nowe otwieraj�
 | Wybuchający wrogowie | 6 | pokonany wróg wybucha w 12%, 20% albo 30% przypadków i rani sąsiadów; duzi wybuchają zawsze |
 
 Ceny rosną z każdym poziomem (od 50 do 9500 złota). Ktoś, kto zbiera około 80% złota, kupuje coś nowego na każdym levelu
-i ma prawie wszystko pod koniec levelu 8; kto zbiera wszystko, kupuje wszystko. Kolor armii też kupuje się za złoto.
+i ma prawie wszystko pod koniec levelu 8; kto zbiera wszystko, kupuje wszystko. Przycisk „Kup polecane ulepszenia”
+kupuje po kolei najtańsze, dopóki starcza złota. Kolor armii też kupuje się za złoto.
 Ceny są znane z góry. Nic się nie kupuje za prawdziwe pieniądze i nie ma reklam.
 Naukę można wyłączyć w menu albo w pauzie: „Nauka po błędzie: wył.”.
 
@@ -101,9 +102,25 @@ Kto ma mało złota, idzie dalej z trudem i opłaca mu się poprawić gwiazdki w
 W każdym levelu jest 40 gier (razem 320) i 8 tematów. Każdy temat to 4 gry o rosnącej trudności i jedna powtórka.
 Gra 40 to sprawdzian z całego levelu. W levelu gry otwierają się po kolei, po wygranej. Następny level otwiera się,
 gdy przejdzie się wszystkie 40 gier poprzedniego (levele zaczęte przed wersją 14 zostają otwarte).
-Do każdego levelu, także zamkniętego, można zajrzeć w **grze na próbę**: 6 bramek z zadaniami po trochu ze wszystkich
+Do każdego levelu można zajrzeć w **grze na próbę**: 6 bramek z zadaniami po trochu ze wszystkich
 tematów levelu (stopnie 1–3) i ulepszenia ustawione jak u gracza w połowie tego levelu. Gra na próbę nie daje złota,
-gwiazdek ani skrzyni i niczego nie otwiera.
+gwiazdek ani skrzyni.
+
+W zamkniętym levelu gra na próbę jest **egzaminem**: kto wygra ją bez ani jednego błędu (3 gwiazdki), otwiera ten level
+razem ze wszystkimi niższymi i dostaje złoto na start.
+
+Przy pierwszym uruchomieniu gra pyta: **„Jak chcesz grać?”**
+- **Od początku:** wszystkie levele po kolei, od levelu 1.
+- **Selekcja na najemnika:** etapy od levelu 1 w górę, po 5 zadań z mieszanki tematów danego levelu, każde z czasem
+  na myślenie jak w grze. 4 dobre odpowiedzi zaliczają etap i przychodzi następny. Za każdy zaliczony etap jest stopień
+  (szeregowy, starszy szeregowy, kapral, plutonowy, sierżant, chorąży, porucznik, kapitan). Przydział to ostatni
+  zaliczony level (a jeśli żaden, level 1); wszystkie niższe levele też są otwarte. 4 z 5, bo przy dwóch odpowiedziach
+  zgadywanie trafia w połowie przypadków: przypadkowe zaliczenie etapu zdarza się mniej więcej raz na 5,
+  dwóch pod rząd raz na 30.
+
+Po selekcji albo zdanym egzaminie gra dopłaca złoto do tego, co ma dobry gracz (80% złota) na początku tego levelu,
+żeby wrogowie nie byli za silni. Liczy się wszystko, co gracz ma: złoto, kupione ulepszenia i kolory armii,
+więc kto już tyle ma, nie dostaje nic, a powtarzanie egzaminu niczego nie daje.
 
 | Level (klasa) | Tematy |
 |---|---|

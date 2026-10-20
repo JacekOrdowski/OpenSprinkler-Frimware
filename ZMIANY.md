@@ -7,6 +7,24 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 
 ---
 
+## Wersja 15 (20 października 2026)
+
+### Dodane
+- **Pytanie na start: „Jak chcesz grać?”** (tylko u nowego gracza): „Od początku”, czyli wszystkie levele po kolei,
+  albo „Selekcja na najemnika”.
+- **Selekcja na najemnika:** sierżant sprawdza wiedzę. Etapy od levelu 1 w górę, po 5 zadań z mieszanki tematów
+  danego levelu; 4 dobre odpowiedzi zaliczają etap. Za każdy etap jest stopień, od szeregowego do kapitana.
+  Przydział to ostatni zaliczony level, a wszystkie niższe są też otwarte.
+- **Egzamin:** w zamkniętym levelu gra na próbę wygrana bez ani jednego błędu otwiera ten level razem z niższymi.
+- **Złoto na start po selekcji i egzaminie:** gra dopłaca do tego, co ma dobry gracz na początku tego levelu
+  (liczy złoto i to, co już kupione, więc nie da się go nabić powtarzaniem).
+- **„Kup polecane ulepszenia”** w Zbrojowni: kupuje po kolei najtańsze, dopóki starcza złota.
+
+### Zmienione
+- Lista leveli: przy zamkniętym levelu przycisk „Egzamin” zamiast „Zagraj na próbę” i opis, jak go otworzyć.
+
+---
+
 ## Wersja 14 (20 października 2026)
 
 Zapis w repozytorium: `c28fc04`

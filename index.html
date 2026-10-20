@@ -377,6 +377,21 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
 .inst .tap { animation: tapPulse 1.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
 @keyframes tapPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(1.12); } }
 
+/* ---------- the first start: how to play, the selection of mercenaries ---------- */
+.start-card { gap: 12px; }
+.choice { display: grid; gap: 4px; padding: 14px 16px; border-radius: 18px; background: #fff; box-shadow: 0 4px 0 var(--paper-edge); text-align: left; color: var(--ink); }
+.choice b { font-family: var(--display); font-weight: 400; font-size: 24px; line-height: 1.1; }
+.choice span { font-weight: 800; font-size: 14px; line-height: 1.35; color: var(--muted); }
+.choice.gold { background: var(--gold); box-shadow: 0 4px 0 var(--gold-deep); }
+.choice.gold span { color: #5c4300; }
+.choice:active { transform: translateY(3px); }
+.select-card { gap: 12px; }
+.sarge { display: grid; grid-template-columns: 52px 1fr; gap: 10px; align-items: center; }
+.sarge img { width: 52px; height: 78px; }
+.sarge-say { position: relative; margin: 0; padding: 10px 12px; border-radius: 16px; background: #fff; text-align: left; font-weight: 800; font-size: 15px; line-height: 1.35; }
+.sarge-say::before { content: ""; position: absolute; left: -8px; top: 50%; margin-top: -8px; border: 8px solid transparent; border-left: 0; border-right-color: #fff; }
+.select-card .ans { min-height: 68px; font-size: clamp(24px, 8vw, 34px); }
+
 /* ---------- the chest after the monster ---------- */
 .chest-card { gap: 12px; }
 .chest-wrap { position: relative; display: grid; justify-items: center; gap: 2px; }
@@ -505,7 +520,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
       <li>Na końcu drogi walczysz z potworem. Stukaj w dobre odpowiedzi, żeby dostać posiłki.</li>
       <li>Po potworze otwierasz skrzynię: 5 zadań na czas. Im szybciej i bez błędów, tym lepsza skrzynia: złoto i ulepszenia na następną grę.</li>
       <li>Za gwiazdki dostajesz złoto. W Zbrojowni kupisz za nie ulepszenia: więcej luf, ogniste, mrożące i zatrute pociski, piorun i inne.</li>
-      <li>Następny level otwiera się, gdy przejdziesz wszystkie 40 gier poprzedniego. Do każdego levelu możesz zajrzeć w grze na próbę.</li>
+      <li>Następny level otwiera się, gdy przejdziesz wszystkie 40 gier poprzedniego albo zdasz egzamin: grę na próbę bez ani jednego błędu.</li>
       <li>Po pomyłce gra da podpowiedź (bez gotowego wyniku) i ćwiczenie bez pośpiechu: 3 dobre odpowiedzi i grasz dalej, 3 złe kończą grę.</li>
     </ol>
     <div class="row2">
@@ -514,7 +529,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
     </div>
     <button class="btn btn-ghost" data-toggle="learn" aria-pressed="true">Nauka po błędzie: wł.</button>
     <button class="btn btn-ghost" id="btnInstallHelp" hidden>Jak dodać grę do ekranu telefonu</button>
-    <p class="version" id="menuVersion">Wersja 14</p>
+    <p class="version" id="menuVersion">Wersja 15</p>
   </div>
 </div>
 
@@ -608,6 +623,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
       (wyższe levele dają więcej). Liczy się najlepszy wynik gry, więc powtórka daje złoto za nowe gwiazdki.
       Złoto jest też w skrzyni po potworze i trochę za każdą dobrą odpowiedź. Kupione ulepszenia zostają na zawsze,
       a nowe otwierają się na kolejnych levelach.</p>
+    <button class="btn btn-light" id="arAuto" hidden>Kup polecane ulepszenia</button>
     <div class="ar-list" id="arList"></div>
     <h3 class="ar-sub">Kolor armii</h3>
     <div class="ar-skins" id="arSkins"></div>
@@ -640,6 +656,34 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
     </div>
     <p class="le-msg" id="leMsg" aria-live="polite" hidden></p>
     <button class="btn btn-gold" id="leNext">Ćwiczymy</button>
+  </div>
+</div>
+
+<div class="screen" id="scrStart" hidden>
+  <div class="card start-card" role="dialog" aria-labelledby="stTitle">
+    <h2 id="stTitle">Jak chcesz grać?</h2>
+    <button class="choice" id="stBegin"><b>Od początku</b><span>Wszystkie levele po kolei, od levelu 1.</span></button>
+    <button class="choice gold" id="stSelect"><b>Selekcja na najemnika</b><span>Rozwiąż kilka zadań. Sierżant sprawdzi twoją wiedzę taktyczną i od razu przydzieli cię do właściwego levelu.</span></button>
+    <p class="hint">Level 1 to 1. klasa, level 8 to 8. klasa.</p>
+  </div>
+</div>
+
+<div class="screen" id="scrSelect" hidden>
+  <div class="card select-card" id="seCard" role="dialog" aria-labelledby="seTitle">
+    <div class="eyebrow" id="seEyebrow">Selekcja najemników</div>
+    <h2 id="seTitle">Baczność, rekrucie!</h2>
+    <div class="sarge"><img id="seSarge" alt=""><p class="sarge-say" id="seSay" aria-live="polite"></p></div>
+    <div class="chest-quiz" id="seQuiz" hidden>
+      <div class="chest-dots" id="seDots" aria-label="Odpowiedzi"></div>
+      <div class="timebar"><i id="seTime"></i></div>
+      <div class="le-q" id="seQ" aria-live="polite"></div>
+      <div class="fight-btns">
+        <button class="ans" id="seL" aria-label="Lewa odpowiedź">…</button>
+        <button class="ans" id="seR" aria-label="Prawa odpowiedź">…</button>
+      </div>
+    </div>
+    <button class="btn btn-gold" id="seGo">Do boju!</button>
+    <button class="btn btn-ghost" id="seBack">Wróć</button>
   </div>
 </div>
 
