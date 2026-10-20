@@ -9,6 +9,8 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 
 ## Wersja 9 (20 października 2026)
 
+Zapis w repozytorium: `d856fa1`
+
 ### Dodane
 - **Okienko „Dodaj grę do ekranu telefonu”** z obrazkową instrukcją krok po kroku, osobno dla iPhone'a/iPada i dla Androida.
   - Pojawia się przy każdym uruchomieniu gry w przeglądarce telefonu. Nie pojawia się, gdy gra jest już uruchomiona z ikony
