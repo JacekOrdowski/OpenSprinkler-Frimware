@@ -4,7 +4,7 @@
 'use strict';
 const HAS_DOM = typeof document !== 'undefined';
 const Z = globalThis.Zadania;
-const WERSJA = 10;         // numer wersji gry; opis zmian w ZMIANY.md
+const WERSJA = 11;         // numer wersji gry; opis zmian w ZMIANY.md
 
 /* ============================================================
    Helpers
@@ -851,7 +851,7 @@ const backOut = t => { const c = 1.9; t -= 1; return 1 + t * t * ((c + 1) * t + 
 /* ---------- monsters: one for every class ---------- */
 const MONSTERS = [
   { name: 'Glutek', body: '#5cc443', dark: '#2c7a26', light: '#b9f59a', eyes: 1, horns: 0, size: 0.82 },
-  { name: 'Kudłacz', body: '#9a5bd6', dark: '#572a8c', light: '#d6b8f7', eyes: 2, horns: 1, fur: true, size: 0.86 },
+  { name: 'Artur Pająkojad', body: '#2f3539', dark: '#23282b', light: '#f3a99a', horn: '#e8dfc3', chalk: true, size: 0.86 },   // drawn in chalk by the owner for his son
   { name: 'Ropuchor', body: '#f08a2e', dark: '#9c4c17', light: '#ffd29a', eyes: 2, horns: 0, spots: true, size: 0.9 },
   { name: 'Głazor', body: '#8e98a5', dark: '#4f5966', light: '#cfd6de', eyes: 2, horns: 0, cracks: true, size: 0.94 },
   { name: 'Płomyk', body: '#e2452f', dark: '#871d12', light: '#ffb07a', eyes: 2, horns: 2, flames: true, size: 0.96 },
@@ -859,6 +859,79 @@ const MONSTERS = [
   { name: 'Trójoki', body: '#23a094', dark: '#115d56', light: '#9fe8e0', eyes: 3, horns: 2, spikes: true, size: 1.0 },
   { name: 'Liczożerca', body: '#b02a3e', dark: '#5a1020', light: '#ff9aa8', eyes: 2, horns: 2, wings: true, spikes: true, size: 1.0 },
 ];
+
+// Artur Pająkojad looks like the chalk drawing on the blackboard at home: a lemon-shaped head with a huge toothy grin,
+// spiral eyes, horns, antennae with little balls and a row of short pink legs
+function drawPajakojad(T, t, u, X, Y, lunge, breathe, flash, alpha) {
+  const chalk = '#f4efdc', ink = '#15233b', lw = Math.max(2, 0.09 * u);
+  const line = (w = 1) => { ctx.lineWidth = lw * 2.2 * w; ctx.strokeStyle = ink; ctx.stroke(); ctx.lineWidth = lw * 1.1 * w; ctx.strokeStyle = chalk; ctx.stroke(); };
+  const cy = 2.85 + lunge * 0.3, hw = 3.9 * (1 + lunge * 0.04), hh = 2.25 * breathe * (1 + lunge * 0.05);
+  // short legs keep pattering under the head
+  for (let i = 0; i < 6; i++) {
+    const lx = (i - 2.5) * 0.9, lift = Math.max(0, Math.sin(t * 7 + i * 2.1)) * 0.25;
+    ctx.beginPath(); ctx.moveTo(X(lx * 0.85), Y(cy - 1.6)); ctx.lineTo(X(lx * 1.12), Y(0.25 + lift));
+    ctx.lineWidth = 0.4 * u + lw * 2; ctx.strokeStyle = ink; ctx.stroke();
+    ctx.lineWidth = 0.4 * u; ctx.strokeStyle = T.light; ctx.stroke();
+  }
+  // antennae wobble, horns are shaded with chalk strokes
+  for (const sd of [-1, 1]) {
+    const sw = Math.sin(t * 3 + sd) * 0.25 + lunge * 0.3, bx = sd * 2.5, by = cy + 1.2, tx = sd * (3.05 + sw * 0.5), ty = cy + hh + 1.35;
+    ctx.beginPath(); ctx.moveTo(X(bx), Y(by)); ctx.quadraticCurveTo(X(sd * 3.4), Y(by + 1.4), X(tx), Y(ty)); line(0.8);
+    ctx.beginPath(); ctx.arc(X(tx), Y(ty + 0.3), 0.3 * u, 0, Math.PI * 2); ctx.fillStyle = T.body; ctx.fill(); line(0.8);
+    const hy = cy + hh * 0.72, horn = () => {
+      ctx.beginPath(); ctx.moveTo(X(sd * 0.75), Y(hy)); ctx.quadraticCurveTo(X(sd * 0.95), Y(hy + 1.3), X(sd * 1.5), Y(cy + hh + 1.25));
+      ctx.quadraticCurveTo(X(sd * 1.6), Y(hy + 0.9), X(sd * 2.0), Y(hy - 0.25)); ctx.closePath();
+    };
+    horn(); ctx.fillStyle = T.horn; ctx.fill();
+    ctx.save(); ctx.clip(); ctx.beginPath();
+    for (let k = 0; k < 7; k++) { const y0 = hy - 0.2 + k * 0.3; ctx.moveTo(X(sd * 0.5), Y(y0)); ctx.lineTo(X(sd * 2.2), Y(y0 + 0.7)); }
+    ctx.lineWidth = Math.max(1, lw * 0.6); ctx.strokeStyle = '#b9ad8a'; ctx.stroke(); ctx.restore();
+    horn(); line();
+  }
+  // head
+  const head = () => {
+    ctx.beginPath(); ctx.moveTo(X(-hw), Y(cy - 0.15));
+    ctx.bezierCurveTo(X(-hw * 0.72), Y(cy + hh * 1.3), X(hw * 0.72), Y(cy + hh * 1.3), X(hw), Y(cy - 0.15));
+    ctx.bezierCurveTo(X(hw * 0.7), Y(cy - hh * 1.15), X(-hw * 0.7), Y(cy - hh * 1.15), X(-hw), Y(cy - 0.15)); ctx.closePath();
+  };
+  head(); ctx.fillStyle = T.body; ctx.fill(); line();
+  // spiral eyes spin the other way round
+  for (const sd of [-1, 1]) {
+    const ex = sd * 1.35, eY = cy + 1.1, er = 0.6, spin = t * (2 + lunge * 6);
+    ctx.beginPath(); ctx.arc(X(ex), Y(eY), er * u, 0, Math.PI * 2); ctx.fillStyle = '#fffbe9'; ctx.fill(); line(0.8);
+    ctx.beginPath();
+    for (let k = 0; k <= 40; k++) { const a = sd * (k / 40 * Math.PI * 3.6 + spin), r = er * 0.82 * k / 40; const px = X(ex + Math.cos(a) * r), py = Y(eY + Math.sin(a) * r); k ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
+    ctx.lineWidth = Math.max(1.5, 0.11 * u); ctx.strokeStyle = ink; ctx.stroke();
+  }
+  // nose
+  const ny = cy - 0.1;
+  ctx.beginPath(); ctx.moveTo(X(-0.2), Y(ny + 1.55)); ctx.lineTo(X(0.2), Y(ny + 1.55)); ctx.quadraticCurveTo(X(0.5), Y(ny + 0.6), X(0.62), Y(ny + 0.05));
+  ctx.quadraticCurveTo(X(0.42), Y(ny - 0.12), X(0.24), Y(ny + 0.05)); ctx.quadraticCurveTo(X(0), Y(ny - 0.15), X(-0.24), Y(ny + 0.05));
+  ctx.quadraticCurveTo(X(-0.42), Y(ny - 0.12), X(-0.62), Y(ny + 0.05)); ctx.quadraticCurveTo(X(-0.5), Y(ny + 0.6), X(-0.2), Y(ny + 1.55)); ctx.closePath();
+  ctx.fillStyle = T.dark; ctx.fill(); line(0.8);
+  // the huge grin opens wider when he attacks
+  const open = lunge * 0.3, L = [-hw * 0.88, cy + 0.05], R = [hw * 0.88, cy - 0.25], C = [0, cy - 0.6];
+  const lo = [[hw * 0.6, cy - hh - open], [-hw * 0.6, cy - hh - open]];
+  const upAt = s => [(1 - s) * (1 - s) * L[0] + 2 * s * (1 - s) * C[0] + s * s * R[0], (1 - s) * (1 - s) * L[1] + 2 * s * (1 - s) * C[1] + s * s * R[1]];
+  const loAt = s => { const a = (1 - s) ** 3, b = 3 * s * (1 - s) ** 2, c = 3 * s * s * (1 - s), d = s ** 3; return [a * R[0] + b * lo[0][0] + c * lo[1][0] + d * L[0], a * R[1] + b * lo[0][1] + c * lo[1][1] + d * L[1]]; };
+  const mouth = () => {
+    ctx.beginPath(); ctx.moveTo(X(L[0]), Y(L[1])); ctx.quadraticCurveTo(X(C[0]), Y(C[1]), X(R[0]), Y(R[1]));
+    ctx.bezierCurveTo(X(lo[0][0]), Y(lo[0][1]), X(lo[1][0]), Y(lo[1][1]), X(L[0]), Y(L[1])); ctx.closePath();
+  };
+  mouth(); ctx.fillStyle = '#4a0d18'; ctx.fill();
+  ctx.save(); ctx.clip(); ctx.fillStyle = '#f8f4e6'; ctx.strokeStyle = ink; ctx.lineWidth = Math.max(1.5, 0.06 * u);
+  for (let i = 0; i < 9; i++) {
+    const [ax, ay] = upAt(i / 9), [bx, by] = upAt((i + 1) / 9), [mx, my] = upAt((i + 0.5) / 9);
+    ctx.beginPath(); ctx.moveTo(X(ax), Y(ay + 0.1)); ctx.lineTo(X(mx), Y(my - 0.6)); ctx.lineTo(X(bx), Y(by + 0.1)); ctx.closePath(); ctx.fill(); ctx.stroke();
+  }
+  for (let i = 0; i < 8; i++) {
+    const s0 = 0.06 + i * 0.11, [ax, ay] = loAt(s0), [bx, by] = loAt(s0 + 0.11), [mx, my] = loAt(s0 + 0.055);
+    ctx.beginPath(); ctx.moveTo(X(ax), Y(ay - 0.1)); ctx.lineTo(X(mx), Y(my + 0.55)); ctx.lineTo(X(bx), Y(by - 0.1)); ctx.closePath(); ctx.fill(); ctx.stroke();
+  }
+  ctx.restore();
+  mouth(); line(0.9);
+  if (flash) { ctx.globalAlpha = 0.25 * alpha; head(); ctx.fillStyle = '#ffffff'; ctx.fill(); }
+}
 
 function drawMonster(M, g, o) {
   const T = MONSTERS[M.kind], t = g.time, u = o.s * T.size;
@@ -874,6 +947,7 @@ function drawMonster(M, g, o) {
   ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.strokeStyle = '#15233b'; ctx.lineWidth = Math.max(2, 0.09 * u);
   // shadow
   ctx.fillStyle = 'rgba(10,30,50,0.28)'; ctx.beginPath(); ctx.ellipse(o.x, o.y, 3.4 * u, 0.8 * u, 0, 0, Math.PI * 2); ctx.fill();
+  if (T.chalk) { drawPajakojad(T, t, u, X, Y, lunge, breathe, t - M.hit < 0.06 && !M.dead, alpha); ctx.restore(); return; }
   const cy = 3.2 + lunge * 0.35, rx = 3.0 * (1 + lunge * 0.05), ry = 2.9 * breathe * (1 + lunge * 0.06);
   // wings
   if (T.wings) {

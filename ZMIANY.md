@@ -7,6 +7,25 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 
 ---
 
+## Wersja 11 (20 października 2026)
+
+Zapis w repozytorium: (uzupełnię w następnym zapisie)
+
+### Dodane
+- **Nowy potwór na końcu Levelu 2: Artur Pająkojad**, przeniesiony z rysunku kredą, który tata narysował kiedyś synowi na tablicy.
+  Ma głowę w kształcie cytryny, rogi, czułki z kuleczkami, oczy w spiralki, duży nos, ogromny uśmiech z zębami zygzakiem
+  i rządek krótkich różowych nóżek. Jest czarny jak tablica i obrysowany jasną linią jak kredą.
+  - Nóżki cały czas przebierają, czułki się kołyszą, a spiralki w oczach się kręcą. Gdy Artur atakuje, otwiera paszczę szerzej
+    i spiralki kręcą się szybciej.
+
+### Zmienione
+- Nic poza potworem.
+
+### Usunięte
+- Potwór Kudłacz z Levelu 2 (zastąpił go Artur Pająkojad).
+
+---
+
 ## Wersja 10 (20 października 2026)
 
 Zapis w repozytorium: `cb2cceb`
