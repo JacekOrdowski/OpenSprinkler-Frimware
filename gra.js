@@ -4,7 +4,7 @@
 'use strict';
 const HAS_DOM = typeof document !== 'undefined';
 const Z = globalThis.Zadania;
-const WERSJA = 12;         // numer wersji gry; opis zmian w ZMIANY.md
+const WERSJA = 13;         // numer wersji gry; opis zmian w ZMIANY.md
 
 /* ============================================================
    Helpers
@@ -37,15 +37,34 @@ function stageConfig(cls, s) {
   const C = CLASS_CFG[cls], info = Z.stage(cls, s), f = s / (STAGES - 1), d = Math.floor(s / 10);
   const think = C.think * (1.1 - 0.3 * f) * (info.time || 1);
   const speed = C.speed + 0.6 * f;
+  // After every gate: a calm moment with the reward on the side of the right answer, then enemies and obstacles,
+  // and only when they are behind comes the next problem, with the whole thinking time before its gate
+  const lead = 1.0, zone = s < 10 ? 3.2 : 3.6;
   return {
-    cls, s, info, think, speed, spacing: speed * (think + 1.0), start: START,
+    cls, s, info, think, speed, lead, zone, start: START,
+    first: speed * (think + 1.0), spacing: speed * (lead + zone + think),
     gates: 5 + d + (s >= 35 ? 1 : 0),
     rLo: 5 + 2 * d, rHi: 15 + 3 * d,            // soldiers won or lost at one gate
-    squadsPer: s >= 20 ? 2 : 1, enemyMul: 1.8 * (0.3 + 0.5 * f),   // zombies per span = enemyMul × average gate reward
-    brutes: s >= 10,                            // big zombies with many lives, from game 11
+    squadsPer: s >= 20 ? 2 : 1, enemyMul: (s === 0 ? 1.6 : 2.3) * (0.3 + 0.5 * f),   // enemies per span = enemyMul × average gate reward
+    foes: FOE_ORDER.slice(0, clamp(2 + Math.floor(s / 6) + Math.floor(cls / 3), 2, FOE_ORDER.length)),
+    brutes: s >= 8,                             // big enemies with many lives, from game 9
     bridges: s >= 3 ? 1 : 0,                    // broken bridge to repair by shooting, from game 4
+    obstacles: s < 1 ? [] : s < 3 ? ['hole'] : s < 6 ? ['hole', 'barrels'] : ['hole', 'barrels', 'hammer'],
+    obstPer: s >= 20 ? 1.4 : s >= 1 ? 1 : 0,    // obstacles per span (1.4 = sometimes two)
+    hurt: 3 + d,                                // soldiers lost in a hole, under the hammer or in the fire
   };
 }
+// Enemies walking against the army; every kind is hard in another way, a big one may lead the horde
+const FOES = {
+  zombie: { hp: 1, speed: 2.0, dmg: 1, w: 0.36, sc: 1.15, n: 1 },
+  ant: { hp: 1, speed: 3.1, dmg: 1, w: 0.32, sc: 0.95, n: 1.3 },             // fast and many
+  wasp: { hp: 1, speed: 2.6, dmg: 1, w: 0.3, sc: 1.0, n: 0.9, fly: true },  // flies in zigzags
+  snake: { hp: 2, speed: 1.7, dmg: 1, w: 0.36, sc: 1.1, n: 0.75 },          // two hits, slithers
+  clown: { hp: 3, speed: 1.5, dmg: 2, w: 0.4, sc: 1.2, n: 0.6 },            // three hits, takes two soldiers
+};
+const FOE_ORDER = ['zombie', 'ant', 'wasp', 'snake', 'clown'];
+const BIG_HP = { zombie: 1, ant: 0.8, wasp: 0.9, snake: 1.15, clown: 1.3 };
+const HOLE_W = 1.9, HOLE_L = 2.4, HAMMER_W = 1.25, HAMMER_P = 2.0, BARREL_W = 0.5;
 
 /* ============================================================
    Weapons, power-ups and the armoury (bought with gold earned by playing; never with money, never by chance)
@@ -102,10 +121,15 @@ function makeGroup(n, scale) {
   for (let i = 0; i < Math.min(n, CAP); i++) men.push({ ox: OX[i] * scale, oz: OZ[i] * scale, ph: Math.random() * 4, hp: 1, max: 1 });
   return men;
 }
+// No learning by heart: a problem never comes twice in one game, and the problems of the last two games of the same stage
+// are avoided too (the right gate's side is drawn anew for every gate)
+const RECENT = new Map(), probKey = p => `${p.q}|${p.sub || ''}|${p.a}`;
 function freshProblem(g) {
+  const recent = RECENT.get(`${g.cls}-${g.s}`) || [], seen = k => g.used.has(k) || recent.some(set => set !== g.used && set.has(k));
   let p = g.gen();
-  for (let tries = 0; tries < 8 && p.q === g.lastQ; tries++) p = g.gen();
-  g.lastQ = p.q;
+  for (let tries = 0; tries < 40 && seen(probKey(p)); tries++) p = g.gen();
+  for (let tries = 0; tries < 20 && g.used.has(probKey(p)); tries++) p = g.gen();   // a small pool: at least not twice in this game
+  g.used.add(probKey(p));
   return p;
 }
 
@@ -113,47 +137,64 @@ function createGame(cls, s, attract, arm) {
   const cfg = stageConfig(cls, s);
   arm = arm || NO_ARM;
   const g = {
-    cls, s, cfg, arm, attract: !!attract, time: 0, state: 'run', endAt: 0, gen: cfg.info.gen, lastQ: '', world: worldOf(cls, s),
+    cls, s, cfg, arm, attract: !!attract, time: 0, state: 'run', endAt: 0, gen: cfg.info.gen, used: new Set(), world: worldOf(cls, s),
     army: { x: 0, tx: 0, z: 0, n: attract ? 40 : cfg.start + ARMORY.army.per * arm.army, born: new Float32Array(CAP).fill(-10) },
-    gates: [], squads: [], props: [], bullets: [], hits: [], monster: null, fight: null, finishZ: 1e9,
+    gates: [], squads: [], props: [], obst: [], bullets: [], hits: [], monster: null, fight: null, finishZ: 1e9,
     fire: 0, correct: 0, answered: 0, mistakes: [], events: [], gold: 0,
     weapon: arm.weapon, fireBonus: 1 + ARMORY.power.per * arm.power, giant: false, turbo: false,
   };
   if (attract) return g;
+  const key = `${cls}-${s}`, rec = RECENT.get(key) || [];
+  RECENT.set(key, [g.used, ...rec].slice(0, 3));          // this game and the two before it
   let z = 6;
   for (let k = 0; k < cfg.gates; k++) {
-    z += cfg.spacing;
-    g.gates.push({ z, p: freshProblem(g), r: randi(cfg.rLo, cfg.rHi), left: Math.random() < 0.5, done: false, choseLeft: false, ok: false, t: 0 });
+    z += k ? cfg.spacing : cfg.first;
+    g.gates.push({ z, p: freshProblem(g), r: randi(cfg.rLo, cfg.rHi), left: Math.random() < 0.5, done: false, choseLeft: false, ok: false, t: 0,
+      showZ: k ? z - cfg.speed * cfg.think : -1e9, shown: k === 0, showAt: 0 });
   }
-  const tail = Math.max(42, cfg.speed * 6.5);
-  const spans = [];
-  for (let k = 1; k < cfg.gates; k++) spans.push([g.gates[k - 1].z, g.gates[k].z]);
-  spans.push([z, z + tail - FIGHT_DIST]);
-  const avgR = (cfg.rLo + cfg.rHi) / 2;
-  for (const [z0, z1] of spans) {
+  const tail = Math.max(42, cfg.speed * (cfg.lead + cfg.zone + 2.5));
+  const avgR = (cfg.rLo + cfg.rHi) / 2, d = Math.floor(s / 10);
+  // Between two gates (and after the last one): first the reward, then enemies and obstacles
+  const kinds = ['cage', 'crate'];
+  if (cfg.bridges) kinds.push('bridge');
+  while (kinds.length < cfg.gates) kinds.push(kinds.length % 2 ? 'crate' : 'cage');
+  for (let k = 0; k < cfg.gates; k++) {
+    const gt = g.gates[k], z0 = gt.z, end = k + 1 < cfg.gates ? g.gates[k + 1].showZ : z0 + tail - FIGHT_DIST - 4;
+    const side = gt.left ? -1 : 1;                     // the side of the right answer: the reward is waiting there
+    if (k < cfg.gates - 1 || cfg.gates === 1) {
+      const kind = kinds[k], hp = Math.round(avgR * { cage: 0.6, crate: 0.75, bridge: 1.1 }[kind]) + randi(1, 3);
+      const prop = { kind, x: side * (kind === 'bridge' ? 3.0 : 2.7), z: z0 + cfg.speed * 0.8 + (kind === 'bridge' ? 5 : 4), hp, max: hp, hit: -1, done: false, doneAt: 0 };
+      if (kind === 'cage') prop.reward = randi(cfg.rLo, cfg.rHi);
+      if (kind === 'bridge') prop.power = Math.random() < 0.5 ? 'giant' : 'turbo';
+      g.props.push(prop);
+    }
+    // enemies show up a moment after the gate, ahead of the army, and walk against it
+    const wake = z0 + cfg.speed * cfg.lead;
     for (let j = 0; j < cfg.squadsPer; j++) {
-      const at = cfg.squadsPer === 1 ? rand(0.5, 0.62) : (j === 0 ? rand(0.34, 0.42) : rand(0.64, 0.72));
-      const n = Math.max(3, Math.round(avgR * cfg.enemyMul / cfg.squadsPer) + randi(0, 2));
-      const sq = { x: rand(-2.4, 2.4), z: z0 + (z1 - z0) * at, men: makeGroup(n, 1.0), active: false };
-      if (cfg.brutes && Math.random() < 0.7) {           // a big zombie walks in front of the horde
-        const hp = Math.round(avgR * 0.35) + randi(2, 4);
+      const kind = pick(cfg.foes), F = FOES[kind];
+      const n = Math.max(3, Math.round(avgR * cfg.enemyMul / cfg.squadsPer * F.n) + randi(0, 2));
+      const ahead = 20 + j * 9 + rand(0, 4), sz = wake + ahead + j * cfg.speed * 0.8;
+      const sq = { kind, x: rand(-2.4, 2.4), z: sz, wake: sz - ahead, men: makeGroup(n, kind === 'ant' ? 0.85 : 1.0), active: false, span: k, ph: rand(0, 6) };
+      for (const m of sq.men) { m.hp = m.max = F.hp; }
+      if (cfg.brutes && Math.random() < 0.7) {           // a big one walks in front of the horde
+        const hp = Math.round((Math.round(avgR * 0.35) + randi(2, 4)) * BIG_HP[kind]);
         sq.men.unshift({ ox: 0, oz: -0.9, ph: Math.random() * 4, hp, max: hp, big: true });
       }
       g.squads.push(sq);
     }
+    // obstacles in the second half of the enemy stretch, never two on the same spot
+    const nObst = cfg.obstPer ? Math.floor(cfg.obstPer + Math.random() * 0.999 * (cfg.obstPer % 1 ? 1 : 0)) : 0;
+    const from = wake + 9, to = end - 3;
+    for (let i = 0; i < nObst && to > from; i++) {
+      const type = pick(cfg.obstacles), oz = nObst > 1 ? from + (to - from) * (i + 0.5) / nObst : rand(from, to), os = Math.random() < 0.5 ? -1 : 1;
+      const o = { type, side: os, z: oz, span: k, hit: false };
+      if (type === 'hole') Object.assign(o, { x: os * (HOLE_W + 0.15), len: HOLE_L });
+      else if (type === 'hammer') Object.assign(o, { x: os * 1.7, len: 1.2, off: rand(0, HAMMER_P), lastHit: -1 });
+      else Object.assign(o, { x: os * 1.9, len: 0.8, barrels: [os * 1.2, os * 2.5].map(bx => ({ x: bx, hp: 2 + d, max: 2 + d, hit: -1, done: false })) });
+      g.obst.push(o);
+    }
   }
-  // One thing to shoot between every two gates: cages with prisoners, weapon crates and a broken bridge
-  const kinds = ['cage', 'crate'];
-  if (cfg.bridges) kinds.push('bridge');
-  while (kinds.length < spans.length - 1) kinds.push(kinds.length % 2 ? 'crate' : 'cage');
-  for (let i = 0; i < spans.length - 1; i++) {
-    const [z0, z1] = spans[i], kind = kinds[i], side = Math.random() < 0.5 ? -1 : 1;
-    const hp = Math.round(avgR * { cage: 0.6, crate: 0.75, bridge: 1.1 }[kind]) + randi(1, 3);
-    const prop = { kind, x: side * (kind === 'bridge' ? 3.0 : 2.6), z: z0 + (z1 - z0) * (kind === 'bridge' ? 0.12 : 0.2), hp, max: hp, hit: -1, done: false, doneAt: 0 };
-    if (kind === 'cage') prop.reward = randi(cfg.rLo, cfg.rHi);
-    if (kind === 'bridge') prop.power = Math.random() < 0.5 ? 'giant' : 'turbo';
-    g.props.push(prop);
-  }
+  z = g.gates[cfg.gates - 1].z;
   g.monster = { x: 0, z: z + tail, hp: 1, max: 1, kind: cls, atkK: 2, anim: -9, hit: -9, dead: false, deadAt: 0 };
   g.finishZ = g.monster.z + 6;
   // Monster strength follows what a player would bring with every gate right (a few quick test runs of this very stage).
@@ -176,21 +217,27 @@ function perfectRun(g, arm) {
     army: { x: 0, tx: 0, z: 0, n: g.cfg.start + ARMORY.army.per * arm.army, born: new Float32Array(CAP) },
     gates: g.gates.map(x => ({ ...x })), props: g.props.map(b => ({ ...b })), monster: { ...g.monster },
     squads: g.squads.map(q => ({ ...q, men: q.men.map(m => ({ ...m })) })),
+    obst: g.obst.map(o => ({ ...o, barrels: o.barrels && o.barrels.map(b => ({ ...b })) })),
   };
-  for (let i = 0; i < 6000 && sim.state === 'run'; i++) {
-    const a = sim.army, gt = sim.gates.find(x => !x.done);
-    let tx = 0;
-    if (gt && gt.z - a.z < sim.cfg.speed * 2.2) tx = gt.left ? -1.9 : 1.9;
-    else {
-      const p = sim.props.find(q => !q.done && q.z + (q.kind === 'bridge' ? BRIDGE_L : 0) > a.z - 1 && q.z - a.z < 30);
-      if (p) tx = p.z - a.z > 3.5 ? p.x * 0.85 : -Math.sign(p.x) * 1.6;
-    }
-    a.tx = tx;
+  for (let i = 0; i < 9000 && sim.state === 'run'; i++) {
+    sim.army.tx = autoSteer(sim);
     step(sim, 1 / 20); sim.events.length = 0;
   }
   return { n: sim.army.n, power: firePower(sim) };
 }
 
+// How a careful player steers: the right gate when its problem is close, otherwise shoot the reward,
+// face the enemies and keep out of holes, hammers and fire
+function autoSteer(g) {
+  const a = g.army, gt = g.gates.find(x => !x.done);
+  if (gt && gt.shown && gt.z - a.z < g.cfg.speed * 2.2) return gt.left ? -1.9 : 1.9;
+  const danger = g.obst.find(o => !o.hit && o.z + o.len > a.z - 0.5 && o.z - a.z < 9 && !(o.type === 'barrels' && o.barrels.every(b => b.done)));
+  if (danger) return -danger.side * 1.9;
+  const p = g.props.find(q => !q.done && q.z + (q.kind === 'bridge' ? BRIDGE_L : 0) > a.z - 1 && q.z - a.z < 30);
+  if (p) return p.z - a.z > 3.5 ? p.x * 0.85 : -Math.sign(p.x) * 1.6;
+  const sq = g.squads.find(q => q.active && q.men.length && q.z > a.z);
+  return sq ? clamp(sq.x, -1.9, 1.9) : a.tx;
+}
 function grow(g, k) {
   const a = g.army;
   for (let i = a.n; i < Math.min(a.n + k, CAP); i++) a.born[i] = g.time;
@@ -208,21 +255,43 @@ function propDone(g, p) {
   }
 }
 
+// A shot barrel bursts into flames: enemies close to it burn too
+function explodeBarrel(g, o, br) {
+  br.done = true;
+  g.events.push({ type: 'barrel', x: br.x, z: o.z });
+  for (const s of g.squads) {
+    if (!s.active) continue;
+    for (let j = s.men.length - 1; j >= 0; j--) {
+      const m = s.men[j], mx = s.x + m.ox, mz = s.z + m.oz;
+      if (Math.hypot(mx - br.x, mz - o.z) < 1.6 && !m.big) { s.men.splice(j, 1); g.events.push({ type: 'kill', x: mx, z: mz, big: false, kind: s.kind }); }
+    }
+  }
+}
 function bulletHit(g, b, zPrev) {
   const lo = zPrev - 0.25, hi = b.z + 0.25, dmg = shotDmg(g);
   for (const s of g.squads) {
-    if (s.z < lo - 3 || s.z > hi + 3) continue;
+    if (!s.active || s.z < lo - 3 || s.z > hi + 3) continue;
+    const w = FOES[s.kind].w;
     for (let j = 0; j < s.men.length; j++) {
       const m = s.men[j], mx = s.x + m.ox, mz = s.z + m.oz;
-      if (mz >= lo && mz <= hi && Math.abs(mx - b.x) < (m.big ? 0.7 : 0.36)) {
+      if (mz >= lo && mz <= hi && Math.abs(mx - b.x) < (m.big ? w * 2 : w)) {
         m.hp -= dmg; m.hit = g.time;
         if (m.hp <= 0) {
           s.men.splice(j, 1);
           if (m.big) g.gold += GOLD.brute;
-          g.events.push({ type: 'kill', x: mx, z: mz, big: !!m.big });
+          g.events.push({ type: 'kill', x: mx, z: mz, big: !!m.big, kind: s.kind });
         }
         return true;
       }
+    }
+  }
+  for (const o of g.obst) {
+    if (o.type !== 'barrels' || o.z > hi || o.z + o.len < lo) continue;
+    for (const br of o.barrels) {
+      if (br.done || Math.abs(br.x - b.x) > BARREL_W) continue;
+      br.hp -= dmg; br.hit = g.time;
+      if (br.hp <= 0) explodeBarrel(g, o, br);
+      return true;
     }
   }
   for (const p of g.props) {
@@ -275,6 +344,15 @@ function step(g, dt) {
   a.z += sp * dt;
   if (g.state === 'run' && M && a.z >= M.z - FIGHT_DIST) { a.z = M.z - FIGHT_DIST; startFight(g); }
 
+  // The next problem appears when the enemies and obstacles after the last gate are behind (or at the latest at its point)
+  if (g.state === 'run') {
+    const nx = g.gates.find(x => !x.done);
+    if (nx && !nx.shown) {
+      const k = g.gates.indexOf(nx) - 1;
+      const clear = !g.squads.some(q => q.span === k && q.men.length) && !g.obst.some(o => o.span === k && o.z + o.len > a.z);
+      if (a.z >= nx.showZ || clear) { nx.shown = true; nx.showAt = a.z; ev.push({ type: 'problem' }); }
+    }
+  }
   // Gates
   if (g.state === 'run') {
     for (const gt of g.gates) {
@@ -314,20 +392,36 @@ function step(g, dt) {
   const inside = (dx, dz) => (dx / RX) ** 2 + (dz / RZ) ** 2 < 1;
   const running = g.state === 'run';
   for (let si = g.squads.length - 1; si >= 0; si--) {
-    const s = g.squads[si];
-    if (!s.active && s.z - a.z < 32) { s.active = true; ev.push({ type: 'horde' }); }
-    if (s.active && running) { s.z -= 2.0 * dt; s.x = clamp(s.x + clamp(a.x - s.x, -1, 1) * 0.9 * dt, -3.4, 3.4); }
+    const s = g.squads[si], F = FOES[s.kind];
+    if (!s.active) { if (running && a.z >= s.wake) { s.active = true; s.born = g.time; ev.push({ type: 'horde', kind: s.kind }); } else continue; }
     if (running) {
+      s.z -= F.speed * dt;
+      const wave = s.kind === 'wasp' ? Math.sin(g.time * 3.2 + s.ph) * 1.6 : s.kind === 'snake' ? Math.sin(g.time * 2.4 + s.ph) * 0.8 : 0;
+      s.x = clamp(s.x + (clamp(a.x - s.x, -1, 1) * 0.9 + wave) * dt, -3.4, 3.4);
       for (let j = s.men.length - 1; j >= 0; j--) {
         const m = s.men[j], dx = s.x + m.ox - a.x, dz = s.z + m.oz - a.z;
-        if (inside(dx, dz) && a.n > 0) {
-          // a big zombie takes several soldiers; on the road the last soldier always survives, so the monster is always reached
-          const k = Math.min(a.n - 1, m.big ? Math.min(6, Math.ceil(m.hp)) : 1);
-          s.men.splice(j, 1); a.n -= k; ev.push({ type: 'clash', x: a.x + dx, z: a.z + dz, big: !!m.big, n: k });
-        }
+        // a big one takes several soldiers; on the road the last soldier always survives, so the monster is always reached
+        const k = Math.min(a.n - 1, m.big ? Math.min(6, Math.ceil(m.hp)) : F.dmg);
+        if (inside(dx, dz) && a.n > 0) { s.men.splice(j, 1); a.n -= k; ev.push({ type: 'clash', x: a.x + dx, z: a.z + dz, big: !!m.big, n: k, kind: s.kind }); }
+        else if (dz < -RZ - 0.4) { s.men.splice(j, 1); a.n -= Math.max(0, k); ev.push({ type: 'leak', x: a.x + dx, z: a.z + dz, n: Math.max(0, k), kind: s.kind }); }   // got past the army
       }
     }
-    if (!s.men.length || s.z < a.z - 14) g.squads.splice(si, 1);
+    if (!s.men.length) g.squads.splice(si, 1);
+  }
+  // Obstacles: a hole in the road, a hammer falling from above, burning barrels
+  if (running) {
+    for (const o of g.obst) {
+      if (o.hit || a.z < o.z - RZ * 0.7 || a.z > o.z + o.len + RZ * 0.5) continue;
+      let hurt = false;
+      if (o.type === 'hole') hurt = Math.abs(a.x - o.x) < HOLE_W + RX * 0.55 - 0.3;
+      else if (o.type === 'hammer') { const ph = (g.time + o.off) % HAMMER_P; hurt = ph < 0.32 && ph > 0.06 && Math.abs(a.x - o.x) < HAMMER_W + RX * 0.55 - 0.2; }
+      else for (const br of o.barrels) if (!br.done && Math.abs(a.x - br.x) < BARREL_W + RX * 0.6 - 0.2) { hurt = true; br.done = true; ev.push({ type: 'barrel', x: br.x, z: o.z }); }
+      if (hurt) {
+        const k = Math.min(g.cfg.hurt, a.n - 1);
+        if (o.type !== 'barrels') o.hit = true;
+        a.n -= k; ev.push({ type: 'trap', kind: o.type, x: o.type === 'barrels' ? a.x : o.x, z: o.z, n: k });
+      }
+    }
   }
   for (const p of g.props) {
     if (p.done || !running) continue;
@@ -367,7 +461,7 @@ function step(g, dt) {
   }
 }
 
-if (!HAS_DOM) { globalThis.ArmiaLiczb = { STAGES, stageConfig, createGame, step, answerFight, WEAPONS, ARMORY, GOLD, firePower }; return; }
+if (!HAS_DOM) { globalThis.ArmiaLiczb = { STAGES, stageConfig, createGame, step, answerFight, autoSteer, WEAPONS, ARMORY, GOLD, FOES, firePower }; return; }
 
 /* ============================================================
    Saved progress (stays on this phone only)
@@ -846,6 +940,100 @@ function makeZombie(frame, big) {
   return c;
 }
 const ZOMB = [[0, 1, 2, 3].map(f => makeZombie(f, false)), [0, 1, 2, 3].map(f => makeZombie(f, true))];
+// The other enemies, all seen from the front as they come at the army; big ones are darker and angrier
+const spriteCtx = () => { const c = document.createElement('canvas'); c.width = SW; c.height = SH; const x = c.getContext('2d'); x.lineJoin = 'round'; x.lineCap = 'round'; x.lineWidth = 3.5; x.strokeStyle = '#15233b'; return [c, x]; };
+const blobOn = x => (path, fill) => { x.beginPath(); path(); x.fillStyle = fill; x.fill(); x.stroke(); };
+function eyesOn(x, hx, hy, r, gap, big, look = 0) {
+  x.fillStyle = '#ffffff'; x.beginPath(); x.arc(hx - gap, hy, r, 0, 7); x.arc(hx + gap, hy, r, 0, 7); x.fill(); x.stroke();
+  x.fillStyle = '#15233b'; x.beginPath(); x.arc(hx - gap + look, hy + r * 0.2, r * 0.48, 0, 7); x.arc(hx + gap + look, hy + r * 0.2, r * 0.48, 0, 7); x.fill();
+  if (big) { x.beginPath(); x.moveTo(hx - gap - r * 1.2, hy - r * 1.5); x.lineTo(hx - gap + r * 0.9, hy - r * 0.8); x.moveTo(hx + gap + r * 1.2, hy - r * 1.5); x.lineTo(hx + gap - r * 0.9, hy - r * 0.8); x.stroke(); }
+}
+function makeAnt(frame, big) {
+  const [c, x] = spriteCtx(), blob = blobOn(x), ph = frame / 4 * Math.PI * 2, sw = Math.sin(ph);
+  const body = big ? '#8e2a1a' : '#c8452e', dark = big ? '#561409' : '#82261a';
+  x.lineWidth = 3;
+  for (let i = 0; i < 3; i++) for (const sd of [-1, 1]) {           // six thin legs, stepping in turn
+    const lift = ((i + (sd > 0 ? 1 : 0)) % 2 ? sw : -sw) * 4, y0 = 70 + i * 6;
+    x.beginPath(); x.moveTo(36 + sd * 8, y0); x.quadraticCurveTo(36 + sd * (22 + i * 3), y0 - 6 + lift, 36 + sd * (24 + i * 4), 102 - i * 2 + Math.min(0, lift)); x.stroke();
+  }
+  x.lineWidth = 3.5;
+  blob(() => x.ellipse(36, 50, 17, 14, 0, 0, 7), dark);              // abdomen, behind
+  blob(() => x.ellipse(36, 72, 9, 8, 0, 0, 7), body);                // waist
+  blob(() => x.arc(36, 66 - Math.abs(sw) * 1.5, 15, 0, 7), body);    // head in front
+  for (const sd of [-1, 1]) {                                         // antennae and pincers
+    x.beginPath(); x.moveTo(36 + sd * 6, 53); x.quadraticCurveTo(36 + sd * 14, 34, 36 + sd * 22, 36 + sw * sd * 2); x.stroke();
+    x.fillStyle = dark; x.beginPath(); x.arc(36 + sd * 22, 36 + sw * sd * 2, 3.5, 0, 7); x.fill(); x.stroke();
+    blob(() => { x.moveTo(36 + sd * 4, 78); x.quadraticCurveTo(36 + sd * 12, 84, 36 + sd * 3, 90); x.quadraticCurveTo(36 + sd * 6, 84, 36 + sd * 2, 80); }, dark);
+  }
+  eyesOn(x, 36, 63, 5.5, 6.5, big);
+  return c;
+}
+function makeWasp(frame, big) {
+  const [c, x] = spriteCtx(), blob = blobOn(x), up = frame % 2 ? 1 : -1;
+  const yel = big ? '#e7a90e' : '#ffd23f', blk = '#232323';
+  x.globalAlpha = 0.75;                                                 // see-through wings, flapping
+  for (const sd of [-1, 1]) blob(() => x.ellipse(36 + sd * 18, 34 + up * 5, 16, 9, sd * (0.5 + up * 0.35), 0, 7), '#e8f6ff');
+  x.globalAlpha = 1;
+  x.lineWidth = 2.5;
+  for (const sd of [-1, 1]) for (let i = 0; i < 2; i++) { x.beginPath(); x.moveTo(36 + sd * 6, 62 + i * 6); x.lineTo(36 + sd * 12, 74 + i * 6); x.stroke(); }
+  x.lineWidth = 3.5;
+  blob(() => { x.moveTo(36, 96); x.lineTo(31, 84); x.lineTo(41, 84); x.closePath(); }, blk);   // the sting
+  blob(() => x.ellipse(36, 66, 13, 19, 0, 0, 7), yel);
+  x.save(); x.beginPath(); x.ellipse(36, 66, 13, 19, 0, 0, 7); x.clip(); x.fillStyle = blk;
+  for (const y of [58, 68, 78]) x.fillRect(20, y, 32, 5);
+  x.restore(); x.beginPath(); x.ellipse(36, 66, 13, 19, 0, 0, 7); x.stroke();
+  blob(() => x.arc(36, 40, 13, 0, 7), yel);
+  x.fillStyle = blk; x.beginPath(); x.ellipse(36, 30, 9, 4, 0, 0, 7); x.fill();
+  for (const sd of [-1, 1]) { x.beginPath(); x.moveTo(36 + sd * 4, 28); x.quadraticCurveTo(36 + sd * 8, 16, 36 + sd * 14, 17); x.stroke(); }
+  eyesOn(x, 36, 40, 5, 5.5, big);
+  return c;
+}
+function makeSnake(frame, big) {
+  const [c, x] = spriteCtx(), blob = blobOn(x), ph = frame / 4 * Math.PI * 2, sw = Math.sin(ph);
+  const green = big ? '#2f8a3a' : '#4caf50', dark = big ? '#1b5a24' : '#2e7d32', belly = '#c5e86c';
+  blob(() => x.ellipse(36, 95, 27, 9, 0, 0, 7), dark);                // coils on the ground
+  blob(() => x.ellipse(36 - sw * 2, 86, 21, 8, 0, 0, 7), green);
+  x.lineWidth = 15; x.strokeStyle = '#15233b';                       // the neck rises in an S, outline first
+  const neck = () => { x.beginPath(); x.moveTo(36, 84); x.bezierCurveTo(52 + sw * 4, 74, 18 + sw * 4, 62, 36 + sw * 3, 46); };
+  neck(); x.stroke(); x.lineWidth = 9; x.strokeStyle = green; neck(); x.stroke();
+  x.lineWidth = 3; x.strokeStyle = belly; neck(); x.stroke();
+  x.lineWidth = 3.5; x.strokeStyle = '#15233b';
+  const hx = 36 + sw * 3;
+  if (frame % 2) { x.strokeStyle = '#e53935'; x.lineWidth = 2.5; x.beginPath(); x.moveTo(hx, 50); x.lineTo(hx, 58); x.moveTo(hx, 58); x.lineTo(hx - 3, 62); x.moveTo(hx, 58); x.lineTo(hx + 3, 62); x.stroke(); x.strokeStyle = '#15233b'; x.lineWidth = 3.5; }
+  blob(() => x.ellipse(hx, 38, 15, 12, 0, 0, 7), green);
+  x.fillStyle = dark; for (const [dx, dy] of [[-7, -6], [6, -7], [0, -9]]) { x.beginPath(); x.arc(hx + dx, 38 + dy, 2.2, 0, 7); x.fill(); }
+  eyesOn(x, hx, 36, 4.5, 6, big);
+  return c;
+}
+function makeClown(frame, big) {
+  const [c, x] = spriteCtx(), blob = blobOn(x), ph = frame / 4 * Math.PI * 2, sw = Math.sin(ph), bob = Math.abs(Math.cos(ph)) * 2.5;
+  const suit = big ? '#7b2fa8' : '#ff4d4d', suit2 = big ? '#3fa9f5' : '#3fa9f5', hair = big ? '#ff8a1f' : '#3fa9f5';
+  const legTop = 76 - bob;
+  blob(() => rr(x, 24, legTop, 11, 96 - legTop - Math.max(0, sw) * 5, 4), suit2);
+  blob(() => rr(x, 37, legTop, 11, 96 - legTop - Math.max(0, -sw) * 5, 4), suit2);
+  blob(() => x.ellipse(26, 100 - Math.max(0, sw) * 5, 12, 6, 0, 0, 7), '#e53935');    // big shoes
+  blob(() => x.ellipse(46, 100 - Math.max(0, -sw) * 5, 12, 6, 0, 0, 7), '#e53935');
+  blob(() => rr(x, 15, 46 - bob, 42, 34, 14), suit);
+  x.fillStyle = '#ffffff'; for (const [dx, dy] of [[24, 54], [44, 58], [33, 68], [22, 72], [48, 72]]) { x.beginPath(); x.arc(dx, dy - bob, 3.2, 0, 7); x.fill(); }
+  blob(() => x.ellipse(12, 56 - bob + sw * 3, 7, 9, 0, 0, 7), suit);       // arms reaching out
+  blob(() => x.ellipse(60, 56 - bob - sw * 3, 7, 9, 0, 0, 7), suit);
+  blob(() => x.arc(12, 50 - bob + sw * 3, 6, 0, 7), '#ffffff');
+  blob(() => x.arc(60, 50 - bob - sw * 3, 6, 0, 7), '#ffffff');
+  for (let i = 0; i < 5; i++) blob(() => x.arc(20 + i * 8, 45 - bob, 5.5, 0, 7), '#fff6c0');   // frilly collar
+  const hx = 36, hy = 28 - bob;
+  for (const sd of [-1, 1]) for (const [dx, dy] of [[17, -4], [19, 5], [13, -11]]) blob(() => x.arc(hx + sd * dx, hy + dy, 6.5, 0, 7), hair);   // curly wig
+  blob(() => x.arc(hx, hy, 15, 0, 7), '#fbf7f0');
+  eyesOn(x, hx, hy - 3, 4.2, 6, big);
+  x.beginPath(); x.moveTo(hx - 9, hy + 6); x.quadraticCurveTo(hx, hy + 15, hx + 9, hy + 6); x.strokeStyle = '#e53935'; x.lineWidth = 3.5; x.stroke(); x.strokeStyle = '#15233b';
+  blob(() => x.arc(hx, hy + 3, 4.5, 0, 7), '#e53935');                   // red nose
+  blob(() => { x.moveTo(hx - 7, hy - 13); x.lineTo(hx, hy - 27); x.lineTo(hx + 7, hy - 13); x.closePath(); }, '#ffd23f');   // little hat
+  return c;
+}
+const FOE_ART = { zombie: makeZombie, ant: makeAnt, wasp: makeWasp, snake: makeSnake, clown: makeClown };
+const FOE_SPR = Object.fromEntries(Object.entries(FOE_ART).map(([k, f]) => [k, [false, true].map(big => [0, 1, 2, 3].map(fr => f(fr, big)))]));
+const FOE_FX = { zombie: ['#93d36c', '#4f8a33', '#7b5fb8'], ant: ['#c8452e', '#82261a', '#3b1d14'], wasp: ['#ffd23f', '#232323', '#e8f6ff'],
+  snake: ['#4caf50', '#2e7d32', '#c5e86c'], clown: ['#ff4d4d', '#ffffff', '#3fa9f5', '#ffd23f'] };
+const FOE_NAMES = { zombie: 'zombie', ant: 'mrówki', wasp: 'osy', snake: 'węże', clown: 'klauny' };
 const armySprites = [];
 const armySprite = (skin, f) => (armySprites[skin] = armySprites[skin] || [0, 1, 2, 3].map(k => makeSoldier(SKINS[skin].c, k)))[f];
 const backOut = t => { const c = 1.9; t -= 1; return 1 + t * t * ((c + 1) * t + c); };
@@ -1286,6 +1474,7 @@ function drawBackdrop(g) {
     }
   }
   for (const p of g.props) if (p.kind === 'bridge') drawBridge(p, g);
+  for (const o of g.obst) if (o.type === 'hole') drawHole(o, g);
   if (Wd.rail !== 'bridge') { drawRails(Wd, g, zn); return; }
   for (const sx of [-4.5, 4.5]) {
     ctx.strokeStyle = '#c4372c'; ctx.lineCap = 'butt';
@@ -1352,12 +1541,12 @@ function drawGate(gt, g) {
     ctx.lineWidth = Math.max(1.5, 0.07 * P0.s); ctx.stroke();
     const w = P1.x - P0.x;
     if (!proj((x0 + x1) / 2, top * 0.52, z, P4)) continue;
-    drawRich(isLeft === gt.left ? gt.p.a : gt.p.w, P4.x, P4.y, 1.25 * P4.s, '#ffffff', '#15233b', w * 0.86);
+    drawRich(!gt.shown ? '?' : isLeft === gt.left ? gt.p.a : gt.p.w, P4.x, P4.y, 1.25 * P4.s, '#ffffff', '#15233b', w * 0.86);
   }
   for (const px of [-ROAD - 0.12, 0, ROAD + 0.12]) wallZ(px - 0.12, px + 0.12, 0, beam, z, '#f1f3f6', '#15233b', 1);
   if (wallZ(-ROAD - 0.25, ROAD + 0.25, top + 0.05, beam, z, '#ffc531', '#15233b', 1.5) && proj(0, (top + beam) / 2 + 0.02, z, P4)) {
     const bw = P1.x - P0.x, bh = P0.y - P3.y;
-    drawRich(gt.p.q, P4.x, P4.y, Math.min(bh * 0.62, 0.55 * P4.s), '#15233b', null, bw * 0.9);
+    drawRich(gt.shown ? gt.p.q : 'Najpierw wrogowie', P4.x, P4.y, Math.min(bh * 0.62, 0.55 * P4.s), '#15233b', null, bw * 0.9);
     if (!gt.done && proj(ROAD - 0.3, beam + 0.55, z, P4)) {
       const fs = clamp(0.62 * P4.s, 10, 26);
       outlined('+' + gt.r, P4.x, P4.y, fs, '#4be08a', '#0d4a26');
@@ -1426,6 +1615,63 @@ function drawBridge(p, g) {
   }
   for (const ex of [x0, x1]) ground(ex - 0.05, ex + 0.05, Math.max(z0, view.camZ + 1), z1, 0.035, '#6b4424');
 }
+/* ---------- obstacles: a hole in the road, a hammer falling from above, burning barrels ---------- */
+function drawHole(o, g) {
+  const z1 = o.z + o.len, near = view.camZ + 1;
+  if (z1 < near || o.z > view.camZ + 160) return;
+  const [h0, h1] = WORLDS[g.world].hole, x0 = o.x - HOLE_W, x1 = o.x + HOLE_W;
+  ground(x0 - 0.16, x1 + 0.16, Math.max(o.z - 0.16, near), z1 + 0.16, 0.011, '#4a3f36');
+  ground(x0, x1, Math.max(o.z, near), z1, 0.012, h0);
+  ground(x0 + 0.25, x1 - 0.25, Math.max(o.z + 0.2, near), z1 - 0.2, 0.014, h1);
+  if (o.z - 0.75 > near) for (let i = 0; i < 6; i++) { const xa = x0 + (x1 - x0) * i / 6; ground(xa, xa + (x1 - x0) / 12, o.z - 0.75, o.z - 0.4, 0.02, '#ffc531'); }
+}
+// height of the hammer's head: it falls fast, stays down a moment, rises slowly and waits
+function hammerY(o, t) {
+  const ph = (t + o.off) % HAMMER_P;
+  return ph < 0.08 ? 3.4 * (1 - (ph / 0.08) ** 2) : ph < 0.4 ? 0 : ph < 1.3 ? 3.4 * Math.sin((ph - 0.4) / 0.9 * Math.PI / 2) : 3.4;
+}
+function drawHammer(o, g) {
+  const W = HAMMER_W, x0 = o.x - W, x1 = o.x + W, z = o.z, y = hammerY(o, g.time), top = 5.6, zb = z + 0.6;
+  if (proj(o.x, 0.02, zb, P0)) {
+    ctx.fillStyle = `rgba(10,20,30,${0.12 + 0.3 * (1 - y / 3.4)})`;
+    ctx.beginPath(); ctx.ellipse(P0.x, P0.y, W * P0.s * 1.05, W * P0.s * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  for (const px of [x0 - 0.4, x1 + 0.4]) wallZ(px - 0.14, px + 0.14, 0, top, zb, '#5d6676', '#15233b', 1);
+  if (wallZ(x0 - 0.6, x1 + 0.6, top - 0.45, top, zb, '#ffc531', '#15233b', 1.5)) {
+    for (let i = 0; i < 6; i++) { const xa = x0 - 0.6 + (x1 - x0 + 1.2) * (i + 0.25) / 6; wallZ(xa, xa + 0.22, top - 0.43, top - 0.02, zb, '#15233b', null, 0); }
+  }
+  wallZ(o.x - 0.13, o.x + 0.13, y + 1.1, top - 0.45, zb, '#aab3c2', '#15233b', 1);
+  wallX(view.camX < o.x ? x0 : x1, z, z + 1.2, y, y + 1.1, '#4f5866');
+  if (proj(x0, y + 1.1, z, P0) && proj(x1, y + 1.1, z, P1) && proj(x1, y + 1.1, z + 1.2, P2) && proj(x0, y + 1.1, z + 1.2, P3)) poly4('#8e98a7', '#15233b', 1);
+  wallZ(x0, x1, y, y + 1.1, z, '#6b7480', '#15233b', 1.5);
+  // dust and a thump at every blow, when the army is near enough to hear it
+  const cyc = Math.floor((g.time + o.off) / HAMMER_P);
+  if (y === 0 && o.fxAt !== cyc) {
+    o.fxAt = cyc;
+    rings.push({ x: o.x, z: zb, t: 0, size: 3, c: 'rgba(255,255,255,0.8)' });
+    if (Math.abs(o.z - g.army.z) < 26 && g.state === 'run') Snd.thud();
+  }
+}
+function drawBarrel(br, o, g) {
+  const r = 0.42, h = 1.0, z = o.z, lit = g.time - br.hit < 0.06;
+  if (!proj(br.x - r, 0, z, P0) || !proj(br.x + r, 0, z, P1) || !proj(br.x, h, z, P2)) return;
+  const w = P1.x - P0.x, top = P2.y, bot = (P0.y + P1.y) / 2, cx = (P0.x + P1.x) / 2, lw = Math.max(1.5, 0.06 * P0.s);
+  ctx.strokeStyle = '#15233b'; ctx.lineWidth = lw; ctx.fillStyle = lit ? '#ff8a6a' : '#c0392b';
+  ctx.beginPath(); ctx.moveTo(cx - w / 2, top); ctx.lineTo(cx - w / 2, bot); ctx.ellipse(cx, bot, w / 2, w * 0.18, 0, Math.PI, 0, true); ctx.lineTo(cx + w / 2, top); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = '#8b969e'; ctx.lineWidth = Math.max(2, 0.08 * P0.s);
+  for (const k of [0.28, 0.72]) { ctx.beginPath(); ctx.ellipse(cx, bot + (top - bot) * k, w / 2 - 1, w * 0.13, 0, 0, Math.PI); ctx.stroke(); }
+  ctx.fillStyle = '#7a1f14'; ctx.strokeStyle = '#15233b'; ctx.lineWidth = lw; ctx.beginPath(); ctx.ellipse(cx, top, w / 2, w * 0.18, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  const t = g.time, H = w * 1.15;
+  const flame = (k, dx, hgt, col) => {
+    ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(cx + dx - w * 0.2, top);
+    ctx.quadraticCurveTo(cx + dx - w * 0.22, top - hgt * 0.5, cx + dx + Math.sin(t * 12 + k) * w * 0.08, top - hgt);
+    ctx.quadraticCurveTo(cx + dx + w * 0.22, top - hgt * 0.5, cx + dx + w * 0.2, top); ctx.closePath(); ctx.fill();
+  };
+  flame(0, -w * 0.16, H * (0.8 + 0.2 * Math.sin(t * 9)), '#ff6a1a'); flame(1, w * 0.16, H * (0.7 + 0.2 * Math.sin(t * 11 + 1)), '#ff6a1a');
+  flame(2, 0, H * (0.95 + 0.15 * Math.sin(t * 13 + 2)), '#ffb02e'); flame(3, 0, H * 0.5, '#fff2a8');
+  if (o.z - g.army.z < 40) outlined(String(Math.ceil(br.hp)), cx, top - H - 0.3 * P0.s, clamp(0.5 * P0.s, 10, 22), '#ffffff', '#15233b');
+}
+
 // Labels for a bridge (drawn above the soldiers): hits needed and the power it gives
 function drawBridgeLabels(p, g) {
   if (p.done) return;
@@ -1527,12 +1773,14 @@ const pool = []; let pn = 0; const order = [];
 function item(kind, d) { let o = pool[pn]; if (!o) o = pool[pn] = {}; pn++; o.k = kind; o.d = d; return o; }
 const byDepth = (p, q) => q.d - p.d;
 
-function addSoldier(team, x, z, frame, sc) {
+// spr: the enemy's pictures (none for soldiers); fly: height above the road (the shadow stays on the road)
+function addSoldier(team, x, z, frame, sc, spr, fly) {
   if (!proj(x, 0, z, P0)) return;
   if (P0.y > view.h + 80 || P0.y < -80 || P0.x < -60 || P0.x > view.w + 60) return;
-  const o = item(0, P0.d); o.team = team; o.x = P0.x; o.y = P0.y; o.s = P0.s * sc; o.f = frame;
+  const o = item(0, P0.d); o.team = team; o.x = P0.x; o.y = P0.y; o.s = P0.s * sc; o.f = frame; o.spr = spr || null;
   const rx = 0.34 * P0.s * sc, ry = 0.14 * P0.s * sc;
   ctx.moveTo(P0.x + rx, P0.y); ctx.ellipse(P0.x, P0.y, rx, ry, 0, 0, Math.PI * 2);
+  if (fly && proj(x, fly, z, P1)) o.y = P1.y;
 }
 
 function drawEntities(g) {
@@ -1546,12 +1794,20 @@ function drawEntities(g) {
     addSoldier(0, clamp(a.x + OX[i] * sq * big, -3.95, 3.95), a.z + OZ[i] * big, moving ? ((t * 9 + i * 0.73) | 0) & 3 : ((t * 3 + i) | 0) & 1, sc);
   }
   for (const s of g.squads) {
-    for (const m of s.men) addSoldier(m.big ? 2 : 1, s.x + m.ox, s.z + m.oz, s.active ? ((t * 6 + m.ph) | 0) & 3 : 0, m.big ? 1.75 : 1.15);
+    if (!s.active) continue;                         // enemies jump out a moment after the gate
+    const F = FOES[s.kind], pop = clamp((t - s.born) / 0.45, 0, 1), k = pop < 1 ? Math.max(0.05, backOut(pop)) : 1;
+    const fly = F.fly ? 1.3 + 0.25 * Math.sin(t * 8 + s.ph) : 0;
+    for (const m of s.men) addSoldier(1, s.x + m.ox, s.z + m.oz, ((t * (F.fly ? 14 : 6) + m.ph) | 0) & 3, (m.big ? 1.75 : F.sc) * k, FOE_SPR[s.kind][m.big ? 1 : 0], fly);
   }
   ctx.fillStyle = 'rgba(10,30,50,0.22)'; ctx.fill();
 
   for (const gt of g.gates) if (gt.z > view.camZ + 1 && gt.z < view.camZ + 170 && proj(0, 0, gt.z, P0)) { const o = item(2, P0.d); o.r = gt; }
   for (const p of g.props) if (!p.done && p.kind !== 'bridge' && proj(p.x, 0, p.z, P0)) { const o = item(3, P0.d); o.r = p; }
+  for (const ob of g.obst) {
+    if (ob.type === 'hole' || ob.z + ob.len < view.camZ + 1 || ob.z > view.camZ + 160) continue;
+    if (ob.type === 'hammer') { if (proj(ob.x, 0, ob.z, P0)) { const o = item(8, P0.d); o.r = ob; } }
+    else for (const br of ob.barrels) if (!br.done && proj(br.x, 0, ob.z, P0)) { const o = item(9, P0.d); o.r = ob; o.b = br; }
+  }
   const M = g.monster;
   if (M && M.z < view.camZ + 175 && proj(M.x, 0, M.z, P0)) { const o = item(5, P0.d); o.x = P0.x; o.y = P0.y; o.s = P0.s; }
   if (WORLDS[g.world].rail === 'bridge') {
@@ -1564,13 +1820,15 @@ function drawEntities(g) {
   for (const o of order) {
     if (o.k === 0) {
       const h = 0.95 * o.s, w = h * SW / SH;
-      ctx.drawImage(o.team === 0 ? armySprite(save.skin, o.f) : ZOMB[o.team - 1][o.f], o.x - w / 2, o.y - h, w, h);
+      ctx.drawImage(o.spr ? o.spr[o.f] : armySprite(save.skin, o.f), o.x - w / 2, o.y - h, w, h);
     } else if (o.k === 2) drawGate(o.r, g);
     else if (o.k === 3) (o.r.kind === 'cage' ? drawCage : drawCrate)(o.r, g);
     else if (o.k === 4) drawTower(o.z);
     else if (o.k === 6) { const w = o.s * 120 / 180; ctx.drawImage(o.img, o.x - w / 2, o.y - o.s, w, o.s); }
     else if (o.k === 7) drawBuilding(o);
     else if (o.k === 5) drawMonster(g.monster, g, o);
+    else if (o.k === 8) drawHammer(o.r, g);
+    else if (o.k === 9) drawBarrel(o.b, o.r, g);
   }
 }
 
@@ -1669,10 +1927,10 @@ function drawEffects(g, dt) {
   const a = g.army;
   if (g.state === 'run') {
     for (const s of g.squads) {
-      if (!s.men.length || s.z - a.z > 48) continue;
-      const small = s.men.filter(m => !m.big).length;
-      if (small && proj(s.x, 1.9, s.z + 0.3, P0) && P0.y > view.hudBottom) bubble(P0.x, P0.y, String(small), '#4f8a33', clamp(0.55 * P0.s, 13, 22));
-      for (const m of s.men) if (m.big && proj(s.x + m.ox, 3.0, s.z + m.oz, P0) && P0.y > view.hudBottom) bubble(P0.x, P0.y, String(Math.ceil(m.hp)), '#7a4a2a', clamp(0.5 * P0.s, 12, 20));
+      if (!s.active || !s.men.length || s.z - a.z > 48) continue;
+      const small = s.men.filter(m => !m.big).length, col = FOE_FX[s.kind][1], up = FOES[s.kind].fly ? 1.4 : 0;
+      if (small && proj(s.x, 1.9 + up, s.z + 0.3, P0) && P0.y > view.hudBottom) bubble(P0.x, P0.y, String(small), col, clamp(0.55 * P0.s, 13, 22));
+      for (const m of s.men) if (m.big && proj(s.x + m.ox, 3.0 + up, s.z + m.oz, P0) && P0.y > view.hudBottom) bubble(P0.x, P0.y, String(Math.ceil(m.hp)), col, clamp(0.5 * P0.s, 12, 20));
     }
     for (const p of g.props) if (p.kind === 'bridge' && p.z - a.z < 48) drawBridgeLabels(p, g);
   }
@@ -1803,13 +2061,20 @@ function setCard(text, sub, cls, reward) {
 function updateProblem(g, force) {
   if (g.state !== 'run' || (g.time < ui.until && !force)) return;
   const next = g.gates.find(x => !x.done);
-  if (next) {
+  if (next && !next.shown) {
+    if (ui.shownGate !== 'wait' || force) {
+      ui.shownGate = 'wait';
+      const k = g.gates.indexOf(next) - 1, foes = [...new Set(g.squads.filter(q => q.span === k).map(q => q.kind))].map(f => FOE_NAMES[f]);
+      setCard('Uwaga!', `${foes.length ? 'Nadchodzą ' + foes.join(' i ') + '. ' : ''}Zestrzel wrogów i omijaj pułapki. Potem zadanie.`, 'boss', 0);
+    }
+    probTime.style.transform = 'scaleX(0)';
+  } else if (next) {
     if (ui.shownGate !== next || force) {
       ui.shownGate = next;
       const hint = g.cls === 0 && g.s === 0 && next === g.gates[0] ? 'Przesuń palcem w stronę dobrej odpowiedzi' : next.p.sub;
       setCard(next.p.q, hint, '', next.r);
     }
-    const i = g.gates.indexOf(next), from = (i ? g.gates[i - 1].z : 0) + g.cfg.speed;
+    const i = g.gates.indexOf(next), from = i ? next.showAt : g.cfg.speed;
     probTime.style.transform = `scaleX(${clamp((next.z - g.army.z) / (next.z - from), 0, 1)})`;
   } else if (ui.shownGate !== 'monster') {
     ui.shownGate = 'monster';
@@ -1847,7 +2112,8 @@ function onGate(g, e) {
     setCard('Dobrze!', `+${e.n} żołnierzy · +${GOLD.gate} złota`, 'good', 0); Snd.good(); Snd.coin();
     floatText('+' + e.n, '#4be08a'); fx.flash = 0.6; fx.flashColor = '40,210,110';
   } else {
-    setCard(solved(p), `Twoja odpowiedź: ${p.w}`, 'bad', 0); Snd.bad();
+    if (save.learn) setCard('Źle!', `Twoja odpowiedź: ${p.w}. Zaraz podpowiedź.`, 'bad', 0); else setCard(solved(p), `Twoja odpowiedź: ${p.w}`, 'bad', 0);
+    Snd.bad();
     if (save.learn) ui.lessonQ = { p, your: p.w, at: g.time + 1.1 };
     if (e.n > 0) floatText(MINUS + e.n, '#ff6a5e');
     fx.flash = 0.8; fx.flashColor = '235,60,50'; fx.shake = 0.35;
@@ -1864,13 +2130,25 @@ function handleEvents(g) {
     switch (e.type) {
       case 'gate': onGate(g, e); break;
       case 'kill':
-        if (e.big) { burst(e.x, e.z, ZGREEN, 22, 1.2); floatText('+' + GOLD.brute + ' złota', '#ffd23f'); Snd.thud(); updGold(g); }
-        else { burst(e.x, e.z, ZGREEN, 5); Snd.pop(); }
+        if (e.big) { burst(e.x, e.z, FOE_FX[e.kind] || ZGREEN, 22, 1.2); floatText('+' + GOLD.brute + ' złota', '#ffd23f'); Snd.thud(); updGold(g); }
+        else { burst(e.x, e.z, FOE_FX[e.kind] || ZGREEN, 5); Snd.pop(); }
         break;
       case 'clash':
-        burst(e.x, e.z, ZGREEN, 3); burst(e.x, e.z, SKINS[save.skin].c, 3); Snd.pop();
-        if (e.big) { floatText(MINUS + e.n, '#ff6a5e'); fx.shake = 0.3; Snd.thud(); }
+        burst(e.x, e.z, FOE_FX[e.kind] || ZGREEN, 3); burst(e.x, e.z, SKINS[save.skin].c, 3); Snd.pop();
+        if (e.big || e.n > 1) { floatText(MINUS + e.n, '#ff6a5e'); fx.shake = 0.3; Snd.thud(); }
         break;
+      case 'leak':                                   // an enemy got past the army: it still takes soldiers
+        if (e.n > 0) { floatText(MINUS + e.n, '#ff6a5e'); burst(a.x, a.z - radius(a.n) * 0.5, SKINS[save.skin].c, 4); Snd.thud(); fx.flash = 0.35; fx.flashColor = '235,60,50'; }
+        break;
+      case 'trap':
+        if (e.kind === 'hole') { burst(a.x, a.z, SKINS[save.skin].c, 12, 0.2); burst(e.x, e.z + 1, WORLDS[g.world].splash, 16, 0.2); Snd.splash(); }
+        else if (e.kind === 'hammer') { rings.push({ x: a.x, z: a.z, t: 0, size: 4, c: 'rgba(255,255,255,0.9)' }); burst(a.x, a.z, SKINS[save.skin].c, 12, 0.5); Snd.stomp(); }
+        else { burst(a.x, a.z, ['#ffb02e', '#ff5a2a', '#fff2a8'], 16, 0.8); Snd.boom(); }
+        if (e.n > 0) floatText(MINUS + e.n, '#ff6a5e');
+        fx.shake = 0.35; fx.flash = 0.6; fx.flashColor = '235,60,50';
+        break;
+      case 'barrel': burst(e.x, e.z, ['#ffb02e', '#ff5a2a', '#fff2a8', '#7a1f14'], 24, 0.8); Snd.boom(); break;
+      case 'problem': updateProblem(g, true); Snd.tap(); break;
       case 'horde': Snd.groan(); break;
       case 'spark': if (Math.random() < 0.5) burst(e.x, e.z, ['#fff2a8', '#ffb02e', MONSTERS[g.cls].light], 2, rand(1.5, 4.5)); Snd.shot(); break;
       case 'cage': burst(e.x, e.z, ['#8c96a3', '#c9d1db', '#ffffff'], 18, 0.8); floatText('+' + e.n, '#4be08a'); Snd.freed(); break;
@@ -1898,11 +2176,11 @@ function handleEvents(g) {
       case 'fightProblem': showFightProblem(g); break;
       case 'fightAnswer':
         ansL.disabled = ansR.disabled = true;
-        (g.fight.left ? ansL : ansR).classList.add('right');
+        if (e.ok || !save.learn) (g.fight.left ? ansL : ansR).classList.add('right');
         updGold(g);
         if (e.ok) { setFight('Dobrze!', `Posiłki: +${e.r} · +${GOLD.fight} złota`, 'good'); Snd.reinforce(); floatText('+' + e.r, '#4be08a'); fx.flash = 0.5; fx.flashColor = '40,210,110'; }
         else {
-          setFight(solved(e.p), e.timeout ? 'Za późno! Potwór atakuje' : `Twoja odpowiedź: ${e.p.w}`, 'bad');
+          setFight(save.learn ? 'Źle!' : solved(e.p), e.timeout ? 'Za późno! Potwór atakuje' : `Twoja odpowiedź: ${e.p.w}`, 'bad');
           Snd.bad(); Snd.roar();
           if (save.learn) ui.lessonQ = { p: e.p, your: e.timeout ? null : e.p.w, at: g.time + 1.5 };
         }
@@ -1930,9 +2208,9 @@ function handleEvents(g) {
         else setCard('Wygrana!', 'Potwór pokonany', 'good', 0);
         break;
       case 'lost':
-        Snd.stop(); Snd.boo(); stinkShow();          // "buuuu" and the joke the children asked for
-        if (g.fight) { setFight('Przegrana', `${MONSTERS[g.cls].name} ${MONSTERS[g.cls].fem ? 'była silniejsza' : 'był silniejszy'}`, 'bad'); ansL.disabled = ansR.disabled = true; }
-        else setCard('Przegrana', 'Wrogowie mieli przewagę', 'bad', 0);
+        Snd.stop(); Snd.boo(); stinkShow(g.lostBy === 'lesson' ? 'Chyba<br>śmierdzi Ci<br>spod pachy!' : '');   // "buuuu" and the joke the children asked for
+        if (g.fight) { setFight('Przegrana', g.lostBy === 'lesson' ? 'Trzy złe odpowiedzi w ćwiczeniu' : `${MONSTERS[g.cls].name} ${MONSTERS[g.cls].fem ? 'była silniejsza' : 'był silniejszy'}`, 'bad'); ansL.disabled = ansR.disabled = true; }
+        else setCard('Przegrana', g.lostBy === 'lesson' ? 'Trzy złe odpowiedzi w ćwiczeniu' : 'Wrogowie mieli przewagę', 'bad', 0);
         break;
     }
   }
@@ -1942,40 +2220,50 @@ function handleEvents(g) {
 /* ============================================================
    After a mistake: how to calculate it in your head, then practice of the same kind
    ============================================================ */
-const NEED = 2, MAX_TASKS = 5;   // 2 good answers to go back to the game; at most 5 tries
+const GOAL = 3;   // the bar: 3 fields to the right (right answers) to go back to the game, 3 to the left end the game
 let lesson = null;
 const le = {
-  card: $('leCard'), eyebrow: $('leEyebrow'), solved: $('leSolved'), your: $('leYour'), title: $('leTitle'), steps: $('leSteps'),
-  task: $('leTask'), q: $('leQ'), sub: $('leSub'), L: $('leL'), R: $('leR'), msg: $('leMsg'), next: $('leNext'),
+  card: $('leCard'), eyebrow: $('leEyebrow'), solved: $('leSolved'), your: $('leYour'), title: $('leTitle'), steps: $('leSteps'), method: $('leMethod'),
+  task: $('leTask'), q: $('leQ'), sub: $('leSub'), L: $('leL'), R: $('leR'), msg: $('leMsg'), next: $('leNext'), bar: $('leBar'),
 };
 // "{…}" in a step is a calculation, shown in bold
 const stepHTML = s => s.split(/(\{[^}]*\})/).map(x => x[0] === '{' ? `<b class="calc${plain(x).length < 20 ? ' nw' : ''}">${richHTML(x.slice(1, -1))}</b>` : richHTML(x)).join('');
-function showSteps(how) {
-  le.title.textContent = how.t;
-  le.steps.innerHTML = how.s.map(x => `<li><span>${stepHTML(x)}</span></li>`).join('');
+// a hint, never the answer: the way of calculating with the last result left as "?"
+function showHint(p) {
+  const h = Z.hint(p);
+  le.title.textContent = h.t;
+  le.steps.innerHTML = h.s.map(x => `<li><span>${stepHTML(x)}</span></li>`).join('');
+  le.method.hidden = false;
+}
+function setBar(pos) {
+  for (const c of le.bar.querySelectorAll('.c')) { const v = +c.dataset.v; c.className = 'c' + (v < 0 && pos <= v ? ' bad' : v > 0 && pos >= v ? ' good' : ''); }
+  le.bar.setAttribute('aria-label', pos > 0 ? `Dobre odpowiedzi: ${pos} z ${GOAL}` : pos < 0 ? `Złe odpowiedzi: ${-pos} z ${GOAL}` : 'Pasek na środku');
 }
 function setMsg(html, cls) { le.msg.innerHTML = html; le.msg.className = 'le-msg' + (cls ? ' ' + cls : ''); le.msg.hidden = !html; }
 const later = (sec, fn) => { const L = lesson; setTimeout(() => { if (lesson === L && mode === 'lesson') fn(); }, sec * 1000); };
 
 function openLesson(p, your) {
-  const tasks = p.how ? Z.practice(p, MAX_TASKS) : [];
-  if (tasks.length < NEED) return;   // nothing to practise: keep playing
-  lesson = { tasks, n: 0, good: 0, bad: 0, cur: null, left: true, busy: false, panels: [hud.hidden, fight.hidden] };
-  mode = 'lesson'; Snd.duck(true);
+  const tasks = p.how ? Z.practice(p, 6) : [];
+  if (tasks.length < 2) return;   // nothing to practise: keep playing
+  lesson = { p, tasks, n: 0, pos: 0, cur: null, left: true, busy: false, panels: [hud.hidden, fight.hidden] };
+  mode = 'lesson';
+  if (save.music) Snd.play('run', 'chill'); Snd.duck(false);   // calm music; the game and its clock wait
   hud.hidden = fight.hidden = true;   // the problem behind the card would only confuse
-  le.eyebrow.textContent = 'Jak to policzyć w pamięci?';
-  le.solved.innerHTML = richHTML(solved(p)); le.solved.hidden = false;
-  le.your.innerHTML = your === null ? 'Zabrakło czasu' : richHTML(`Twoja odpowiedź: ${your}`); le.your.hidden = false;
-  showSteps(p.how);
-  le.task.hidden = true; setMsg('');
-  le.next.textContent = `Ćwiczymy: ${NEED} zadania`; le.next.hidden = false;
+  le.eyebrow.textContent = 'Podpowiedź';
+  le.solved.innerHTML = richHTML(p.q) + (p.sub ? `<small>${richHTML(p.sub)}</small>` : ''); le.solved.hidden = false;
+  le.your.innerHTML = your === null ? 'Zabrakło czasu' : richHTML(`Twoja odpowiedź: ${your}. To nie to.`); le.your.hidden = false;
+  showHint(p);
+  le.task.hidden = true; setMsg(''); setBar(0);
+  le.next.textContent = 'Ćwiczymy'; le.next.hidden = false;
   show('lesson'); le.card.scrollTop = 0;
 }
 function nextTask() {
-  const L = lesson, t = L.cur = L.tasks[L.n++];
+  const L = lesson;
+  if (L.n >= L.tasks.length) L.tasks.push(...Z.practice(L.p, 4));
+  const t = L.cur = L.tasks[L.n++] || L.tasks[(L.n - 1) % L.tasks.length];
   L.left = Math.random() < 0.5; L.busy = false;
-  le.eyebrow.textContent = `Ćwiczenie ${L.good + 1} z ${NEED}`;
-  le.solved.hidden = le.your.hidden = true;
+  le.eyebrow.textContent = 'Ćwiczenie bez pośpiechu';
+  le.solved.hidden = le.your.hidden = true; le.method.hidden = true;
   le.q.innerHTML = richHTML(t.q);
   const len = plain(t.q).length;
   le.q.classList.toggle('long', len > 13 && len <= 22); le.q.classList.toggle('xlong', len > 22);
@@ -1983,37 +2271,49 @@ function nextTask() {
   le.L.innerHTML = richHTML(L.left ? t.a : t.w); le.R.innerHTML = richHTML(L.left ? t.w : t.a);
   le.L.className = le.R.className = 'ans'; le.L.disabled = le.R.disabled = false;
   le.task.hidden = false; setMsg(''); le.next.hidden = true;
-  le.card.scrollTop = le.card.scrollHeight;
+  le.card.scrollTop = 0;
 }
 function lessonPick(left) {
   const L = lesson;
   if (!L || !L.cur || L.busy || le.task.hidden) return;
   Snd.unlock();
   L.busy = true; le.L.disabled = le.R.disabled = true;
-  (left ? le.L : le.R).classList.add('picked');
-  (L.left ? le.L : le.R).classList.add('right');
+  const btn = left ? le.L : le.R;
   if (left === L.left) {
-    L.good++; Snd.good(); Snd.coin();
+    L.pos++; setBar(L.pos); btn.classList.add('right'); Snd.good(); Snd.coin();
     game.gold += GOLD.practice; updGold(game);     // practice after a mistake earns gold too
     const gold = `<small>+${GOLD.practice} złota</small>`;
-    if (L.good < NEED) { setMsg('Dobrze!' + gold, 'good'); later(0.9, nextTask); }
-    else { setMsg((L.bad ? 'Dobrze! Już umiesz. Grasz dalej.' : 'Super! Grasz dalej.') + gold, 'good'); Snd.reinforce(); later(1.4, closeLesson); }
+    if (L.pos < GOAL) { setMsg('Dobrze!' + gold, 'good'); later(0.9, nextTask); }
+    else { setMsg('Super! Grasz dalej.' + gold, 'good'); Snd.reinforce(); later(1.4, closeLesson); }
   } else {
-    L.bad++; Snd.bad(); shakeCard();
-    const out = L.n >= L.tasks.length;
-    setMsg(`Prawie!<small>${richHTML(`Dobra odpowiedź: ${L.cur.a}`)}${out ? '. Ten temat warto jeszcze poćwiczyć.' : '. Spójrz, jak to policzyć.'}</small>`, 'bad');
-    showSteps(L.cur.how);
-    le.next.textContent = out ? 'Wracamy do gry' : 'Jeszcze jedno zadanie'; le.next.hidden = false;
+    L.pos--; setBar(L.pos); btn.classList.add('picked'); Snd.bad(); shakeCard();
+    if (L.pos <= -GOAL) { setMsg('Chyba śmierdzi Ci spod pachy!', 'bad'); later(1.8, lessonLost); }
+    else {
+      setMsg('Jeszcze nie.<small>Spójrz na podpowiedź i spróbuj z nowym zadaniem.</small>', 'bad');
+      showHint(L.cur);                              // a hint for this task, the answer stays hidden
+      le.next.textContent = 'Następne zadanie'; le.next.hidden = false;
+    }
   }
-  le.card.scrollTop = le.card.scrollHeight;
 }
 function lessonNext() {
   if (!lesson || mode !== 'lesson') return;
-  if (lesson.cur && lesson.n >= lesson.tasks.length) closeLesson(); else nextTask();
+  if (lesson.cur && lesson.pos >= GOAL) closeLesson(); else nextTask();
+}
+function leaveLesson() {
+  [hud.hidden, fight.hidden] = lesson.panels;
+  lesson = null; mode = 'play'; show(null); last = performance.now();
 }
 function closeLesson() {
-  [hud.hidden, fight.hidden] = lesson.panels;
-  lesson = null; mode = 'play'; show(null); last = performance.now(); Snd.duck(false);
+  leaveLesson(); Snd.duck(false);
+  if (ui.music) playMusic(ui.music.track, ui.music.cls);    // back to the music of this game
+}
+// three wrong answers on the bar: the game ends with the joke
+function lessonLost() {
+  leaveLesson();
+  const g = game;
+  if (g.state !== 'run' && g.state !== 'fight') return;
+  g.lostBy = 'lesson'; g.state = 'lost'; g.endAt = g.time + 3.0; g.events.push({ type: 'lost' });
+  handleEvents(g);
 }
 function shakeCard() { if (!REDUCED) { le.card.classList.remove('shake'); void le.card.offsetWidth; le.card.classList.add('shake'); } }
 
@@ -2067,8 +2367,9 @@ function closeArmory() {
 }
 
 // Lost: a green stink cloud and a big joke over the scene, until the result card
-function stinkShow() {
+function stinkShow(text) {
   const el = $('stink');
+  el.querySelector('.stink-text').innerHTML = text || 'Śmierdzi Ci<br>spod pachy!!!';
   el.hidden = false; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
 }
 function showResult(g) {
@@ -2085,7 +2386,7 @@ function showResult(g) {
   persist();
   $('reGold').textContent = `+${group(gain)} · masz ${group(save.gold)}`;
   $('reLevel').textContent = `${stageLabel(c, s)} · ${g.cfg.info.name}`;
-  $('reTitle').textContent = won ? 'Wygrana!' : 'Śmierdzi Ci spod pachy!!!';
+  $('reTitle').textContent = won ? 'Wygrana!' : g.lostBy === 'lesson' ? 'Chyba śmierdzi Ci spod pachy!' : 'Śmierdzi Ci spod pachy!!!';
   $('reStars').innerHTML = [0, 1, 2].map(i => ICON.star(i < stars)).join('');
   [...$('reStars').children].forEach((el, i) => el.classList.toggle('on', i < stars));
   $('reStars').hidden = !won;
