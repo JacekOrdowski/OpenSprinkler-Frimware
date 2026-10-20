@@ -279,16 +279,47 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
 .le-msg small { display: block; margin-top: 4px; font-family: var(--body); font-weight: 800; font-size: 16px; line-height: 1.35; color: var(--ink); }
 .card.shake { animation: shake 0.45s ease-in-out; }
 @keyframes shake { 20% { transform: translateX(-10px); } 40% { transform: translateX(9px); } 60% { transform: translateX(-6px); } 80% { transform: translateX(3px); } }
-#thumbs { position: fixed; inset: 0; z-index: 40; pointer-events: none; overflow: hidden; }
-#thumbs span { position: absolute; top: 0; line-height: 1; animation: thumbFall 2s cubic-bezier(.45, .05, .85, .55) both; }
-@keyframes thumbFall { from { transform: translateY(-90px) rotate(0deg); } to { transform: translateY(calc(100vh + 90px)) rotate(var(--rot, 30deg)); } }
-@keyframes thumbFade { 0%, 100% { opacity: 0; } 20%, 75% { opacity: 1; } }
+
+/* ---------- armoury: upgrades bought with gold earned by playing ---------- */
+.score.gold { color: #9a6a00; }
+.score svg.coin { width: 22px; height: 22px; }
+.armory { gap: 12px; text-align: left; }
+.ar-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.gold-chip { display: inline-flex; align-items: center; gap: 6px; background: #fff; border-radius: 99px; padding: 4px 14px 4px 6px; box-shadow: 0 3px 0 var(--paper-edge); font-family: var(--display); font-size: 22px; color: #9a6a00; font-variant-numeric: tabular-nums; }
+.gold-chip b { font-weight: 400; }
+.gold-chip svg { width: 26px; height: 26px; }
+.armory .hint { text-align: left; }
+.ar-list { display: grid; gap: 10px; }
+.ar-item { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; background: #fff; border-radius: 16px; padding: 12px 14px; }
+.ar-item h3 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 19px; line-height: 1.15; }
+.ar-item p { margin: 0; font-weight: 800; font-size: 14px; line-height: 1.3; color: var(--muted); }
+.pips { display: flex; gap: 4px; }
+.pips i { width: 16px; height: 8px; border-radius: 4px; background: var(--paper-edge); }
+.pips i.on { background: var(--gold-deep); }
+.buy {
+  grid-column: 2; grid-row: 1 / span 3; min-width: 92px; min-height: 50px; padding: 0 12px; border-radius: 14px;
+  background: var(--gold); color: var(--ink); box-shadow: 0 4px 0 var(--gold-deep);
+  display: flex; align-items: center; justify-content: center; gap: 6px; font-family: var(--display); font-size: 18px;
+}
+.buy svg { width: 18px; height: 18px; }
+.buy:disabled { background: #efe6d4; color: #a99e88; box-shadow: none; cursor: default; }
+.buy:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--gold-deep); }
+.ar-sub { margin: 4px 0 0; font-family: var(--display); font-weight: 400; font-size: 20px; }
+.ar-skins { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.skin {
+  display: grid; justify-items: center; gap: 2px; padding: 8px 4px 6px; border-radius: 14px; background: #fff;
+  box-shadow: 0 3px 0 var(--paper-edge); font-weight: 800; font-size: 13px; color: var(--ink);
+}
+.skin img { width: 34px; height: 51px; }
+.skin .price { display: inline-flex; align-items: center; gap: 3px; font-family: var(--display); font-size: 15px; color: #9a6a00; }
+.skin .price svg { width: 14px; height: 14px; }
+.skin.on { box-shadow: 0 0 0 3px var(--blue), 0 3px 0 var(--paper-edge); }
+.skin:disabled { opacity: 0.55; cursor: default; }
 
 @media (prefers-reduced-motion: reduce) {
   .problem.pop, .fight.pop .fight-q, .stars svg.on { animation: none; }
   .logo, .logo-gate { transform: none; }
   .card.shake { animation: none; }
-  #thumbs span { animation-name: thumbFade; }
 }
 </style>
 </head>
@@ -302,9 +333,9 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="5" y="4" width="5" height="16" rx="1.5"/><rect x="14" y="4" width="5" height="16" rx="1.5"/></svg>
     </button>
     <div class="hud-level"><span id="hudLevel">Level 1 · gra 1</span><div class="bar"><i id="hudProg"></i></div></div>
-    <div class="score" aria-label="Dobre odpowiedzi">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>
-      <span id="hudScore">0</span>
+    <div class="score gold" aria-label="Złoto">
+      <svg class="coin" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#ffc531" stroke="#8a5a00" stroke-width="2"/><circle cx="12" cy="12" r="5.5" fill="none" stroke="#d99300" stroke-width="2"/></svg>
+      <span id="hudGold">0</span>
     </div>
   </div>
   <div class="problem" id="probCard" aria-live="polite">
@@ -334,10 +365,13 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
     <p class="tagline">Matematyka ze szkoły podstawowej w biegu i w walce. Level 1 to 1. klasa, a level 8 to 8. klasa.</p>
     <button class="btn btn-gold" id="btnPlay">Graj</button>
     <button class="btn btn-light" id="btnLevels">Wybierz level i grę</button>
+    <button class="btn btn-light" id="btnArmory">Zbrojownia</button>
     <ol class="howto">
       <li>Przesuwaj palcem w lewo i w prawo.</li>
       <li><span>Wbiegnij w bramkę z dobrym wynikiem. Zielona liczba mówi, ilu żołnierzy dostaniesz, na przykład <b>+14</b>. Zła odpowiedź tyle samo zabiera.</span></li>
+      <li>Armia strzela sama. Zestrzel zombie, rozbij klatki z jeńcami, otwórz skrzynie z lepszą bronią i napraw most.</li>
       <li>Na końcu mostu walczysz z potworem. Stukaj w dobre odpowiedzi, żeby dostać posiłki.</li>
+      <li>Za dobre odpowiedzi dostajesz złoto. W Zbrojowni kupisz za nie lepszą broń i większą armię.</li>
       <li>Po pomyłce gra pokaże, jak to łatwo policzyć, i da 2 zadania na próbę.</li>
     </ol>
     <div class="row2">
@@ -345,7 +379,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
       <button class="btn btn-ghost" data-toggle="sfx" aria-pressed="true">Dźwięki: wł.</button>
     </div>
     <button class="btn btn-ghost" data-toggle="learn" aria-pressed="true">Nauka po błędzie: wł.</button>
-    <p class="version" id="menuVersion">Wersja 6</p>
+    <p class="version" id="menuVersion">Wersja 7</p>
   </div>
 </div>
 
@@ -398,6 +432,18 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
   </div>
 </div>
 
+<div class="screen" id="scrArmory" hidden>
+  <div class="card armory" role="dialog" aria-labelledby="arTitle">
+    <div class="ar-head"><h2 id="arTitle">Zbrojownia</h2><div class="gold-chip" aria-label="Twoje złoto"><svg class="coin" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#ffc531" stroke="#8a5a00" stroke-width="2"/><circle cx="12" cy="12" r="5.5" fill="none" stroke="#d99300" stroke-width="2"/></svg><b id="arGold">0</b></div></div>
+    <p class="hint">Złoto dostajesz za dobre odpowiedzi (+5), za zadania po błędzie (+3), za duże zombie (+2)
+      i za każdą gwiazdkę (+10). Kupione rzeczy zostają na zawsze.</p>
+    <div class="ar-list" id="arList"></div>
+    <h3 class="ar-sub">Kolor armii</h3>
+    <div class="ar-skins" id="arSkins"></div>
+    <button class="btn btn-gold" id="btnArmoryBack">Wróć</button>
+  </div>
+</div>
+
 <div class="screen" id="scrLesson" hidden>
   <div class="card lesson" id="leCard" role="dialog" aria-labelledby="leEyebrow">
     <div class="eyebrow" id="leEyebrow">Jak to policzyć w pamięci?</div>
@@ -419,7 +465,6 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
     <button class="btn btn-gold" id="leNext">Ćwiczymy</button>
   </div>
 </div>
-<div id="thumbs" aria-hidden="true"></div>
 
 <div class="screen" id="scrResult" hidden>
   <div class="card" role="dialog" aria-labelledby="reTitle">
@@ -430,6 +475,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
     <div class="stats">
       <div class="stat"><span>Dobre odpowiedzi</span><b id="reCorrect">5 z 5</b></div>
       <div class="stat"><span>Twoja armia na końcu</span><b id="reArmy">40</b></div>
+      <div class="stat"><span>Złoto</span><b id="reGold">+0</b></div>
     </div>
     <div class="review" id="reReview" hidden>
       <h3>Do powtórki</h3>
@@ -440,6 +486,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
       <button class="btn btn-light" id="btnAgain">Jeszcze raz</button>
       <button class="btn btn-light" id="btnResultMenu">Menu</button>
     </div>
+    <button class="btn btn-ghost" id="btnResultArmory">Zbrojownia</button>
   </div>
 </div>
 

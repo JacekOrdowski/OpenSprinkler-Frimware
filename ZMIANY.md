@@ -7,6 +7,51 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 
 ---
 
+## Wersja 7 (20 października 2026)
+
+### Dodane
+- **Zombie.** Zamiast czerwonej armii na armię idą hordy zombie. Od 11. gry w każdym levelu w hordach chodzą też duże zombie.
+  Mają więcej życia (liczba nad głową), a gdy dojdą do armii, zabierają kilku żołnierzy.
+- **Rzeczy do zestrzelenia** między bramkami. Każda ma liczbę: tyle trafień potrzeba. Armię trzeba podprowadzić na tę stronę drogi.
+  - **Klatka z jeńcami:** po rozbiciu jeńcy dołączają do armii.
+  - **Skrzynia z bronią:** daje lepszą broń do końca gry: Blaster → Turboblaster → Plazma → Działko → Laser.
+    Każda broń strzela inaczej i ma inny kolor strzałów.
+  - **Zepsuty most** (od 4. gry): każde trafienie kładzie deskę. Naprawiony daje moc do końca gry: **Olbrzymy** (więksi żołnierze, mocniejsze strzały)
+    albo **Szybki ogień**. Kto wbiegnie w dziurę, traci kilku żołnierzy.
+  - Wbiegnięcie w klatkę albo skrzynię, zanim się ją zestrzeli, kosztuje kilku żołnierzy.
+- **Złoto.** Za dobrą odpowiedź na bramce albo w walce +5, za dobrze rozwiązane zadanie po błędzie +3, za duże zombie +2,
+  za każdą gwiazdkę na koniec gry +10. Złoto zdobyte w grze zostaje także po przegranej. Licznik złota jest w prawym górnym rogu.
+- **Zbrojownia** (w menu i po grze). Ulepszenia na stałe: broń na start, więcej żołnierzy na start, szybsze strzelanie.
+  Do tego 6 kolorów armii do wyboru. Ceny są z góry znane. Nic się nie losuje i nic nie kupuje się za prawdziwe pieniądze.
+- Nad armią widać, jaką ma broń i moce.
+- Nowe dźwięki: jęk hordy zombie, rozbita klatka, nowa broń lub moc, plusk w dziurze w moście.
+
+### Zmienione
+- **W biegu armia nigdy nie traci ostatniego żołnierza.** Zawsze dochodzi do potwora, a o wygranej decyduje walka.
+- **Siła potwora** jest liczona tak jak wcześniej, ale z uwzględnieniem skrzyń, klatek i mostu.
+  Według symulacji (tysiące gier we wszystkich levelach), gdy gracz celuje w skrzynie:
+  - wszystkie odpowiedzi w walce dobre: wygrana zawsze;
+  - wszystkie bramki dobrze, a w walce zgadywanie: wygrana w około 38% gier;
+  - po kupieniu połowy ulepszeń w Zbrojowni około 58%, po kupieniu wszystkich około 68%. Ulepszenia pomagają, ale nie zastąpią liczenia.
+- **Więcej czasu na odpowiedź w levelach 1–3** (np. w levelu 1 około 9,9 s na początku zamiast 7,7 s). Najmłodsi czytają najwolniej.
+  Armia biegnie tam trochę wolniej.
+- **Po złej odpowiedzi w ćwiczeniu** gra pisze spokojnie „Prawie!”, pokazuje dobrą odpowiedź i sposób liczenia.
+  Za dobrą odpowiedź w ćwiczeniu jest +3 złota.
+- „Uuuuu” słychać teraz, gdy pokonany potwór pada, a nie po błędzie dziecka.
+- Hordy zombie są o 80% liczniejsze niż wcześniejsze oddziały wroga, a zombie są trochę większe, żeby było je lepiej widać.
+- Strzały lecą dalej, a armia strzela trochę szybciej.
+
+### Usunięte
+- Czerwona armia wroga i beczki z nagrodą (zastąpiły je zombie, klatki i skrzynie).
+- Kciuki w dół lecące po złej odpowiedzi w ćwiczeniu.
+- Licznik dobrych odpowiedzi w prawym górnym rogu (jest tam teraz złoto; dobre odpowiedzi widać na końcu gry).
+
+### Do sprawdzenia
+- Czy na prawdziwym iPhonie gra działa płynnie przy dużej armii i wielu zombie.
+- Czy dzieci rozumieją, że w skrzynie i klatki trzeba celować (bez tego walka z potworem jest dużo trudniejsza).
+
+---
+
 ## Wersja 6 (20 października 2026)
 
 Zapis w repozytorium: `5ffe7d3`

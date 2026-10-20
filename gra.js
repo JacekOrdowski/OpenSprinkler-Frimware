@@ -4,7 +4,7 @@
 'use strict';
 const HAS_DOM = typeof document !== 'undefined';
 const Z = globalThis.Zadania;
-const WERSJA = 6;          // numer wersji gry; opis zmian w ZMIANY.md
+const WERSJA = 7;          // numer wersji gry; opis zmian w ZMIANY.md
 
 /* ============================================================
    Helpers
@@ -21,21 +21,50 @@ const group = n => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
    8 classes (klasa 1–8) × 40 stages. Later stages: more gates, less time, more enemies.
    ============================================================ */
 const STAGES = 40;
+const START = 10;          // soldiers at the start, before armoury upgrades
+// The youngest read slowest, so they get the most time per problem
 const CLASS_CFG = [
-  { think: 7.0, speed: 5.4 }, { think: 7.0, speed: 5.6 }, { think: 7.0, speed: 5.8 }, { think: 7.5, speed: 6.0 },
-  { think: 8.0, speed: 6.0 }, { think: 8.5, speed: 6.2 }, { think: 9.0, speed: 6.2 }, { think: 9.5, speed: 6.4 },
+  { think: 9.0, speed: 5.0 }, { think: 9.0, speed: 5.3 }, { think: 8.5, speed: 5.6 }, { think: 8.5, speed: 5.9 },
+  { think: 8.5, speed: 6.0 }, { think: 8.5, speed: 6.2 }, { think: 9.0, speed: 6.2 }, { think: 9.5, speed: 6.4 },
 ];
 function stageConfig(cls, s) {
   const C = CLASS_CFG[cls], info = Z.stage(cls, s), f = s / (STAGES - 1), d = Math.floor(s / 10);
   const think = C.think * (1.1 - 0.3 * f) * (info.time || 1);
   const speed = C.speed + 0.6 * f;
   return {
-    cls, s, info, think, speed, spacing: speed * (think + 1.0), start: 10,
+    cls, s, info, think, speed, spacing: speed * (think + 1.0), start: START,
     gates: 5 + d + (s >= 35 ? 1 : 0),
     rLo: 5 + 2 * d, rHi: 15 + 3 * d,            // soldiers won or lost at one gate
-    squadsPer: s >= 20 ? 2 : 1, enemyMul: 0.3 + 0.5 * f, barrels: s >= 15 ? 2 : 1,   // enemies per span = enemyMul × average gate reward
+    squadsPer: s >= 20 ? 2 : 1, enemyMul: 1.8 * (0.3 + 0.5 * f),   // zombies per span = enemyMul × average gate reward
+    brutes: s >= 10,                            // big zombies with many lives, from game 11
+    bridges: s >= 3 ? 1 : 0,                    // broken bridge to repair by shooting, from game 4
   };
 }
+
+/* ============================================================
+   Weapons, power-ups and the armoury (bought with gold earned by playing; never with money, never by chance)
+   ============================================================ */
+// Toy-like weapons: damage of one shot and how fast the army fires
+const WEAPONS = [
+  { name: 'Blaster', dmg: 1, rate: 1.0 },
+  { name: 'Turboblaster', dmg: 1.5, rate: 1.1 },
+  { name: 'Plazma', dmg: 2, rate: 1.2 },
+  { name: 'Działko', dmg: 2.5, rate: 1.3 },
+  { name: 'Laser', dmg: 3, rate: 1.4 },
+];
+const MAX_WEAPON = WEAPONS.length - 1;
+const POWERS = { giant: { name: 'Olbrzymy', dmg: 1.5, rate: 1 }, turbo: { name: 'Szybki ogień', dmg: 1, rate: 1.4 } };
+// Permanent upgrades: price of every next level
+const ARMORY = {
+  weapon: { name: 'Broń na start', prices: [120, 300] },
+  army: { name: 'Żołnierze na start', prices: [40, 80, 130, 190, 260], per: 2 },
+  power: { name: 'Siła ognia', prices: [60, 110, 170, 240, 320], per: 0.1 },
+};
+const NO_ARM = { weapon: 0, army: 0, power: 0 };
+const GOLD = { gate: 5, fight: 5, practice: 3, brute: 2, star: 10 };
+const shotDmg = g => WEAPONS[g.weapon].dmg * (g.giant ? POWERS.giant.dmg : 1);
+const shotRate = g => WEAPONS[g.weapon].rate * (g.turbo ? POWERS.turbo.rate : 1) * g.fireBonus;
+const firePower = g => shotDmg(g) * shotRate(g);       // how hard one soldier hits the monster
 
 /* ============================================================
    Simulation (no drawing here, so it can be tested without a browser)
@@ -46,21 +75,25 @@ const XMAX = 3.2;         // how far the army centre can go sideways
 const FORM = 0.27;        // spacing of the formation
 const FIGHT_DIST = 11;    // the army stops this far in front of the monster
 // The fight goes in rounds: every answer (or a run-out clock) is one round.
-// The army fires (each soldier takes 1 point of life), then the monster strikes back.
+// The army fires (each soldier hits with the fire power of its weapon), then the monster strikes back.
 // Speed does not matter, only whether the answer is right.
 const ATK_FRAC = 0.075;   // the monster's blow kills this share of the expected army, never more than the smallest reward,
                           // so a right answer always brings at least as many soldiers as the blow takes
 const ROUNDS = 6;         // monster life ≈ this many volleys of the expected army
-const HP_K = 2.0;         // monster strength: with every gate right and fight answers at random it wins about 2 times in 3
+const HP_K = 1.8;         // monster strength: with every gate right and fight answers at random it wins about 1 time in 3
+const ARM_EASE = 0.12;    // share of the extra fire power from armoury upgrades that really weakens the monster
 const OX = new Float32Array(CAP), OZ = new Float32Array(CAP);
 for (let i = 0; i < CAP; i++) { const r = FORM * Math.sqrt(i + 0.35), t = i * 2.39996; OX[i] = Math.cos(t) * r; OZ[i] = Math.sin(t) * r * 0.9; }
 const radius = n => FORM * Math.sqrt(clamp(n, 1, CAP)) + 0.3;
 // A big army marches as a narrower column, so it is clear which gate it takes
 const squeeze = n => Math.min(1, 1.9 / (FORM * Math.sqrt(clamp(n, 1, CAP))));
+// Things to shoot at the side of the road; each has a number of hits it needs
+const PROP_W = { cage: 0.75, crate: 0.7, bridge: 0.95 }, BRIDGE_L = 6;
+const RANGE = 26;         // how far a shot flies
 
 function makeGroup(n, scale) {
   const men = [];
-  for (let i = 0; i < Math.min(n, CAP); i++) men.push({ ox: OX[i] * scale, oz: OZ[i] * scale, ph: Math.random() * 4 });
+  for (let i = 0; i < Math.min(n, CAP); i++) men.push({ ox: OX[i] * scale, oz: OZ[i] * scale, ph: Math.random() * 4, hp: 1, max: 1 });
   return men;
 }
 function freshProblem(g) {
@@ -70,13 +103,15 @@ function freshProblem(g) {
   return p;
 }
 
-function createGame(cls, s, attract) {
+function createGame(cls, s, attract, arm) {
   const cfg = stageConfig(cls, s);
+  arm = arm || NO_ARM;
   const g = {
-    cls, s, cfg, attract: !!attract, time: 0, state: 'run', endAt: 0, gen: cfg.info.gen, lastQ: '',
-    army: { x: 0, tx: 0, z: 0, n: attract ? 40 : cfg.start, born: new Float32Array(CAP).fill(-10) },
-    gates: [], squads: [], barrels: [], bullets: [], hits: [], monster: null, fight: null, finishZ: 1e9,
-    fire: 0, correct: 0, answered: 0, mistakes: [], events: [],
+    cls, s, cfg, arm, attract: !!attract, time: 0, state: 'run', endAt: 0, gen: cfg.info.gen, lastQ: '',
+    army: { x: 0, tx: 0, z: 0, n: attract ? 40 : cfg.start + ARMORY.army.per * arm.army, born: new Float32Array(CAP).fill(-10) },
+    gates: [], squads: [], props: [], bullets: [], hits: [], monster: null, fight: null, finishZ: 1e9,
+    fire: 0, correct: 0, answered: 0, mistakes: [], events: [], gold: 0,
+    weapon: arm.weapon, fireBonus: 1 + ARMORY.power.per * arm.power, giant: false, turbo: false,
   };
   if (attract) return g;
   let z = 6;
@@ -93,40 +128,61 @@ function createGame(cls, s, attract) {
     for (let j = 0; j < cfg.squadsPer; j++) {
       const at = cfg.squadsPer === 1 ? rand(0.5, 0.62) : (j === 0 ? rand(0.34, 0.42) : rand(0.64, 0.72));
       const n = Math.max(3, Math.round(avgR * cfg.enemyMul / cfg.squadsPer) + randi(0, 2));
-      g.squads.push({ x: rand(-2.4, 2.4), z: z0 + (z1 - z0) * at, men: makeGroup(n, 0.95), active: false });
+      const sq = { x: rand(-2.4, 2.4), z: z0 + (z1 - z0) * at, men: makeGroup(n, 1.0), active: false };
+      if (cfg.brutes && Math.random() < 0.7) {           // a big zombie walks in front of the horde
+        const hp = Math.round(avgR * 0.35) + randi(2, 4);
+        sq.men.unshift({ ox: 0, oz: -0.9, ph: Math.random() * 4, hp, max: hp, big: true });
+      }
+      g.squads.push(sq);
     }
   }
-  const order = spans.slice(0, -1).map((_, i) => i).sort(() => Math.random() - 0.5);
-  for (let i = 0; i < Math.min(cfg.barrels, order.length); i++) {
-    const [z0, z1] = spans[order[i]], hp = Math.round(avgR * (0.6 + 0.5 * cfg.enemyMul)) + randi(0, 3);
-    g.barrels.push({ x: pick([-2.6, 2.6]), z: z0 + (z1 - z0) * 0.2, hp, max: hp, reward: randi(cfg.rLo, cfg.rHi), hit: -1 });
+  // One thing to shoot between every two gates: cages with prisoners, weapon crates and a broken bridge
+  const kinds = ['cage', 'crate'];
+  if (cfg.bridges) kinds.push('bridge');
+  while (kinds.length < spans.length - 1) kinds.push(kinds.length % 2 ? 'crate' : 'cage');
+  for (let i = 0; i < spans.length - 1; i++) {
+    const [z0, z1] = spans[i], kind = kinds[i], side = Math.random() < 0.5 ? -1 : 1;
+    const hp = Math.round(avgR * { cage: 0.6, crate: 0.75, bridge: 1.1 }[kind]) + randi(1, 3);
+    const prop = { kind, x: side * (kind === 'bridge' ? 3.0 : 2.6), z: z0 + (z1 - z0) * (kind === 'bridge' ? 0.12 : 0.2), hp, max: hp, hit: -1, done: false, doneAt: 0 };
+    if (kind === 'cage') prop.reward = randi(cfg.rLo, cfg.rHi);
+    if (kind === 'bridge') prop.power = Math.random() < 0.5 ? 'giant' : 'turbo';
+    g.props.push(prop);
   }
   g.monster = { x: 0, z: z + tail, hp: 1, max: 1, kind: cls, atkK: 2, anim: -9, hit: -9, dead: false, deadAt: 0 };
   g.finishZ = g.monster.z + 6;
-  // Monster strength follows the army a player would bring with every gate right (a few quick test runs of this very stage)
-  let N0 = 0;
-  for (let i = 0; i < 3; i++) N0 += perfectRunArmy(g) / 3;
-  N0 = Math.max(12, N0);
+  // Monster strength follows what a player would bring with every gate right (a few quick test runs of this very stage).
+  // Armoury upgrades make it easier, but only by the square root of the extra power, so the fight still needs right answers.
+  const test = a => { let n = 0, np = 0; for (let i = 0; i < 3; i++) { const r = perfectRun(g, a); n += r.n / 3; np += r.n * r.power / 3; } return [Math.max(12, n), Math.max(12, np)]; };
+  const [N0, NP0] = test(NO_ARM);
+  const NP1 = arm.weapon || arm.army || arm.power ? Math.max(NP0, test(arm)[1]) : NP0;
   const atkK = clamp(Math.round(N0 * ATK_FRAC), 2, cfg.rLo);
-  const hp = Math.max(60, Math.round(HP_K * ROUNDS * N0 / 10) * 10);
+  const hp = Math.max(60, Math.round(HP_K * ROUNDS * NP0 * Math.pow(NP1 / NP0, 1 - ARM_EASE) / 10) * 10);
   Object.assign(g.monster, { hp, max: hp, atkK });
   return g;
 }
 
-// Plays the running part of a copy of the stage with every gate right and no aiming; returns the army at the monster
-function perfectRunArmy(g) {
+// Plays the running part of a copy of the stage with every gate right and the given armoury, steering to the things
+// at the side of the road between gates; returns the army and its fire power at the monster
+function perfectRun(g, arm) {
   const sim = {
-    ...g, time: 0, state: 'run', events: [], bullets: [], hits: [], fight: null, fire: 0, correct: 0, answered: 0, mistakes: [],
-    army: { x: 0, tx: 0, z: 0, n: g.cfg.start, born: new Float32Array(CAP) },
-    gates: g.gates.map(x => ({ ...x })), barrels: g.barrels.map(b => ({ ...b })), monster: { ...g.monster },
+    ...g, time: 0, state: 'run', events: [], bullets: [], hits: [], fight: null, fire: 0, correct: 0, answered: 0, mistakes: [], gold: 0,
+    weapon: arm.weapon, fireBonus: 1 + ARMORY.power.per * arm.power, giant: false, turbo: false,
+    army: { x: 0, tx: 0, z: 0, n: g.cfg.start + ARMORY.army.per * arm.army, born: new Float32Array(CAP) },
+    gates: g.gates.map(x => ({ ...x })), props: g.props.map(b => ({ ...b })), monster: { ...g.monster },
     squads: g.squads.map(q => ({ ...q, men: q.men.map(m => ({ ...m })) })),
   };
   for (let i = 0; i < 6000 && sim.state === 'run'; i++) {
-    const gt = sim.gates.find(x => !x.done);
-    sim.army.tx = gt ? (gt.left ? -1.9 : 1.9) : 0;
+    const a = sim.army, gt = sim.gates.find(x => !x.done);
+    let tx = 0;
+    if (gt && gt.z - a.z < sim.cfg.speed * 2.2) tx = gt.left ? -1.9 : 1.9;
+    else {
+      const p = sim.props.find(q => !q.done && q.z + (q.kind === 'bridge' ? BRIDGE_L : 0) > a.z - 1 && q.z - a.z < 30);
+      if (p) tx = p.z - a.z > 3.5 ? p.x * 0.85 : -Math.sign(p.x) * 1.6;
+    }
+    a.tx = tx;
     step(sim, 1 / 20); sim.events.length = 0;
   }
-  return sim.army.n;
+  return { n: sim.army.n, power: firePower(sim) };
 }
 
 function grow(g, k) {
@@ -134,20 +190,40 @@ function grow(g, k) {
   for (let i = a.n; i < Math.min(a.n + k, CAP); i++) a.born[i] = g.time;
   a.n += k;
 }
+function propDone(g, p) {
+  p.done = true; p.doneAt = g.time;
+  if (p.kind === 'cage') { grow(g, p.reward); g.events.push({ type: 'cage', x: p.x, z: p.z, n: p.reward }); }
+  else if (p.kind === 'crate') {
+    if (g.weapon < MAX_WEAPON) { g.weapon++; g.events.push({ type: 'weapon', x: p.x, z: p.z, name: WEAPONS[g.weapon].name }); }
+    else { grow(g, 10); g.events.push({ type: 'cage', x: p.x, z: p.z, n: 10 }); }
+  } else {
+    g[p.power] = true;
+    g.events.push({ type: 'power', x: p.x, z: p.z + BRIDGE_L, name: POWERS[p.power].name, power: p.power });
+  }
+}
 
 function bulletHit(g, b, zPrev) {
-  const lo = zPrev - 0.25, hi = b.z + 0.25;
+  const lo = zPrev - 0.25, hi = b.z + 0.25, dmg = shotDmg(g);
   for (const s of g.squads) {
     if (s.z < lo - 3 || s.z > hi + 3) continue;
     for (let j = 0; j < s.men.length; j++) {
       const m = s.men[j], mx = s.x + m.ox, mz = s.z + m.oz;
-      if (mz >= lo && mz <= hi && Math.abs(mx - b.x) < 0.36) { s.men.splice(j, 1); g.events.push({ type: 'kill', x: mx, z: mz }); return true; }
+      if (mz >= lo && mz <= hi && Math.abs(mx - b.x) < (m.big ? 0.7 : 0.36)) {
+        m.hp -= dmg; m.hit = g.time;
+        if (m.hp <= 0) {
+          s.men.splice(j, 1);
+          if (m.big) g.gold += GOLD.brute;
+          g.events.push({ type: 'kill', x: mx, z: mz, big: !!m.big });
+        }
+        return true;
+      }
     }
   }
-  for (const br of g.barrels) {
-    if (br.hp > 0 && br.z >= lo && br.z <= hi + 0.4 && Math.abs(br.x - b.x) < 0.65) {
-      br.hp--; br.hit = g.time;
-      if (br.hp === 0 && g.state === 'run') { grow(g, br.reward); g.events.push({ type: 'barrel', x: br.x, z: br.z, n: br.reward }); }
+  for (const p of g.props) {
+    const len = p.kind === 'bridge' ? BRIDGE_L : 0.4;
+    if (!p.done && p.hp > 0 && p.z <= hi && p.z + len >= lo && Math.abs(p.x - b.x) < PROP_W[p.kind]) {
+      p.hp = Math.max(0, p.hp - dmg); p.hit = g.time;
+      if (p.hp <= 0 && g.state === 'run') propDone(g, p);
       return true;
     }
   }
@@ -174,7 +250,7 @@ function answerFight(g, left) {
   if (!f || !f.p || f.done || g.state !== 'fight') return;
   f.done = true; f.next = g.time + 1.9; f.volleyUntil = g.time + 0.6; g.answered++;
   const ok = left === f.left, t = g.time, M = g.monster;
-  if (ok) { g.correct++; grow(g, f.r); }
+  if (ok) { g.correct++; g.gold += GOLD.fight; grow(g, f.r); }
   else g.mistakes.push({ q: f.p.q, a: f.p.a, w: left === null ? null : f.p.w, sol: f.p.sol, ask: f.p.ask });
   // The round: army volley, then the monster's blow (and a fireball after a wrong answer)
   g.hits.push({ at: t + 0.6, kind: 'volley' }, { at: t + 0.65, kind: 'growl', fire: !ok }, { at: t + 1.2, kind: 'stomp', n: M.atkK });
@@ -199,7 +275,7 @@ function step(g, dt) {
       if (gt.done || a.z < gt.z) continue;
       gt.done = true; gt.t = g.time; gt.choseLeft = a.x < 0; gt.ok = gt.choseLeft === gt.left;
       g.answered++;
-      if (gt.ok) { g.correct++; grow(g, gt.r); ev.push({ type: 'gate', ok: true, gate: gt, n: gt.r }); }
+      if (gt.ok) { g.correct++; g.gold += GOLD.gate; grow(g, gt.r); ev.push({ type: 'gate', ok: true, gate: gt, n: gt.r }); }
       else {
         const loss = Math.min(gt.r, a.n - 1);     // a gate never takes the last soldier
         a.n -= loss;
@@ -212,7 +288,7 @@ function step(g, dt) {
   // Shooting (in the fight only during the volley after an answer)
   const volley = g.state === 'fight' && g.time < g.fight.volleyUntil;
   if (a.n > 0 && (g.state === 'run' || volley)) {
-    g.fire += (volley ? Math.min(40, 8 + a.n / 3) : 2 + Math.sqrt(a.n)) * dt;
+    g.fire += (volley ? Math.min(40, 8 + a.n / 3) : (3 + 1.1 * Math.sqrt(a.n)) * shotRate(g)) * dt;
     const sq = squeeze(a.n);
     while (g.fire >= 1) {
       g.fire -= 1;
@@ -224,30 +300,36 @@ function step(g, dt) {
   for (let i = g.bullets.length - 1; i >= 0; i--) {
     const b = g.bullets[i], zp = b.z;
     b.z += bv; b.d += bv;
-    if (b.d > 18 || bulletHit(g, b, zp)) { g.bullets[i] = g.bullets[g.bullets.length - 1]; g.bullets.pop(); }
+    if (b.d > RANGE || bulletHit(g, b, zp)) { g.bullets[i] = g.bullets[g.bullets.length - 1]; g.bullets.pop(); }
   }
 
-  // Enemy squads and barrels
+  // Zombies and the things at the side of the road
   const R = radius(a.n), RX = (R - 0.3) * squeeze(a.n) + 0.5, RZ = R + 0.2;
   const inside = (dx, dz) => (dx / RX) ** 2 + (dz / RZ) ** 2 < 1;
   const running = g.state === 'run';
   for (let si = g.squads.length - 1; si >= 0; si--) {
     const s = g.squads[si];
-    if (!s.active && s.z - a.z < 32) s.active = true;
+    if (!s.active && s.z - a.z < 32) { s.active = true; ev.push({ type: 'horde' }); }
     if (s.active && running) { s.z -= 2.0 * dt; s.x = clamp(s.x + clamp(a.x - s.x, -1, 1) * 0.9 * dt, -3.4, 3.4); }
     if (running) {
       for (let j = s.men.length - 1; j >= 0; j--) {
         const m = s.men[j], dx = s.x + m.ox - a.x, dz = s.z + m.oz - a.z;
-        if (inside(dx, dz) && a.n > 0) { s.men.splice(j, 1); a.n--; ev.push({ type: 'clash', x: a.x + dx, z: a.z + dz }); }
+        if (inside(dx, dz) && a.n > 0) {
+          // a big zombie takes several soldiers; on the road the last soldier always survives, so the monster is always reached
+          const k = Math.min(a.n - 1, m.big ? Math.min(6, Math.ceil(m.hp)) : 1);
+          s.men.splice(j, 1); a.n -= k; ev.push({ type: 'clash', x: a.x + dx, z: a.z + dz, big: !!m.big, n: k });
+        }
       }
     }
     if (!s.men.length || s.z < a.z - 14) g.squads.splice(si, 1);
   }
-  for (const br of g.barrels) {
-    if (br.hp > 0 && running && Math.abs(br.z - a.z) < R * 0.8 + 0.4 && Math.abs(br.x - a.x) < RX + 0.3) {
-      const loss = Math.min(5, a.n - 1);
-      br.hp = 0; a.n -= loss;
-      ev.push({ type: 'smash', x: br.x, z: br.z, n: loss });
+  for (const p of g.props) {
+    if (p.done || !running) continue;
+    const len = p.kind === 'bridge' ? BRIDGE_L : 0;
+    if (a.z > p.z - R * 0.8 - 0.4 && a.z < p.z + len + 0.4 && Math.abs(p.x - a.x) < RX + PROP_W[p.kind] - 0.4) {
+      const loss = Math.min(p.kind === 'bridge' ? 6 : 5, a.n - 1);   // ran into it (or into the hole) before it was shot open
+      p.done = true; p.doneAt = g.time; p.lost = true; a.n -= loss;
+      ev.push({ type: 'smash', x: p.x, z: p.z, n: loss, kind: p.kind });
     }
   }
 
@@ -261,7 +343,7 @@ function step(g, dt) {
     const h = g.hits.shift();
     if (g.state !== 'fight') continue;
     if (h.kind === 'volley') {
-      const dmg = Math.min(M.hp, a.n);
+      const dmg = Math.min(M.hp, Math.round(a.n * firePower(g)));
       M.hp -= dmg; M.hit = g.time;
       ev.push({ type: 'volley', n: dmg });
       if (M.hp <= 0) { g.hits.length = 0; break; }     // a beaten monster does not strike back
@@ -279,17 +361,21 @@ function step(g, dt) {
   }
 }
 
-if (!HAS_DOM) { globalThis.ArmiaLiczb = { STAGES, stageConfig, createGame, step, answerFight }; return; }
+if (!HAS_DOM) { globalThis.ArmiaLiczb = { STAGES, stageConfig, createGame, step, answerFight, WEAPONS, ARMORY, GOLD, firePower }; return; }
 
 /* ============================================================
    Saved progress (stays on this phone only)
    ============================================================ */
 const KEY = 'armia-liczb-v2';
 const NCLS = Z.KLASY.length;
-const save = { stars: new Array(NCLS * STAGES).fill(0), next: [0, 0], music: true, sfx: true, learn: true, tab: 0 };
+const save = { stars: new Array(NCLS * STAGES).fill(0), next: [0, 0], music: true, sfx: true, learn: true, tab: 0, gold: 0, arm: { ...NO_ARM }, skin: 0, skins: [0] };
 try { Object.assign(save, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { /* storage blocked */ }
 if (!Array.isArray(save.stars) || save.stars.length !== NCLS * STAGES) save.stars = new Array(NCLS * STAGES).fill(0);
 if (!Array.isArray(save.next) || save.next.length !== 2) save.next = [0, 0];
+save.gold = Math.max(0, Math.floor(+save.gold || 0));
+save.arm = Object.fromEntries(Object.keys(NO_ARM).map(k => [k, clamp(Math.floor(+(save.arm || {})[k] || 0), 0, ARMORY[k].prices.length)]));
+if (!Array.isArray(save.skins)) save.skins = [0];
+if (!save.skins.includes(save.skin)) save.skin = 0;
 const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) { /* storage blocked */ } };
 const starsOf = (c, s) => save.stars[c * STAGES + s];
 const unlocked = (c, s) => s === 0 || starsOf(c, s - 1) > 0 || starsOf(c, s) > 0;
@@ -466,6 +552,25 @@ const Snd = (() => {
     }),
     win: fx('win', 0, t => { [72, 76, 79, 84, 79, 84, 88].forEach((m, i) => tone('square', mtof(m), t + i * 0.12, i === 6 ? 0.6 : 0.14, 0.12, sfxBus, 0, 3800)); }),
     lose: fx('lose', 0, t => { [67, 64, 60, 55].forEach((m, i) => tone('triangle', mtof(m), t + i * 0.22, 0.34, 0.17, sfxBus)); }),
+    // A zombie horde comes into view: low, wobbly moan
+    groan: fx('groan', 1.5, t => {
+      const o = tone('sawtooth', rand(85, 110), t, 0.9, 0.07, sfxBus, 62, 520);
+      const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 6; lg.gain.value = 9;
+      lfo.connect(lg); lg.connect(o.frequency); lfo.start(t); lfo.stop(t + 0.95);
+      hiss(t, 0.7, 0.04, sfxBus, 'bandpass', 300, 1.5);
+    }),
+    thud: fx('thud', 0.12, t => { tone('sine', 160, t, 0.25, 0.4, sfxBus, 45); hiss(t, 0.2, 0.18, sfxBus, 'lowpass', 700); }),
+    // Cage broken open: clank and a short cheer
+    freed: fx('freed', 0, t => {
+      hiss(t, 0.2, 0.25, sfxBus, 'bandpass', 3200, 2); tone('square', 880, t, 0.06, 0.06, sfxBus, 0, 3000);
+      [72, 76, 79].forEach((m, i) => tone('triangle', mtof(m), t + 0.08 + i * 0.07, 0.2, 0.12, sfxBus));
+    }),
+    // New weapon or power: rising sweep and a bright chord
+    power: fx('power', 0, t => {
+      tone('sawtooth', 220, t, 0.45, 0.08, sfxBus, 1760, 3000);
+      [84, 88, 91, 96].forEach(m => tone('square', mtof(m), t + 0.4, 0.45, 0.05, sfxBus, 0, 4000));
+    }),
+    splash: fx('splash', 0.3, t => { hiss(t, 0.6, 0.35, sfxBus, 'lowpass', 1600); hiss(t + 0.05, 0.4, 0.12, sfxBus, 'highpass', 4000); }),
     // Booing crowd, "uuuuu": several low voices through the formants of the vowel "u", sliding down
     boo: fx('boo', 1, t => {
       const dur = 2.1, out = ctx.createGain(), mix = ctx.createGain();
@@ -612,13 +717,21 @@ function drawRich(s, cx, cy, size, fill, stroke, maxW) {
   }
 }
 
-/* ---------- soldier sprites, drawn once ---------- */
+/* ---------- soldier and zombie sprites, drawn once ---------- */
 const SW = 72, SH = 108;
-function makeSprite(red, frame) {
+// Army colours to choose in the armoury: main, dark, light
+const SKINS = [
+  { name: 'Niebieski', price: 0, c: ['#2f7df6', '#1c4fb4', '#9cc4ff'] },
+  { name: 'Zielony', price: 30, c: ['#2fae5a', '#1d7a3d', '#9fe6b8'] },
+  { name: 'Pomarańczowy', price: 30, c: ['#f08a24', '#b25d0f', '#ffd0a0'] },
+  { name: 'Fioletowy', price: 50, c: ['#8a4fd6', '#5a2a9c', '#d4b8f7'] },
+  { name: 'Czarny', price: 60, c: ['#3a4150', '#1e232d', '#9aa3b5'] },
+  { name: 'Złoty', price: 150, c: ['#f2c230', '#b8860b', '#fff0a8'] },
+];
+function makeSoldier(col, frame) {
   const c = document.createElement('canvas'); c.width = SW; c.height = SH;
   const x = c.getContext('2d');
-  const main = red ? '#e5463b' : '#2f7df6', dark = red ? '#a92c24' : '#1c4fb4', light = red ? '#ff9a8c' : '#9cc4ff';
-  const ink = '#15233b', skin = '#f3c39c', boot = '#262b36';
+  const [main, dark, light] = col, ink = '#15233b', boot = '#262b36';
   const ph = frame / 4 * Math.PI * 2, sw = Math.sin(ph), bob = Math.abs(Math.cos(ph)) * 3;
   x.lineJoin = 'round'; x.lineCap = 'round'; x.lineWidth = 3.5; x.strokeStyle = ink;
   const blob = (path, fill) => { x.beginPath(); path(); x.fillStyle = fill; x.fill(); x.stroke(); };
@@ -628,20 +741,52 @@ function makeSprite(red, frame) {
   blob(() => x.ellipse(13, 58 - bob + sw * 4, 7, 10, 0, 0, Math.PI * 2), dark);
   blob(() => x.ellipse(59, 58 - bob - sw * 4, 7, 10, 0, 0, Math.PI * 2), dark);
   blob(() => rr(x, 15, 40 - bob, 42, 38, 14), main);
-  if (!red) {
-    blob(() => rr(x, 23, 45 - bob, 26, 24, 7), dark);                  // backpack, seen from behind
-    blob(() => x.arc(36, 29 - bob, 19, 0, Math.PI * 2), main);        // helmet
-    x.beginPath(); x.arc(36, 29 - bob, 12, Math.PI * 1.15, Math.PI * 1.6); x.strokeStyle = light; x.lineWidth = 5; x.stroke();
-  } else {
-    x.fillStyle = ink; x.fillRect(17, 61 - bob, 38, 5);               // belt
-    blob(() => x.arc(36, 33 - bob, 15, 0, Math.PI * 2), skin);        // face
-    blob(() => { x.arc(36, 31 - bob, 18, Math.PI, 0); x.closePath(); }, main); // helmet
-    x.fillStyle = ink; x.beginPath(); x.arc(30, 38 - bob, 2.7, 0, 7); x.moveTo(44.7, 38 - bob); x.arc(42, 38 - bob, 2.7, 0, 7); x.fill();
-    x.beginPath(); x.arc(30, 22 - bob, 5, Math.PI * 1.1, Math.PI * 1.6); x.strokeStyle = light; x.lineWidth = 4; x.stroke();
-  }
+  blob(() => rr(x, 23, 45 - bob, 26, 24, 7), dark);                  // backpack, seen from behind
+  blob(() => x.arc(36, 29 - bob, 19, 0, Math.PI * 2), main);        // helmet
+  x.beginPath(); x.arc(36, 29 - bob, 12, Math.PI * 1.15, Math.PI * 1.6); x.strokeStyle = light; x.lineWidth = 5; x.stroke();
   return c;
 }
-const SPR = [[0, 1, 2, 3].map(f => makeSprite(false, f)), [0, 1, 2, 3].map(f => makeSprite(true, f))];
+// Zombies walk towards the army, so we see their faces; a big one is fatter and angrier
+function makeZombie(frame, big) {
+  const c = document.createElement('canvas'); c.width = SW; c.height = SH;
+  const x = c.getContext('2d');
+  const ink = '#15233b', skin = big ? '#74b84f' : '#93d36c', skinDk = big ? '#4f8a33' : '#62a446';
+  const shirt = big ? '#7a4a2a' : '#7b5fb8', shirtDk = big ? '#4e2c16' : '#4f3a85', pants = '#3b4252';
+  const ph = frame / 4 * Math.PI * 2, sw = Math.sin(ph), bob = Math.abs(Math.cos(ph)) * 2.5, lean = sw * 2.5;
+  x.lineJoin = 'round'; x.lineCap = 'round'; x.lineWidth = 3.5; x.strokeStyle = ink;
+  const blob = (path, fill) => { x.beginPath(); path(); x.fillStyle = fill; x.fill(); x.stroke(); };
+  const legTop = 74 - bob;
+  blob(() => rr(x, 22, legTop, 12, 104 - legTop - Math.max(0, sw) * 6, 4), pants);
+  blob(() => rr(x, 38, legTop, 12, 104 - legTop - Math.max(0, -sw) * 6, 4), pants);
+  const bw = big ? 50 : 40, bx = 36 - bw / 2 + lean;
+  // torn shirt with a ragged hem
+  blob(() => {
+    x.moveTo(bx + 8, 42 - bob); x.lineTo(bx + bw - 8, 42 - bob); x.quadraticCurveTo(bx + bw + 2, 44 - bob, bx + bw, 60 - bob);
+    for (let i = 0; i <= 6; i++) x.lineTo(bx + bw - i * bw / 6, 78 - bob + (i % 2 ? -5 : 1));
+    x.quadraticCurveTo(bx - 2, 44 - bob, bx + 8, 42 - bob);
+  }, shirt);
+  x.beginPath(); x.moveTo(bx + 12, 56 - bob); x.lineTo(bx + 18, 62 - bob); x.lineTo(bx + 14, 66 - bob); x.strokeStyle = shirtDk; x.lineWidth = 3; x.stroke();
+  x.strokeStyle = ink; x.lineWidth = 3.5;
+  // arms stretched towards us: sleeves and hands in front of the chest
+  blob(() => x.ellipse(bx + 2, 54 - bob + sw * 3, 8, 7, 0, 0, Math.PI * 2), shirtDk);
+  blob(() => x.ellipse(bx + bw - 2, 54 - bob - sw * 3, 8, 7, 0, 0, Math.PI * 2), shirtDk);
+  blob(() => x.ellipse(bx + 6, 50 - bob + sw * 3, 7, 6.5, 0, 0, Math.PI * 2), skin);
+  blob(() => x.ellipse(bx + bw - 6, 50 - bob - sw * 3, 7, 6.5, 0, 0, Math.PI * 2), skin);
+  // head
+  const hr = big ? 19 : 16, hx = 36 + lean * 1.4, hy = 27 - bob;
+  blob(() => x.arc(hx, hy, hr, 0, Math.PI * 2), skin);
+  x.fillStyle = skinDk; x.beginPath(); x.ellipse(hx - hr * 0.45, hy + hr * 0.1, hr * 0.32, hr * 0.26, 0, 0, Math.PI * 2); x.ellipse(hx + hr * 0.45, hy + hr * 0.1, hr * 0.32, hr * 0.26, 0, 0, Math.PI * 2); x.fill();
+  x.fillStyle = '#ffffff'; x.beginPath(); x.arc(hx - hr * 0.42, hy, hr * 0.24, 0, 7); x.arc(hx + hr * 0.42, hy, hr * 0.2, 0, 7); x.fill();
+  x.fillStyle = ink; x.beginPath(); x.arc(hx - hr * 0.36, hy + 1, hr * 0.1, 0, 7); x.arc(hx + hr * 0.47, hy - 1, hr * 0.09, 0, 7); x.fill();
+  if (big) { x.beginPath(); x.moveTo(hx - hr * 0.75, hy - hr * 0.42); x.lineTo(hx - hr * 0.2, hy - hr * 0.22); x.moveTo(hx + hr * 0.75, hy - hr * 0.42); x.lineTo(hx + hr * 0.2, hy - hr * 0.22); x.stroke(); }
+  x.beginPath(); x.moveTo(hx - hr * 0.42, hy + hr * 0.55); x.quadraticCurveTo(hx, hy + hr * 0.4, hx + hr * 0.45, hy + hr * 0.58); x.stroke();
+  x.fillStyle = '#ffffff'; x.fillRect(hx - 1, hy + hr * 0.46, 5, 5);
+  x.beginPath(); x.moveTo(hx - 3, hy - hr); x.lineTo(hx - 6, hy - hr - 6); x.moveTo(hx + 3, hy - hr); x.lineTo(hx + 5, hy - hr - 5); x.stroke();
+  return c;
+}
+const ZOMB = [[0, 1, 2, 3].map(f => makeZombie(f, false)), [0, 1, 2, 3].map(f => makeZombie(f, true))];
+const armySprites = [];
+const armySprite = (skin, f) => (armySprites[skin] = armySprites[skin] || [0, 1, 2, 3].map(k => makeSoldier(SKINS[skin].c, k)))[f];
 const backOut = t => { const c = 1.9; t -= 1; return 1 + t * t * ((c + 1) * t + c); };
 
 /* ---------- monsters: one for every class ---------- */
@@ -780,6 +925,7 @@ function drawBackdrop(g) {
       ground(-4.35 + c * 0.87, -4.35 + (c + 1) * 0.87, g.finishZ + r * 0.8, g.finishZ + (r + 1) * 0.8, 0.02, (r + c) % 2 ? '#15233b' : '#ffffff');
     }
   }
+  for (const p of g.props) if (p.kind === 'bridge') drawBridge(p, g);
   for (const sx of [-4.5, 4.5]) {
     ctx.strokeStyle = '#c4372c'; ctx.lineCap = 'butt';
     const p0 = Math.ceil(zn / 1.6) * 1.6;
@@ -859,20 +1005,72 @@ function drawGate(gt, g) {
   ctx.globalAlpha = 1;
 }
 
-function drawBarrel(br, g) {
-  if (br.hp <= 0) return;
-  const r = 0.55, h = 1.25;
-  if (!proj(br.x - r, 0, br.z, P0) || !proj(br.x + r, 0, br.z, P1) || !proj(br.x + r, h, br.z, P2) || !proj(br.x - r, h, br.z, P3)) return;
-  const s = P0.s, w = P1.x - P0.x, top = P3.y, bot = P0.y, ew = w / 2, eh = 0.18 * s;
-  const lit = g.time - br.hit < 0.06;
-  ctx.lineWidth = Math.max(1, 0.06 * s); ctx.strokeStyle = '#15233b';
-  ctx.beginPath(); ctx.moveTo(P3.x, top); ctx.lineTo(P0.x, bot); ctx.ellipse(P0.x + ew, bot, ew, eh, 0, Math.PI, 0, true); ctx.lineTo(P2.x, top); ctx.closePath();
-  ctx.fillStyle = lit ? '#ffe1a8' : '#c07a33'; ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#6b4424';
-  for (const f of [0.22, 0.78]) { const y = bot - (bot - top) * f; ctx.fillRect(P0.x, y - 0.05 * s, w, 0.1 * s); }
-  ctx.beginPath(); ctx.ellipse(P3.x + ew, top, ew, eh, 0, 0, Math.PI * 2); ctx.fillStyle = lit ? '#fff0cf' : '#dc9a52'; ctx.fill(); ctx.stroke();
-  outlined(String(br.hp), P0.x + ew, (top + bot) / 2, 0.62 * s, '#ffffff', '#15233b');
-  if (proj(br.x, h + 0.55, br.z, P4)) outlined('+' + br.reward, P4.x, P4.y, clamp(0.5 * P4.s, 9, 22), '#4be08a', '#0d4a26');
+// Number of hits still needed, and what you get, above a thing at the side of the road
+function propLabels(p, g, top) {
+  if (p.z - g.army.z > 48 || !proj(p.x, top, p.z, P4)) return;
+  const s = P4.s;
+  outlined(String(Math.ceil(p.hp)), P4.x, P4.y - 0.3 * s, clamp(0.7 * s, 12, 34), '#ffffff', '#15233b');
+  const what = p.kind === 'cage' ? '+' + p.reward : g.weapon < MAX_WEAPON ? WEAPONS[g.weapon + 1].name : '+10';
+  outlined(what, P4.x, P4.y - 0.95 * s, clamp(0.45 * s, 10, 22), p.kind === 'cage' || g.weapon >= MAX_WEAPON ? '#4be08a' : '#ffd23f', '#15233b');
+}
+// A cage with prisoners waving from inside: shoot it open and they join the army
+function drawCage(p, g) {
+  const x0 = p.x - 0.7, x1 = p.x + 0.7, z0 = p.z, z1 = p.z + 1.0, h = 1.5, lit = g.time - p.hit < 0.06;
+  ground(x0, x1, z0, z1, 0.02, '#5b3d22');
+  for (const [dx, dz] of [[-0.33, 0.55], [0.33, 0.6], [0, 0.3]]) {
+    if (!proj(p.x + dx, 0.05, p.z + dz, P0)) continue;
+    const hh = 0.95 * P0.s * 0.8, ww = hh * SW / SH;
+    ctx.drawImage(armySprite(save.skin, ((g.time * 4 + dx * 9) | 0) & 3), P0.x - ww / 2, P0.y - hh, ww, hh);
+  }
+  if (proj(x0, h, z0, P0) && proj(x1, h, z0, P1) && proj(x1, h, z1, P2) && proj(x0, h, z1, P3)) poly4('rgba(120,86,52,0.92)', '#15233b', 1);
+  ctx.strokeStyle = lit ? '#ffe28a' : '#8c96a3'; ctx.lineCap = 'round';
+  for (let i = 0; i <= 6; i++) {
+    const bx = x0 + (x1 - x0) * i / 6;
+    if (!proj(bx, 0, z0, P0) || !proj(bx, h, z0, P1)) continue;
+    ctx.lineWidth = Math.max(1.5, 0.08 * P0.s); ctx.beginPath(); ctx.moveTo(P0.x, P0.y); ctx.lineTo(P1.x, P1.y); ctx.stroke();
+  }
+  wallZ(x0, x1, h - 0.16, h, z0, lit ? '#ffe28a' : '#6b7480', '#15233b', 1);
+  wallZ(x0, x1, 0, 0.14, z0, '#6b7480', '#15233b', 1);
+  propLabels(p, g, h + 0.6);
+}
+// A crate with a better weapon inside
+function drawCrate(p, g) {
+  const x0 = p.x - 0.65, x1 = p.x + 0.65, z0 = p.z, z1 = p.z + 1.1, h = 1.2, lit = g.time - p.hit < 0.06;
+  const side = view.camX < p.x ? x0 : x1;
+  wallX(side, z0, z1, 0, h, lit ? '#a8c47a' : '#46602b');
+  if (proj(x0, h, z0, P0) && proj(x1, h, z0, P1) && proj(x1, h, z1, P2) && proj(x0, h, z1, P3)) poly4(lit ? '#d4ec9e' : '#86a85a', '#15233b', 1);
+  if (!wallZ(x0, x1, 0, h, z0, lit ? '#c4e08e' : '#5d7a3a', '#15233b', 1.5)) return;
+  ctx.lineWidth = Math.max(1, 0.06 * P0.s);
+  wallZ(x0 + 0.08, x1 - 0.08, h * 0.42, h * 0.58, z0, '#ffd23f', '#15233b', 1);
+  if (proj(p.x, h * 0.5, z0, P4)) outlined('★', P4.x, P4.y, clamp(0.55 * P4.s, 10, 26), '#ffd23f', '#15233b');
+  propLabels(p, g, h + 0.6);
+}
+// A broken piece of the road: every hit lays another plank; finished, it gives a power for the rest of the game
+const PLANKS = 12;
+function drawBridge(p, g) {
+  if (p.done && !p.lost && g.time - p.doneAt > 3) { /* fully built, stays as a plain road */ }
+  const x0 = p.x - PROP_W.bridge, x1 = p.x + PROP_W.bridge, z0 = p.z, z1 = p.z + BRIDGE_L;
+  if (z1 < view.camZ + 1) return;
+  const built = p.done && !p.lost ? PLANKS : Math.floor((1 - p.hp / p.max) * PLANKS);
+  if (built < PLANKS) {
+    ground(x0, x1, Math.max(z0, view.camZ + 1), z1, 0.012, '#0d3a66');
+    ground(x0 + 0.08, x1 - 0.08, Math.max(z0, view.camZ + 1), z1, 0.014, '#1d5f9c');
+  }
+  const pl = BRIDGE_L / PLANKS, lit = g.time - p.hit < 0.06;
+  for (let i = 0; i < built; i++) {
+    const za = z0 + i * pl + 0.05, zb = z0 + (i + 1) * pl - 0.05;
+    if (zb < view.camZ + 1) continue;
+    ground(x0 + 0.04, x1 - 0.04, za, zb, 0.03, i === built - 1 && lit ? '#ffd9a0' : i % 2 ? '#c58a4a' : '#b37a3d');
+  }
+  for (const ex of [x0, x1]) ground(ex - 0.05, ex + 0.05, Math.max(z0, view.camZ + 1), z1, 0.035, '#6b4424');
+}
+// Labels for a bridge (drawn above the soldiers): hits needed and the power it gives
+function drawBridgeLabels(p, g) {
+  if (p.done) return;
+  if (!proj(p.x, 0.4, p.z + BRIDGE_L * 0.5, P4)) return;
+  const s = P4.s;
+  outlined(String(Math.ceil(p.hp)), P4.x, P4.y, clamp(0.8 * s, 12, 36), '#ffffff', '#15233b');
+  if (proj(p.x, 0.6, p.z + BRIDGE_L + 0.2, P4)) bubble(P4.x, P4.y, POWERS[p.power].name, '#8a4fd6', clamp(0.42 * P4.s, 10, 18));
 }
 
 /* ---------- drawing list sorted far to near ---------- */
@@ -892,19 +1090,19 @@ function drawEntities(g) {
   pn = 0;
   const a = g.army, t = g.time, moving = g.state === 'run' || g.state === 'won' || g.attract;
   ctx.beginPath();     // collects ground shadows while soldiers are listed
-  const an = Math.min(a.n, CAP), sq = squeeze(a.n);
+  const an = Math.min(a.n, CAP), sq = squeeze(a.n), big = g.giant ? 1.35 : 1;
   for (let i = 0; i < an; i++) {
     const age = t - a.born[i];
-    const sc = age < 0.35 ? Math.max(0.05, backOut(age / 0.35)) : 1;
-    addSoldier(0, clamp(a.x + OX[i] * sq, -3.95, 3.95), a.z + OZ[i], moving ? ((t * 9 + i * 0.73) | 0) & 3 : ((t * 3 + i) | 0) & 1, sc);
+    const sc = (age < 0.35 ? Math.max(0.05, backOut(age / 0.35)) : 1) * big;
+    addSoldier(0, clamp(a.x + OX[i] * sq * big, -3.95, 3.95), a.z + OZ[i] * big, moving ? ((t * 9 + i * 0.73) | 0) & 3 : ((t * 3 + i) | 0) & 1, sc);
   }
   for (const s of g.squads) {
-    for (const m of s.men) addSoldier(1, s.x + m.ox, s.z + m.oz, s.active ? ((t * 9 + m.ph) | 0) & 3 : 0, 1);
+    for (const m of s.men) addSoldier(m.big ? 2 : 1, s.x + m.ox, s.z + m.oz, s.active ? ((t * 6 + m.ph) | 0) & 3 : 0, m.big ? 1.75 : 1.15);
   }
   ctx.fillStyle = 'rgba(10,30,50,0.22)'; ctx.fill();
 
   for (const gt of g.gates) if (gt.z > view.camZ + 1 && gt.z < view.camZ + 170 && proj(0, 0, gt.z, P0)) { const o = item(2, P0.d); o.r = gt; }
-  for (const br of g.barrels) if (br.hp > 0 && proj(br.x, 0, br.z, P0)) { const o = item(3, P0.d); o.r = br; }
+  for (const p of g.props) if (!p.done && p.kind !== 'bridge' && proj(p.x, 0, p.z, P0)) { const o = item(3, P0.d); o.r = p; }
   const M = g.monster;
   if (M && M.z < view.camZ + 175 && proj(M.x, 0, M.z, P0)) { const o = item(5, P0.d); o.x = P0.x; o.y = P0.y; o.s = P0.s; }
   const k0 = Math.floor((view.camZ - 30) / TOWER_GAP);
@@ -915,9 +1113,9 @@ function drawEntities(g) {
   for (const o of order) {
     if (o.k === 0) {
       const h = 0.95 * o.s, w = h * SW / SH;
-      ctx.drawImage(SPR[o.team][o.f], o.x - w / 2, o.y - h, w, h);
+      ctx.drawImage(o.team === 0 ? armySprite(save.skin, o.f) : ZOMB[o.team - 1][o.f], o.x - w / 2, o.y - h, w, h);
     } else if (o.k === 2) drawGate(o.r, g);
-    else if (o.k === 3) drawBarrel(o.r, g);
+    else if (o.k === 3) (o.r.kind === 'cage' ? drawCage : drawCrate)(o.r, g);
     else if (o.k === 4) drawTower(o.z);
     else if (o.k === 5) drawMonster(g.monster, g, o);
   }
@@ -968,13 +1166,22 @@ function confettiBurst() {
   for (let i = 0; i < 150; i++) confetti.push({ x: rand(0, view.w), y: rand(-view.h * 0.4, -10), vx: rand(-40, 40), vy: rand(120, 260), r: rand(0, 6), vr: rand(-6, 6), c: pick(cols), w: rand(6, 11), h: rand(3, 6) });
 }
 
+// Shots look different for every weapon: glow colour, core colour, thickness and length
+const SHOT_FX = [
+  ['rgba(255,170,40,0.55)', 'rgba(255,245,190,1)', 0.26, 1.0],
+  ['rgba(255,110,30,0.6)', 'rgba(255,230,170,1)', 0.3, 1.2],
+  ['rgba(255,60,200,0.6)', 'rgba(255,215,250,1)', 0.34, 1.3],
+  ['rgba(255,50,40,0.65)', 'rgba(255,225,200,1)', 0.42, 1.2],
+  ['rgba(40,220,255,0.65)', 'rgba(220,255,255,1)', 0.3, 2.2],
+];
 function drawEffects(g, dt) {
   ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+  const [glow, core, thick, len] = SHOT_FX[g.weapon], fat = g.giant ? 1.35 : 1;
   for (const b of g.bullets) {
-    if (!proj(b.x, 0.55, b.z, P0) || !proj(b.x, 0.55, b.z - 1.0, P1)) continue;
-    ctx.strokeStyle = 'rgba(255,170,40,0.55)'; ctx.lineWidth = Math.max(3, 0.26 * P0.s);
+    if (!proj(b.x, 0.55 * fat, b.z, P0) || !proj(b.x, 0.55 * fat, b.z - len, P1)) continue;
+    ctx.strokeStyle = glow; ctx.lineWidth = Math.max(3, thick * fat * P0.s);
     ctx.beginPath(); ctx.moveTo(P1.x, P1.y); ctx.lineTo(P0.x, P0.y); ctx.stroke();
-    ctx.strokeStyle = 'rgba(255,245,190,1)'; ctx.lineWidth = Math.max(1.2, 0.1 * P0.s); ctx.stroke();
+    ctx.strokeStyle = core; ctx.lineWidth = Math.max(1.2, thick * 0.4 * fat * P0.s); ctx.stroke();
   }
   ctx.globalCompositeOperation = 'source-over';
   // shock waves from the monster's stomp
@@ -1007,10 +1214,22 @@ function drawEffects(g, dt) {
     ctx.fillStyle = p.c; ctx.fillRect(P0.x - s / 2, P0.y - s / 2, s, s);
   }
   const a = g.army;
-  if (g.state === 'run') for (const s of g.squads) if (s.men.length && s.z - a.z < 60 && proj(s.x, 1.9, s.z + 0.3, P0) && P0.y > view.hudBottom) bubble(P0.x, P0.y, String(s.men.length), '#e5463b', clamp(0.55 * P0.s, 13, 22));
+  if (g.state === 'run') {
+    for (const s of g.squads) {
+      if (!s.men.length || s.z - a.z > 48) continue;
+      const small = s.men.filter(m => !m.big).length;
+      if (small && proj(s.x, 1.9, s.z + 0.3, P0) && P0.y > view.hudBottom) bubble(P0.x, P0.y, String(small), '#4f8a33', clamp(0.55 * P0.s, 13, 22));
+      for (const m of s.men) if (m.big && proj(s.x + m.ox, 3.0, s.z + m.oz, P0) && P0.y > view.hudBottom) bubble(P0.x, P0.y, String(Math.ceil(m.hp)), '#7a4a2a', clamp(0.5 * P0.s, 12, 20));
+    }
+    for (const p of g.props) if (p.kind === 'bridge' && p.z - a.z < 48) drawBridgeLabels(p, g);
+  }
   hitDt = dt; drawMonsterBar(g);
-  if (a.n > 0 && proj(a.x, 1.75, a.z + radius(a.n) * 0.55, P0)) {
-    bubble(P0.x, P0.y, String(a.n), '#2f7df6', 24);
+  if (a.n > 0 && proj(a.x, 1.75 * (g.giant ? 1.35 : 1), a.z + radius(a.n) * 0.55, P0)) {
+    bubble(P0.x, P0.y, String(a.n), SKINS[save.skin].c[0], 24);
+    if (!g.attract) {
+      const tags = [WEAPONS[g.weapon].name, g.giant && POWERS.giant.name, g.turbo && POWERS.turbo.name].filter(Boolean).join(' · ');
+      ctx.globalAlpha = 0.95; outlined(tags, P0.x, P0.y + 26, 14, '#ffffff', '#15233b'); ctx.globalAlpha = 1;
+    }
     for (let i = floats.length - 1; i >= 0; i--) {
       const f = floats[i]; f.t += dt;
       if (f.t > 1.1) { floats.splice(i, 1); continue; }
@@ -1049,7 +1268,7 @@ function render(g, dt) {
    Screens, HUD and controls
    ============================================================ */
 const $ = id => document.getElementById(id);
-const screens = { menu: $('scrMenu'), levels: $('scrLevels'), intro: $('scrIntro'), pause: $('scrPause'), result: $('scrResult'), lesson: $('scrLesson') };
+const screens = { menu: $('scrMenu'), levels: $('scrLevels'), intro: $('scrIntro'), pause: $('scrPause'), result: $('scrResult'), lesson: $('scrLesson'), armory: $('scrArmory') };
 const hud = $('hud'), probCard = $('probCard'), probText = $('probText'), probSub = $('probSub'), probTime = $('probTime'), probReward = $('probReward');
 const fight = $('fightPanel'), fqText = $('fqText'), fqSub = $('fqSub'), fqTime = $('fqTime'), ansL = $('ansL'), ansR = $('ansR');
 const ICON = {
@@ -1058,7 +1277,7 @@ const ICON = {
 };
 
 let game = createGame(0, 0, true);
-let mode = 'menu';            // menu | levels | intro | play | pause | lesson | result
+let mode = 'menu';            // menu | levels | intro | play | pause | lesson | result | armory
 let pending = null;           // the stage shown on the intro card, started by "Start"
 const ui = { shownGate: null, until: 0, lessonQ: null };
 const stageLabel = (c, s) => `Level ${c + 1} · gra ${s + 1}`;
@@ -1069,11 +1288,12 @@ function goMenu() {
   mode = 'menu'; game = createGame(0, 0, true); hud.hidden = true; fight.hidden = true; view.hudBottom = 0; layout();
   ui.lessonQ = null; lesson = null;
   $('btnPlay').textContent = `Graj · ${stageLabel(save.next[0], save.next[1])}`;
+  $('btnArmory').textContent = `Zbrojownia · ${group(save.gold)} złota`;
   $('menuVersion').textContent = `Wersja ${WERSJA}`;
   updateSoundBtns(); show('menu'); Snd.play('menu'); Snd.duck(false);
 }
 function openIntro(c, s) {
-  mode = 'intro'; pending = createGame(c, s, false);
+  mode = 'intro'; pending = createGame(c, s, false, save.arm);
   const info = pending.cfg.info, M = MONSTERS[c];
   $('inWorld').textContent = `${stageLabel(c, s)} z ${STAGES}`;
   $('inTitle').textContent = info.name;
@@ -1092,7 +1312,7 @@ function startStage(g) {
   parts.length = 0; floats.length = 0; confetti.length = 0; rings.length = 0; balls.length = 0; hitTexts.length = 0;
   show(null); hud.hidden = false; fight.hidden = true; probCard.hidden = false; view.k = 0;
   $('hudLevel').textContent = stageLabel(g.cls, g.s);
-  $('hudScore').textContent = '0';
+  updGold(g);
   updateProblem(g, true);
   view.hudBottom = probCard.getBoundingClientRect().bottom;
   view.topY = $('hudTop').getBoundingClientRect().bottom + 56;
@@ -1100,7 +1320,7 @@ function startStage(g) {
   view.camX = 0;
   Snd.play('run'); Snd.duck(false);
 }
-const restart = g => startStage(createGame(g.cls, g.s, false));
+const restart = g => startStage(createGame(g.cls, g.s, false, save.arm));
 function pauseGame() { if (mode !== 'play') return; mode = 'pause'; show('pause'); Snd.duck(true); }
 function resumeGame() { if (mode !== 'pause') return; mode = 'play'; show(null); last = performance.now(); Snd.resume(); Snd.duck(false); }
 
@@ -1159,7 +1379,7 @@ function pickAnswer(left) {
 function onGate(g, e) {
   const p = e.gate.p;
   if (e.ok) {
-    setCard('Dobrze!', `+${e.n} żołnierzy`, 'good', 0); Snd.good();
+    setCard('Dobrze!', `+${e.n} żołnierzy · +${GOLD.gate} złota`, 'good', 0); Snd.good(); Snd.coin();
     floatText('+' + e.n, '#4be08a'); fx.flash = 0.6; fx.flashColor = '40,210,110';
   } else {
     setCard(solved(p), `Twoja odpowiedź: ${p.w}`, 'bad', 0); Snd.bad();
@@ -1168,20 +1388,41 @@ function onGate(g, e) {
     fx.flash = 0.8; fx.flashColor = '235,60,50'; fx.shake = 0.35;
   }
   ui.until = g.time + 1.0;
-  $('hudScore').textContent = String(g.correct);
+  updGold(g);
 }
 
-const RED = ['#e5463b', '#a92c24', '#ffd2c8'], BLUE = ['#2f7df6', '#1c4fb4', '#cfe2ff'], WOOD = ['#c07a33', '#6b4424', '#ffd27a'];
+const WOOD = ['#c07a33', '#6b4424', '#ffd27a'], ZGREEN = ['#93d36c', '#4f8a33', '#7b5fb8'];
+const updGold = g => { $('hudGold').textContent = group(g.gold); };
 function handleEvents(g) {
   const a = g.army, M = g.monster;
   for (const e of g.events) {
     switch (e.type) {
       case 'gate': onGate(g, e); break;
-      case 'kill': burst(e.x, e.z, RED, 5); Snd.pop(); break;
-      case 'clash': burst(e.x, e.z, RED, 3); burst(e.x, e.z, BLUE, 3); Snd.pop(); break;
+      case 'kill':
+        if (e.big) { burst(e.x, e.z, ZGREEN, 22, 1.2); floatText('+' + GOLD.brute + ' złota', '#ffd23f'); Snd.thud(); updGold(g); }
+        else { burst(e.x, e.z, ZGREEN, 5); Snd.pop(); }
+        break;
+      case 'clash':
+        burst(e.x, e.z, ZGREEN, 3); burst(e.x, e.z, SKINS[save.skin].c, 3); Snd.pop();
+        if (e.big) { floatText(MINUS + e.n, '#ff6a5e'); fx.shake = 0.3; Snd.thud(); }
+        break;
+      case 'horde': Snd.groan(); break;
       case 'spark': if (Math.random() < 0.5) burst(e.x, e.z, ['#fff2a8', '#ffb02e', MONSTERS[g.cls].light], 2, rand(1.5, 4.5)); Snd.shot(); break;
-      case 'barrel': burst(e.x, e.z, WOOD, 16); floatText('+' + e.n, '#4be08a'); Snd.coin(); break;
-      case 'smash': burst(e.x, e.z, WOOD, 16); if (e.n > 0) floatText(MINUS + e.n, '#ff6a5e'); Snd.bad(); fx.shake = 0.25; break;
+      case 'cage': burst(e.x, e.z, ['#8c96a3', '#c9d1db', '#ffffff'], 18, 0.8); floatText('+' + e.n, '#4be08a'); Snd.freed(); break;
+      case 'weapon':
+        burst(e.x, e.z, ['#ffd23f', '#86a85a', '#ffffff'], 24, 0.8); floatText(e.name + '!', '#ffd23f');
+        Snd.power(); fx.flash = 0.5; fx.flashColor = '255,210,60';
+        break;
+      case 'power':
+        burst(e.x, e.z, ['#c9a2ff', '#ffd23f', '#ffffff'], 30, 0.6); floatText(e.name + '!', '#d6b8ff');
+        Snd.power(); Snd.reinforce(); fx.flash = 0.6; fx.flashColor = '160,90,255';
+        break;
+      case 'smash':
+        if (e.kind === 'bridge') { burst(e.x, e.z + 1, ['#7cc4ff', '#ffffff', '#1d5f9c'], 26, 0.2); Snd.splash(); }
+        else burst(e.x, e.z, WOOD, 16);
+        if (e.n > 0) floatText(MINUS + e.n, '#ff6a5e');
+        Snd.bad(); fx.shake = 0.25;
+        break;
       case 'fight':
         probCard.hidden = true; fight.hidden = false;
         setFight('Walka!', 'Każda odpowiedź to runda: armia strzela, potem atakuje potwór.', 'boss');
@@ -1193,8 +1434,8 @@ function handleEvents(g) {
       case 'fightAnswer':
         ansL.disabled = ansR.disabled = true;
         (g.fight.left ? ansL : ansR).classList.add('right');
-        $('hudScore').textContent = String(g.correct);
-        if (e.ok) { setFight('Dobrze!', `Posiłki: +${e.r} żołnierzy`, 'good'); Snd.reinforce(); floatText('+' + e.r, '#4be08a'); fx.flash = 0.5; fx.flashColor = '40,210,110'; }
+        updGold(g);
+        if (e.ok) { setFight('Dobrze!', `Posiłki: +${e.r} · +${GOLD.fight} złota`, 'good'); Snd.reinforce(); floatText('+' + e.r, '#4be08a'); fx.flash = 0.5; fx.flashColor = '40,210,110'; }
         else {
           setFight(solved(e.p), e.timeout ? 'Za późno! Potwór atakuje' : `Twoja odpowiedź: ${e.p.w}`, 'bad');
           Snd.bad(); Snd.roar();
@@ -1208,17 +1449,17 @@ function handleEvents(g) {
         break;
       case 'stomp':
         rings.push({ x: M.x, z: M.z - 2, t: 0, size: 9, c: 'rgba(255,255,255,0.9)' });
-        if (e.n > 0) { floatText(MINUS + e.n, '#ff6a5e'); burst(a.x, a.z + radius(a.n) * 0.6, BLUE, 10); }
+        if (e.n > 0) { floatText(MINUS + e.n, '#ff6a5e'); burst(a.x, a.z + radius(a.n) * 0.6, SKINS[save.skin].c, 10); }
         Snd.stomp(); fx.shake = 0.3;
         break;
       case 'blast':
         rings.push({ x: a.x, z: a.z, t: 0, size: 3, c: 'rgba(255,170,40,0.95)' });
-        burst(a.x, a.z, ['#ffb02e', '#ff5a2a', '#fff2a8'], 18, 1); burst(a.x, a.z, BLUE, 10);
+        burst(a.x, a.z, ['#ffb02e', '#ff5a2a', '#fff2a8'], 18, 1); burst(a.x, a.z, SKINS[save.skin].c, 10);
         if (e.n > 0) floatText(MINUS + e.n, '#ff6a5e');
         Snd.boom(); fx.flash = 0.8; fx.flashColor = '235,60,50'; fx.shake = 0.45;
         break;
       case 'won':
-        Snd.stop(); Snd.win(); confettiBurst();
+        Snd.stop(); Snd.boo(); setTimeout(() => Snd.win(), 800); confettiBurst();   // the beaten monster moans "uuuu"
         if (M) for (let i = 0; i < 4; i++) burst(M.x + rand(-2, 2), M.z, [MONSTERS[g.cls].body, MONSTERS[g.cls].light, '#ffffff'], 16, rand(1, 6));
         if (g.fight) { setFight('Wygrana!', `${MONSTERS[g.cls].name} pokonany`, 'good'); ansL.disabled = ansR.disabled = true; }
         else setCard('Wygrana!', 'Potwór pokonany', 'good', 0);
@@ -1287,13 +1528,15 @@ function lessonPick(left) {
   (left ? le.L : le.R).classList.add('picked');
   (L.left ? le.L : le.R).classList.add('right');
   if (left === L.left) {
-    L.good++; Snd.good();
-    if (L.good < NEED) { setMsg('Dobrze!', 'good'); later(0.9, nextTask); }
-    else { setMsg(L.bad ? 'Dobrze! Już umiesz. Grasz dalej.' : 'Super! Grasz dalej.', 'good'); Snd.reinforce(); later(1.4, closeLesson); }
+    L.good++; Snd.good(); Snd.coin();
+    game.gold += GOLD.practice; updGold(game);     // practice after a mistake earns gold too
+    const gold = `<small>+${GOLD.practice} złota</small>`;
+    if (L.good < NEED) { setMsg('Dobrze!' + gold, 'good'); later(0.9, nextTask); }
+    else { setMsg((L.bad ? 'Dobrze! Już umiesz. Grasz dalej.' : 'Super! Grasz dalej.') + gold, 'good'); Snd.reinforce(); later(1.4, closeLesson); }
   } else {
-    L.bad++; Snd.boo(); thumbsDown();
+    L.bad++; Snd.bad(); shakeCard();
     const out = L.n >= L.tasks.length;
-    setMsg(`Uuuuu…<small>${richHTML(`Dobra odpowiedź: ${L.cur.a}`)}${out ? '. Ten temat warto jeszcze poćwiczyć.' : ''}</small>`, 'bad');
+    setMsg(`Prawie!<small>${richHTML(`Dobra odpowiedź: ${L.cur.a}`)}${out ? '. Ten temat warto jeszcze poćwiczyć.' : '. Spójrz, jak to policzyć.'}</small>`, 'bad');
     showSteps(L.cur.how);
     le.next.textContent = out ? 'Wracamy do gry' : 'Jeszcze jedno zadanie'; le.next.hidden = false;
   }
@@ -1307,23 +1550,55 @@ function closeLesson() {
   [hud.hidden, fight.hidden] = lesson.panels;
   lesson = null; mode = 'play'; show(null); last = performance.now(); Snd.duck(false);
 }
-// Thumbs down falling over the screen
-function thumbsDown() {
-  const box = $('thumbs'), n = REDUCED ? 6 : 26;
-  for (let i = 0; i < n; i++) {
-    const el = document.createElement('span');
-    el.textContent = '👎';
-    el.style.left = rand(0, 92).toFixed(1) + '%';
-    if (REDUCED) el.style.top = rand(10, 80).toFixed(1) + '%';
-    el.style.fontSize = Math.round(rand(30, 64)) + 'px';
-    el.style.animationDuration = rand(1.5, 2.5).toFixed(2) + 's';
-    el.style.animationDelay = rand(0, 0.7).toFixed(2) + 's';
-    el.style.setProperty('--rot', Math.round(rand(-60, 60)) + 'deg');
-    el.addEventListener('animationend', () => el.remove());
-    setTimeout(() => el.remove(), 4000);
-    box.appendChild(el);
+function shakeCard() { if (!REDUCED) { le.card.classList.remove('shake'); void le.card.offsetWidth; le.card.classList.add('shake'); } }
+
+/* ============================================================
+   Armoury: permanent upgrades and army colours, bought with gold earned by playing
+   ============================================================ */
+const COIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#ffc531" stroke="#8a5a00" stroke-width="2"/><circle cx="12" cy="12" r="5.5" fill="none" stroke="#d99300" stroke-width="2"/></svg>';
+let armoryBack = 'menu';
+const armoryNow = {
+  weapon: L => `Teraz: ${WEAPONS[L].name}.` + (L < ARMORY.weapon.prices.length ? ` Następna: ${WEAPONS[L + 1].name}.` : ' Każda skrzynia w grze da jeszcze lepszą.'),
+  army: L => `Na start: ${START + ARMORY.army.per * L} żołnierzy` + (L < ARMORY.army.prices.length ? `, potem ${START + ARMORY.army.per * (L + 1)}.` : '.'),
+  power: L => (L ? `Szybsze strzelanie: +${Math.round(100 * ARMORY.power.per * L)}%` : 'Każdy poziom: strzelanie szybsze o 10%') + (L && L < ARMORY.power.prices.length ? `, potem +${Math.round(100 * ARMORY.power.per * (L + 1))}%.` : '.'),
+};
+function openArmory(from) {
+  armoryBack = from; mode = 'armory'; buildArmory(); show('armory');
+  screens.armory.querySelector('.card').scrollTop = 0;
+}
+function buildArmory() {
+  $('arGold').textContent = group(save.gold);
+  const list = $('arList'); list.innerHTML = '';
+  for (const key of Object.keys(ARMORY)) {
+    const A = ARMORY[key], L = save.arm[key], max = L >= A.prices.length, price = max ? 0 : A.prices[L];
+    const row = document.createElement('div'); row.className = 'ar-item';
+    row.innerHTML = `<h3>${esc(A.name)}</h3><div class="pips">${A.prices.map((_, i) => `<i class="${i < L ? 'on' : ''}"></i>`).join('')}</div><p>${esc(armoryNow[key](L))}</p>`;
+    const b = document.createElement('button'); b.className = 'buy';
+    b.innerHTML = max ? 'Gotowe' : `${COIN}${group(price)}`;
+    b.disabled = max || save.gold < price;
+    b.setAttribute('aria-label', max ? `${A.name}: najwyższy poziom` : `Kup: ${A.name} za ${price} złota`);
+    b.addEventListener('click', () => {
+      if (save.gold < price || save.arm[key] >= A.prices.length) return;
+      save.gold -= price; save.arm[key]++; persist(); Snd.unlock(); Snd.coin(); Snd.power(); buildArmory();
+    });
+    row.appendChild(b); list.appendChild(row);
   }
-  le.card.classList.remove('shake'); void le.card.offsetWidth; le.card.classList.add('shake');
+  const box = $('arSkins'); box.innerHTML = '';
+  SKINS.forEach((K, i) => {
+    const own = save.skins.includes(i), b = document.createElement('button');
+    b.className = 'skin' + (save.skin === i ? ' on' : '');
+    b.innerHTML = `<img alt="" src="${armySprite(i, 0).toDataURL()}"><span>${esc(K.name)}</span>` + (own ? '' : `<span class="price">${COIN}${K.price}</span>`);
+    b.disabled = !own && save.gold < K.price;
+    b.setAttribute('aria-pressed', String(save.skin === i));
+    b.addEventListener('click', () => {
+      if (!own) { if (save.gold < K.price) return; save.gold -= K.price; save.skins.push(i); Snd.coin(); }
+      save.skin = i; persist(); Snd.unlock(); Snd.tap(); buildArmory();
+    });
+    box.appendChild(b);
+  });
+}
+function closeArmory() {
+  if (armoryBack === 'result') { mode = 'result'; showResultAgain(); } else goMenu();
 }
 
 function showResult(g) {
@@ -1335,7 +1610,10 @@ function showResult(g) {
     save.stars[c * STAGES + s] = Math.max(starsOf(c, s), stars);
     save.next = s + 1 < STAGES ? [c, s + 1] : (c + 1 < NCLS ? [c + 1, 0] : [c, s]);
   } else save.next = [c, s];
+  const gain = g.gold + (won ? stars * GOLD.star : 0);   // gold earned in the game is kept even after a loss
+  save.gold += gain;
   persist();
+  $('reGold').textContent = `+${group(gain)} · masz ${group(save.gold)}`;
   $('reLevel').textContent = `${stageLabel(c, s)} · ${g.cfg.info.name}`;
   $('reTitle').textContent = won ? 'Wygrana!' : 'Przegrana';
   $('reStars').innerHTML = [0, 1, 2].map(i => ICON.star(i < stars)).join('');
@@ -1358,6 +1636,10 @@ function showResult(g) {
   $('btnNext').hidden = !won;
   $('btnNext').textContent = lastOne ? 'Cała gra ukończona!' : s === STAGES - 1 ? `Level ${c + 2}` : 'Następna gra';
   $('btnNext').disabled = lastOne;
+  show('result');
+}
+function showResultAgain() {
+  $('reGold').textContent = $('reGold').textContent.replace(/masz [\d ]+/, `masz ${group(save.gold)}`);
   show('result');
 }
 
@@ -1419,6 +1701,9 @@ tap('btnPauseMenu', goMenu);
 tap('btnNext', () => { const [c, s] = save.next; openIntro(c, s); });
 tap('btnAgain', () => restart(game));
 tap('btnResultMenu', goMenu);
+tap('btnArmory', () => openArmory('menu'));
+tap('btnResultArmory', () => openArmory('result'));
+tap('btnArmoryBack', closeArmory);
 le.L.addEventListener('click', () => lessonPick(true));
 le.R.addEventListener('click', () => lessonPick(false));
 tap('leNext', lessonNext);

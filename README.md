@@ -5,7 +5,16 @@ Wcześniej gra nazywała się „Armia Liczb” (wersje 1–4) i „Głupia Gra�
 
 Armia biegnie po moście. Przed każdą bramką pojawia się działanie, a na bramkach dwie odpowiedzi.
 Wbiegasz w bramkę z dobrym wynikiem i dostajesz tylu żołnierzy, ile pokazuje zielona liczba (na przykład +14).
-Zła odpowiedź zabiera tyle samo. Między bramkami czekają oddziały wroga i beczki z nagrodą.
+Zła odpowiedź zabiera tyle samo.
+
+Armia strzela sama. Między bramkami idą hordy zombie (od 11. gry także duże zombie z większą liczbą żyć),
+a po bokach drogi stoją rzeczy do zestrzelenia. Liczba na każdej mówi, ile trafień potrzeba:
+
+- **klatka z jeńcami:** po rozbiciu jeńcy dołączają do armii,
+- **skrzynia z bronią:** lepsza broń do końca gry (Blaster, Turboblaster, Plazma, Działko, Laser),
+- **zepsuty most:** każde trafienie kładzie deskę, a naprawiony daje moc: Olbrzymy albo Szybki ogień.
+
+W biegu armia nigdy nie traci ostatniego żołnierza, więc zawsze dochodzi do potwora.
 
 Na końcu mostu walczysz z potworem. Walka idzie w rundach: na dole ekranu pojawia się zadanie,
 a każda odpowiedź to jedna runda. Dobra odpowiedź przynosi posiłki, potem armia strzela, a na końcu potwór oddaje cios.
@@ -16,16 +25,24 @@ liczy się tylko to, czy jest dobra (i czy zmieści się w czasie).
 
 Po złej odpowiedzi gra się zatrzymuje i pokazuje krok po kroku, jak to policzyć w pamięci.
 Potem są 2 zadania tego samego rodzaju. Po dwóch dobrych odpowiedziach gra toczy się dalej.
-Przy złej odpowiedzi lecą kciuki w dół i słychać „uuuuu”, a gra pokazuje rozwiązanie i daje kolejne zadanie (najwyżej 5).
+Przy złej odpowiedzi gra pisze „Prawie!”, pokazuje rozwiązanie i daje kolejne zadanie (najwyżej 5).
+Za każde dobrze rozwiązane zadanie jest +3 złota.
+
+## Złoto i Zbrojownia
+
+Złoto dostaje się za dobre odpowiedzi (+5), za zadania po błędzie (+3), za duże zombie (+2) i za każdą gwiazdkę (+10).
+W Zbrojowni kupuje się za nie ulepszenia na stałe (broń na start, więcej żołnierzy na start, szybsze strzelanie)
+i kolor armii. Ceny są znane z góry. Nic się nie losuje, nie ma reklam ani zakupów za prawdziwe pieniądze.
 Naukę można wyłączyć w menu albo w pauzie: „Nauka po błędzie: wył.”.
 
 ## Jak trudny jest potwór
 
 Siła potwora jest liczona osobno dla każdej gry. Według symulacji (tysiące rozegranych gier):
 
-- wszystkie bramki dobrze, a w walce odpowiedzi na chybił trafił: wygrana średnio w około 32% gier,
 - wszystkie odpowiedzi w walce dobre: wygrana zawsze, niezależnie od tego, jak szybko się odpowiada.
-  Cios potwora nigdy nie zabiera więcej żołnierzy, niż daje dobra odpowiedź.
+  Cios potwora nigdy nie zabiera więcej żołnierzy, niż daje dobra odpowiedź,
+- wszystkie bramki dobrze, a w walce odpowiedzi na chybił trafił (gracz celuje w skrzynie): wygrana w około 38% gier,
+- to samo z połową ulepszeń ze Zbrojowni: około 58%, ze wszystkimi: około 68%.
 
 ## Levele i gry
 
