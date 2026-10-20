@@ -15,6 +15,11 @@ Gdy zmiany w grze są gotowe i zapisywane w repozytorium:
 3. Zrób commit. Jego skrót (pierwsze 7 znaków) wpisz w `ZMIANY.md` przy tej wersji jako „Zapis w repozytorium”,
    w następnym commicie. Tagów nie używaj: w sesjach w chmurze GitHub ich nie przyjmuje.
 
+## Muzyka
+
+- Utwory są w `muzyka/*.mp3`, tworzy je `narzedzia/muzyka.py` (mido, fluidsynth, fluid-soundfont-gm, ffmpeg).
+- Po zmianie utworów skopiuj wypisane na końcu czasy pętli do `MUSIC_LOOPS` w `gra.js`.
+
 ## Zadania matematyczne
 
 - Zadania są w `zadania.js`: 8 klas × 8 tematów × 4 stopnie trudności.

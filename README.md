@@ -3,7 +3,7 @@
 Gra na telefon z matematyką ze szkoły podstawowej, od 1. do 8. klasy. Nazwę wybrały dzieci.
 Wcześniej gra nazywała się „Armia Liczb” (wersje 1–4) i „Głupia Gra” (wersja 5).
 
-Armia biegnie po moście. Przed każdą bramką pojawia się działanie, a na bramkach dwie odpowiedzi.
+Armia biegnie przez różne światy. Przed każdą bramką pojawia się działanie, a na bramkach dwie odpowiedzi.
 Wbiegasz w bramkę z dobrym wynikiem i dostajesz tylu żołnierzy, ile pokazuje zielona liczba (na przykład +14).
 Zła odpowiedź zabiera tyle samo.
 
@@ -16,7 +16,7 @@ a po bokach drogi stoją rzeczy do zestrzelenia. Liczba na każdej mówi, ile tr
 
 W biegu armia nigdy nie traci ostatniego żołnierza, więc zawsze dochodzi do potwora.
 
-Na końcu mostu walczysz z potworem. Walka idzie w rundach: na dole ekranu pojawia się zadanie,
+Na końcu drogi walczysz z potworem. Walka idzie w rundach: na dole ekranu pojawia się zadanie,
 a każda odpowiedź to jedna runda. Dobra odpowiedź przynosi posiłki, potem armia strzela, a na końcu potwór oddaje cios.
 Zła albo spóźniona odpowiedź: nie ma posiłków, a potwór dorzuca kulę ognia. Szybkość odpowiedzi nie ma znaczenia,
 liczy się tylko to, czy jest dobra (i czy zmieści się w czasie).
@@ -71,9 +71,20 @@ Każde zadanie losuje się na nowo. Wszystkie rodzaje zadań zostały sprawdzone
 ponad 600 000 wylosowanych zadań i nie znalazł błędnego wyniku ani błędnej bramki, która byłaby jednocześnie dobra.
 Sprawdzone są też objaśnienia: każde obliczenie w każdym kroku (ponad 200 000 obliczeń, zero błędów).
 
+## Światy
+
+Każdy temat w levelu to inny świat: Most nad morzem, Las, Kanion, Śnieżne góry, Wulkan, Miasto nocą i Kosmos.
+Młodsze levele mają więcej jasnych światów, starsze więcej miasta nocą, wulkanu i kosmosu.
+
 ## Dźwięk
 
-Muzyka i efekty są tworzone przez samą grę, bez plików dźwiękowych. W menu i w pauzie można osobno wyłączyć muzykę i dźwięki.
+Muzyka jest zagrana prawdziwymi brzmieniami instrumentów (zestaw FluidR3_GM, licencja MIT) i ma kilka stylów:
+Wesoła, Przygoda, Chill, Elektro, a do tego Retro (dawne melodie tworzone przez samą grę). Każdy styl ma wersję do biegu i do walki.
+Przy ustawieniu „Auto” levele 1–3 mają Wesołą, 4–6 Przygodę, a 7–8 Elektro. Przycisk „Muzyka” w menu i w pauzie zmienia styl
+albo wyłącza muzykę. Efekty dźwiękowe tworzy sama gra; można je wyłączyć osobno.
+
+Utwory są w folderze `muzyka/`. Tworzy je program `narzedzia/muzyka.py`: nuty są zapisane w kodzie,
+program gra je instrumentami i zapisuje pętle MP3. Bez internetu gra używa dawnych melodii.
 
 ## Jak zagrać na iPhonie
 
@@ -89,4 +100,5 @@ Postęp (gwiazdki, otwarte gry) zapisuje się w telefonie, na którym grasz.
 - `index.html` – wygląd ekranów
 - `zadania.js` – wszystkie zadania dla klas 1–8 i objaśnienia, jak je policzyć
 - `gra.js` – sama gra: bieg, walka z potworem, grafika, muzyka
+- `muzyka/` – utwory w kilku stylach (MP3), `narzedzia/muzyka.py` – program, który je tworzy
 - `manifest.webmanifest`, `ikona-180.png`, `ikona-512.png` – ikona i nazwa na ekranie telefonu

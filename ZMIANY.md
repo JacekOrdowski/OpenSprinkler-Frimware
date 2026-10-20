@@ -7,6 +7,40 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 
 ---
 
+## Wersja 8 (20 października 2026)
+
+### Dodane
+- **7 światów** zamiast samego mostu: Most nad morzem, Las, Kanion, Śnieżne góry, Wulkan, Miasto nocą i Kosmos.
+  Każdy temat w levelu to inny świat. Młodsze levele mają więcej jasnych światów, starsze więcej miasta nocą, wulkanu i kosmosu.
+  - Każdy świat ma swoje niebo, krajobraz na horyzoncie, ziemię, drogę i barierki.
+  - Przy drodze stoją drzewa, choinki ze śniegiem, kaktusy, skały i bloki z oknami, a w kosmosie unoszą się asteroidy.
+  - W górach pada śnieg, przy wulkanie lecą iskry i płynie lawa, w mieście świecą latarnie, w kosmosie świecą neony.
+  - Dziura w zepsutym moście wygląda w każdym świecie inaczej, np. przy wulkanie to lawa.
+  - Nazwa świata jest na karcie przed grą, a w menu w tle widać świat następnej gry.
+- **Muzyka z prawdziwymi instrumentami** w 4 stylach, każdy w wersji do biegu i do walki:
+  - **Wesoła:** marimba, flet, gitara;
+  - **Przygoda:** smyczki, waltornia, harfa, kotły, trąbka i bębny taiko;
+  - **Chill:** elektryczne pianino, wibrafon, spokojna perkusja;
+  - **Elektro:** syntezatory w stylu lat 80.
+  - Do tego **Retro**, czyli dawne melodie tworzone przez samą grę.
+- **Wybór muzyki:** przycisk „Muzyka” w menu i w pauzie zmienia styl: Auto → Wesoła → Przygoda → Chill → Elektro → Retro → wył.
+  Przy „Auto” levele 1–3 mają Wesołą, 4–6 Przygodę, 7–8 Elektro.
+- Program `narzedzia/muzyka.py`, który tworzy utwory: nuty są zapisane w kodzie, a program gra je instrumentami
+  z zestawu FluidR3_GM (licencja MIT) i zapisuje pętle MP3 do folderu `muzyka/`.
+
+### Zmienione
+- Napisy „na końcu mostu” zmieniły się na „na końcu drogi”, bo nie każdy świat ma most.
+- Muzyka jest cichsza od efektów dźwiękowych, żeby nie przeszkadzała w liczeniu.
+
+### Usunięte
+- Nic. Dawne melodie zostały jako styl „Retro”. Gra używa ich też wtedy, gdy nie da się wczytać plików muzyki (np. bez internetu).
+
+### Do sprawdzenia
+- Jak brzmi muzyka. Nie mogłem jej posłuchać. Sprawdziłem pomiarami, że pętle łączą się płynnie i że utwory mają równą głośność.
+- Czy na prawdziwym iPhonie gra działa płynnie w mieście i w kosmosie (w przeglądarce testowej około 60 klatek na sekundę we wszystkich światach).
+
+---
+
 ## Wersja 7 (20 października 2026)
 
 Zapis w repozytorium: `1ad8f06`
