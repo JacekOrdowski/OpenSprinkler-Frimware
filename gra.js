@@ -4,7 +4,7 @@
 'use strict';
 const HAS_DOM = typeof document !== 'undefined';
 const Z = globalThis.Zadania;
-const WERSJA = 14;         // numer wersji gry; opis zmian w ZMIANY.md
+const WERSJA = 15;         // numer wersji gry; opis zmian w ZMIANY.md
 
 /* ============================================================
    Helpers
@@ -669,11 +669,12 @@ const KEY = 'armia-liczb-v2';
 const NCLS = Z.KLASY.length;
 // stars and chest: the best result of every game; boost: upgrades from the last chest for the next game
 const save = { stars: new Array(NCLS * STAGES).fill(0), chest: new Array(NCLS * STAGES).fill(0), next: [0, 0], music: true, sfx: true, learn: true, tab: 0,
-  gold: 0, arm: { ...KIT0 }, boost: [], skin: 0, skins: [0], ver: 0 };
+  gold: 0, arm: { ...KIT0 }, boost: [], skin: 0, skins: [0], ver: 0, start: null, placed: 0 };
 try { Object.assign(save, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { /* storage blocked */ }
 if (!Array.isArray(save.stars) || save.stars.length !== NCLS * STAGES) save.stars = new Array(NCLS * STAGES).fill(0);
 if (!Array.isArray(save.chest) || save.chest.length !== NCLS * STAGES) save.chest = new Array(NCLS * STAGES).fill(0);
 if (!Array.isArray(save.next) || save.next.length !== 2) save.next = [0, 0];
+save.placed = clamp(Math.floor(+save.placed || 0), 0, NCLS - 1);     // levels opened by the selection or an exam
 save.gold = Math.max(0, Math.floor(+save.gold || 0));
 // upgrades bought before version 14 stay ("Siła ognia" is now "Szybkie strzelanie")
 const oldArm = save.arm || {};
@@ -694,9 +695,10 @@ save.music = save.music !== false;
 const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) { /* storage blocked */ } };
 const starsOf = (c, s) => save.stars[c * STAGES + s];
 const gamesDone = c => save.stars.slice(c * STAGES, (c + 1) * STAGES).filter(x => x > 0).length;
-// A level opens when every game of the level before it is passed (levels already played before version 14 stay open);
-// in a level the games open one after another. "Gra na próbę" can be played in every level.
-const levelOpen = c => c === 0 || gamesDone(c - 1) === STAGES || gamesDone(c) > 0;
+// A level opens when every game of the level before it is passed, or by the selection at the start or a passed exam
+// (levels already played before version 14 stay open); in a level the games open one after another.
+// "Gra na próbę" can be played in every level; in a closed one it is the exam.
+const levelOpen = c => c === 0 || c <= save.placed || gamesDone(c - 1) === STAGES || gamesDone(c) > 0;
 const unlocked = (c, s) => levelOpen(c) && (s === 0 || starsOf(c, s - 1) > 0 || starsOf(c, s) > 0);
 // the game after this one, or the first one still to pass
 function nextGame(c, s) {
@@ -706,6 +708,25 @@ function nextGame(c, s) {
 }
 // the bought upgrades together with the ones from the last chest
 const playKit = () => { const k = { ...save.arm }; for (const b of save.boost) k[b.k] = Math.min(maxLv(b.k), k[b.k] + b.n); return k; };
+// What a good player (who collects the expected share of all the gold) has earned before the first game of level c
+function expectedGold(c) {
+  let t = 0;
+  for (let cc = 0; cc < c; cc++) t += STAGES * EXPECT * (starGold(cc, 3) + chestGold(cc, 4) + answerGold(cc) * ANSWERS);
+  return t;
+}
+// everything the player owns: gold, bought upgrades and army colours
+const wealth = () => save.gold + SKILL_KEYS.reduce((t, k) => t + SKILLS[k].prices.slice(0, save.arm[k]).reduce((a, b) => a + b, 0), 0)
+  + save.skins.reduce((t, i) => t + (SKINS[i] ? SKINS[i].price : 0), 0);
+// A jump to level c (selection or exam): it and every level below open, and the gold is made up to what a good player
+// has at its start, so the enemies there are not too strong; who already has as much gets nothing
+function openUpTo(c) {
+  const add = Math.max(0, Math.round((expectedGold(c) - wealth()) / 10) * 10);
+  save.placed = Math.max(save.placed, c); save.gold += add;
+  let s = 0; while (s < STAGES - 1 && starsOf(c, s)) s++;
+  if (save.next[0] <= c) save.next = [c, s];
+  persist();
+  return add;
+}
 
 /* ============================================================
    Sound: music and effects are generated, no sound files
@@ -2357,7 +2378,8 @@ function render(g, dt) {
    Screens, HUD and controls
    ============================================================ */
 const $ = id => document.getElementById(id);
-const screens = { menu: $('scrMenu'), levels: $('scrLevels'), intro: $('scrIntro'), pause: $('scrPause'), result: $('scrResult'), lesson: $('scrLesson'), armory: $('scrArmory'), chest: $('scrChest') };
+const screens = { menu: $('scrMenu'), levels: $('scrLevels'), intro: $('scrIntro'), pause: $('scrPause'), result: $('scrResult'), lesson: $('scrLesson'), armory: $('scrArmory'), chest: $('scrChest'),
+  start: $('scrStart'), select: $('scrSelect') };
 const hud = $('hud'), probCard = $('probCard'), probText = $('probText'), probSub = $('probSub'), probTime = $('probTime'), probReward = $('probReward');
 const fight = $('fightPanel'), fqText = $('fqText'), fqSub = $('fqSub'), fqTime = $('fqTime'), ansL = $('ansL'), ansR = $('ansR');
 const ICON = {
@@ -2366,7 +2388,7 @@ const ICON = {
 };
 
 let game = createGame(save.next[0], save.next[1], true);
-let mode = 'menu';            // menu | levels | intro | play | pause | lesson | chest | result | armory
+let mode = 'menu';            // start | select | menu | levels | intro | play | pause | lesson | chest | result | armory
 let pending = null;           // the stage shown on the intro card, started by "Start"
 const ui = { shownGate: null, until: 0, lessonQ: null, music: null };
 const stageLabel = (c, s) => `Level ${c + 1} · gra ${s + 1}`;
@@ -2386,15 +2408,17 @@ function goMenu() {
 function openIntro(c, s, trial) {
   mode = 'intro'; pending = createGame(c, s, false, trial ? null : playKit(), trial, true);
   const info = pending.cfg.info, M = MONSTERS[c];
-  $('inWorld').textContent = trial ? `Level ${c + 1} · gra na próbę · ${WORLDS[pending.world].name}` : `${stageLabel(c, s)} z ${STAGES} · ${WORLDS[pending.world].name}`;
-  $('inTitle').textContent = trial ? `Zajrzyj do levelu ${c + 1}` : info.name;
+  const exam = trial && !levelOpen(c);        // the trial of a closed level is its exam
+  $('inWorld').textContent = trial ? `Level ${c + 1} · ${exam ? 'egzamin' : 'gra na próbę'} · ${WORLDS[pending.world].name}` : `${stageLabel(c, s)} z ${STAGES} · ${WORLDS[pending.world].name}`;
+  $('inTitle').textContent = exam ? `Egzamin do levelu ${c + 1}` : trial ? `Zajrzyj do levelu ${c + 1}` : info.name;
   $('inTopic').textContent = trial ? 'Po trochu ze wszystkich tematów tego levelu'
     : info.final ? 'Sprawdzian z całego levelu' : info.review ? 'Powtórka: wszystkie dotychczasowe tematy tego levelu' : `Stopień trudności ${info.tier} z 4`;
   $('inExample').innerHTML = richHTML(pending.gen().q);
   $('inMonster').textContent = M.name;
   showHp();
-  $('inHint').textContent = trial
-    ? 'Ulepszenia są ustawione jak u gracza w połowie tego levelu. Ta gra nie daje złota ani gwiazdek.'
+  $('inHint').textContent = exam
+    ? 'Wygraj bez ani jednego błędu, a ten level otworzy się razem z niższymi i dostaniesz złoto na start. Ulepszenia są ustawione jak u gracza w połowie levelu.'
+    : trial ? 'Ulepszenia są ustawione jak u gracza w połowie tego levelu. Ta gra nie daje złota ani gwiazdek.'
     : c === 0 && s === 0 ? 'Przesuwaj palcem w lewo i w prawo. Wbiegnij w bramkę z dobrym wynikiem.'
     : `${pending.cfg.gates} bramek. Każda daje tylu żołnierzy, ile pokazuje zielona liczba.`;
   const boost = !trial && save.boost.length;
@@ -2847,6 +2871,112 @@ function chestDone() {
     ch.loot.hidden = false; ch.go.textContent = 'Dalej'; ch.go.hidden = false;
   }, REDUCED ? 100 : 1250);
 }
+/* ============================================================
+   At the very first start: "Jak chcesz grać?" – from level 1, or the selection of mercenaries:
+   stages from level 1 up, 5 problems each (a mix of the level's topics); 4 right ones pass the stage
+   and the next one comes. The last passed stage is the level the player starts in (all below it open too),
+   with gold made up to what a good player has there. 4 of 5 because with two answers guessing is right half the time.
+   ============================================================ */
+const SEL_N = 5, SEL_PASS = 4;
+const RANKS = ['Rekrut', 'Szeregowy', 'Starszy szeregowy', 'Kapral', 'Plutonowy', 'Sierżant', 'Chorąży', 'Porucznik', 'Kapitan'];
+let sel = null;
+const se = { card: $('seCard'), eyebrow: $('seEyebrow'), title: $('seTitle'), sarge: $('seSarge'), say: $('seSay'), quiz: $('seQuiz'),
+  dots: $('seDots'), time: $('seTime'), q: $('seQ'), L: $('seL'), R: $('seR'), go: $('seGo'), back: $('seBack') };
+function openStart() { mode = 'start'; show('start'); }
+function chooseBegin() { save.start = 'od-poczatku'; persist(); goMenu(); }
+function openSelect() {
+  mode = 'select';
+  sel = { c: 0, n: 0, ok: 0, phase: 'intro', used: new Set(), passed: -1, t: 0, busy: false };
+  se.sarge.src = armySprite(save.skin, 0).toDataURL();
+  se.eyebrow.textContent = 'Selekcja najemników';
+  se.title.textContent = 'Baczność, rekrucie!';
+  se.say.textContent = `Pokaż, co umiesz. Każdy etap to ${SEL_N} zadań z jednej klasy, po trochu ze wszystkich tematów. ${SEL_PASS} dobre odpowiedzi i idziesz wyżej. Na końcu przydzielę cię do oddziału.`;
+  se.quiz.hidden = true; se.go.textContent = 'Do boju!'; se.go.hidden = false; se.back.textContent = 'Wróć'; se.back.hidden = false;
+  show('select'); se.card.scrollTop = 0;
+}
+function selStage() {
+  const S = sel;
+  S.phase = 'quiz'; S.n = 0; S.ok = 0;
+  S.think = stageConfig(S.c, TRIAL_S, true).think; S.gen = trialInfo(S.c).gen;
+  se.eyebrow.textContent = `Stopień: ${RANKS[S.passed + 1]}`;
+  se.title.textContent = `Etap ${S.c + 1}: level ${S.c + 1}`;
+  se.say.textContent = S.c ? `Zadania z ${S.c + 1}. klasy. Uwaga, będzie trudniej!` : 'Zadania z 1. klasy. Na rozgrzewkę!';
+  se.dots.innerHTML = Array.from({ length: SEL_N }, () => '<i></i>').join('');
+  se.quiz.hidden = false; se.go.hidden = true; se.back.hidden = true;
+  selNext();
+}
+function selNext() {
+  const S = sel;
+  let p = S.gen();
+  for (let i = 0; i < 30 && S.used.has(probKey(p)); i++) p = S.gen();
+  S.used.add(probKey(p)); S.cur = p; S.left = Math.random() < 0.5; S.busy = false; S.t = 0;
+  se.q.innerHTML = richHTML(p.q);
+  const len = plain(p.q).length;
+  se.q.classList.toggle('long', len > 13 && len <= 22); se.q.classList.toggle('xlong', len > 22);
+  se.L.innerHTML = richHTML(S.left ? p.a : p.w); se.R.innerHTML = richHTML(S.left ? p.w : p.a);
+  se.L.className = se.R.className = 'ans'; se.L.disabled = se.R.disabled = false;
+}
+// every problem has the thinking time of a game of its level
+function selTick(dt) {
+  const S = sel;
+  if (!S || S.phase !== 'quiz' || S.busy) return;
+  S.t += dt;
+  se.time.style.transform = `scaleX(${clamp(1 - S.t / S.think, 0, 1)})`;
+  if (S.t >= S.think) selPick(null);
+}
+// left: true / false = the button picked; null = the time ran out
+function selPick(left) {
+  const S = sel;
+  if (!S || S.phase !== 'quiz' || S.busy) return;
+  Snd.unlock();
+  S.busy = true; se.L.disabled = se.R.disabled = true;
+  const ok = left === S.left, dot = se.dots.children[S.n];
+  S.n++;
+  if (ok) { S.ok++; dot.className = 'good'; (left ? se.L : se.R).classList.add('right'); Snd.tick(); }
+  else { dot.className = 'bad'; if (left !== null) (left ? se.L : se.R).classList.add('picked'); (S.left ? se.L : se.R).classList.add('right'); Snd.bad(); }
+  setTimeout(() => { if (sel === S && mode === 'select') { if (S.n >= SEL_N) selStageEnd(); else selNext(); } }, ok ? 450 : 1100);
+}
+function selStageEnd() {
+  const S = sel, pass = S.ok >= SEL_PASS;
+  se.quiz.hidden = true;
+  if (!pass || S.c === NCLS - 1) { if (pass) S.passed = S.c; selFinish(); return; }
+  S.passed = S.c; S.phase = 'between';
+  Snd.good(); Snd.reinforce();
+  se.eyebrow.textContent = `Awans: ${RANKS[S.passed + 1]}`;
+  se.title.textContent = `Etap ${S.c + 1} zaliczony!`;
+  se.say.textContent = `${S.ok} z ${SEL_N} dobrze. Dobra robota! Następny etap: level ${S.c + 2}.`;
+  se.go.textContent = 'Dalej'; se.go.hidden = false;
+}
+function selFinish() {
+  const S = sel, c = Math.max(0, S.passed);
+  S.phase = 'done';
+  const add = openUpTo(c);
+  save.start = 'selekcja'; save.tab = c; persist();
+  S.add = add;
+  Snd.win(); confettiBurst();
+  se.eyebrow.textContent = `Stopień: ${RANKS[S.passed + 1]}`;
+  se.title.textContent = `Przydział: level ${c + 1}`;
+  se.say.textContent = (S.passed < 0
+    ? 'Zaczynasz od podstaw, od levelu 1. Do roboty, rekrucie!'
+    : `Melduję: zaliczone etapy do levelu ${S.passed + 1}. Przydział: level ${c + 1}.` + (c ? ' Niższe levele też masz otwarte.' : ''))
+    + (add ? ` Na start dostajesz ${group(add)} złota. Wydaj je w Zbrojowni, zanim ruszysz do boju!` : '')
+    + (c + 1 < NCLS ? ` Wyższy level otworzysz, przechodząc ten albo zdając egzamin.` : '');
+  se.go.textContent = add ? 'Do Zbrojowni' : 'Do oddziału!'; se.go.hidden = false;
+  se.back.textContent = 'Do menu'; se.back.hidden = !add;
+}
+function selGo() {
+  const S = sel;
+  if (!S) return;
+  if (S.phase === 'intro') selStage();
+  else if (S.phase === 'between') { S.c++; selStage(); }
+  else if (S.phase === 'done') { sel = null; goMenu(); if (S.add) openArmory('menu'); }
+}
+function selBack() {
+  const S = sel;
+  if (!S) return;
+  if (S.phase === 'intro') { sel = null; openStart(); }
+  else if (S.phase === 'done') { sel = null; goMenu(); }
+}
 function chestGo() {
   if (!chest) return;
   if (chest.phase === 'ready') chestStart();
@@ -2893,10 +3023,22 @@ function openArmory(from) {
   armoryBack = from; mode = 'armory'; buildArmory(); show('armory');
   screens.armory.querySelector('.card').scrollTop = 0;
 }
+// "Kup polecane": buys the cheapest upgrade again and again while the gold lasts (like the player the game is tuned for)
+function buyRecommended() {
+  const top = topLevel();
+  for (let n = 0; n < 200; n++) {
+    let best = null;
+    for (const k of SKILL_KEYS) if (canBuy(save.arm, k, top) && (!best || SKILLS[k].prices[save.arm[k]] < SKILLS[best].prices[save.arm[best]])) best = k;
+    if (!best || SKILLS[best].prices[save.arm[best]] > save.gold) break;
+    save.gold -= SKILLS[best].prices[save.arm[best]]; save.arm[best]++;
+  }
+  persist(); Snd.coin(); Snd.power(); buildArmory();
+}
 function buildArmory() {
   $('arGold').textContent = group(save.gold);
   const list = $('arList'); list.innerHTML = '';
   const top = topLevel();
+  $('arAuto').hidden = !SKILL_KEYS.some(k => canBuy(save.arm, k, top) && SKILLS[k].prices[save.arm[k]] <= save.gold);
   for (const key of SKILL_KEYS) {
     const A = SKILLS[key], L = save.arm[key], max = L >= maxLv(key), price = max ? 0 : A.prices[L];
     const closed = A.from > top + 1, needs = !closed && A.needs && !save.arm[A.needs];
@@ -2947,7 +3089,11 @@ function recordGame(g) {
   const ratio = g.answered ? g.correct / g.answered : 0;
   g.stars = won ? (ratio === 1 ? 3 : ratio >= 0.75 ? 2 : 1) : 0;
   g.pay = { stars: 0, answers: 0, chest: 0 };
-  if (g.trial) return;                                         // the keyhole game gives nothing and changes nothing
+  if (g.trial) {                                               // the keyhole game gives nothing and changes nothing,
+    g.exam = !levelOpen(c);                                    // but in a closed level it is the exam:
+    if (g.exam && won && g.stars === 3) { g.passed = true; g.pay.exam = openUpTo(c); }   // won without a mistake, the level opens
+    return;
+  }
   const before = save.stars[i];
   g.pay.stars = Math.max(0, starGold(c, g.stars) - starGold(c, before));   // only new stars pay
   g.pay.answers = g.gold;                                      // gold earned in the game is kept even after a loss
@@ -2961,16 +3107,18 @@ function showResult(g) {
   mode = 'result'; fight.hidden = true; $('stink').hidden = true;
   const won = g.state === 'won', c = g.cls, s = g.s, stars = g.stars, P = g.pay;
   const gain = P.stars + P.answers + P.chest;
-  $('reGold').textContent = g.trial ? '0 · gra na próbę' : `+${group(gain)} · masz ${group(save.gold)}`;
+  $('reGold').textContent = g.passed ? `+${group(P.exam)} · masz ${group(save.gold)}` : g.trial ? '0 · gra na próbę' : `+${group(gain)} · masz ${group(save.gold)}`;
   const why = [P.stars && `gwiazdki +${group(P.stars)}`, P.chest && `skrzynia +${group(P.chest)}`, P.answers && `odpowiedzi +${group(P.answers)}`].filter(Boolean);
   $('reGoldWhy').textContent = g.trial ? '' : why.join(' · ') + (won && !P.stars && stars ? (why.length ? ' · ' : '') + 'za te gwiazdki złoto już było' : '');
-  $('reLevel').textContent = g.trial ? `Level ${c + 1} · gra na próbę` : `${stageLabel(c, s)} · ${g.cfg.info.name}`;
-  $('reTitle').textContent = won ? 'Wygrana!' : g.lostBy === 'lesson' ? 'Chyba śmierdzi Ci spod pachy!' : 'Śmierdzi Ci spod pachy!!!';
+  $('reLevel').textContent = g.exam ? `Level ${c + 1} · egzamin` : g.trial ? `Level ${c + 1} · gra na próbę` : `${stageLabel(c, s)} · ${g.cfg.info.name}`;
+  $('reTitle').textContent = g.passed ? 'Egzamin zdany!' : g.exam && won ? 'Egzamin niezdany' : won ? 'Wygrana!' : g.lostBy === 'lesson' ? 'Chyba śmierdzi Ci spod pachy!' : 'Śmierdzi Ci spod pachy!!!';
   $('reStars').innerHTML = [0, 1, 2].map(i => ICON.star(i < stars)).join('');
   [...$('reStars').children].forEach((el, i) => el.classList.toggle('on', i < stars));
   $('reStars').hidden = !won;
-  $('reNote').textContent = g.trial
-    ? (levelOpen(c) ? `To była gra na próbę. Level ${c + 1} jest już otwarty: zagraj w niego naprawdę.` : `To była gra na próbę. Level ${c + 1} otworzy się, gdy przejdziesz wszystkie ${STAGES} gier levelu ${c}.`)
+  $('reNote').textContent = g.passed
+    ? `Level ${c + 1} jest otwarty, razem z niższymi.` + (P.exam ? ' Złoto na start wydaj w Zbrojowni.' : '')
+    : g.exam ? `Egzamin do levelu ${c + 1}: trzeba wygrać bez ani jednego błędu (3 gwiazdki). Spróbuj jeszcze raz! Albo przejdź wszystkie ${STAGES} gier levelu ${c}.`
+    : g.trial ? `To była gra na próbę. Level ${c + 1} jest już otwarty: zagraj w niego naprawdę.`
     : won ? (stars === 3 ? 'Wszystkie odpowiedzi dobre. Brawo!' : 'Bez pomyłek będą 3 gwiazdki i więcej złota.')
     : (g.fight ? 'W walce każda dobra odpowiedź to posiłki. Spróbuj jeszcze raz.' : 'Dobre odpowiedzi dają więcej żołnierzy. Spróbuj jeszcze raz.');
   $('reCorrect').textContent = `${g.correct} z ${g.answered}`;
@@ -2984,10 +3132,10 @@ function showResult(g) {
   }
   $('reReview').hidden = g.mistakes.length === 0;
   const nx = save.next, same = nx[0] === c && nx[1] === s;     // the same game again: everything is passed
-  $('btnNext').hidden = !won || g.trial;
-  $('btnNext').textContent = same ? 'Cała gra ukończona!' : nx[0] > c ? `Level ${nx[0] + 1}` : 'Następna gra';
-  $('btnNext').disabled = same;
-  $('btnResultArmory').hidden = !!g.trial;
+  $('btnNext').hidden = !won || (g.trial && !g.passed);
+  $('btnNext').textContent = g.passed ? `Graj w level ${c + 1}` : same ? 'Cała gra ukończona!' : nx[0] > c ? `Level ${nx[0] + 1}` : 'Następna gra';
+  $('btnNext').disabled = same && !g.passed;
+  $('btnResultArmory').hidden = g.trial && !g.passed;
   show('result');
 }
 function showResultAgain() {
@@ -3012,8 +3160,10 @@ function buildLevelList() {
   box.innerHTML = '';
   // a closed level says what opens it; every level has "gra na próbę"
   const top = document.createElement('div'); top.className = 'lv-top';
-  top.innerHTML = (levelOpen(c) ? '' : `<p class="lv-lock">${ICON.lock}<span>Level ${c + 1} otworzy się, gdy przejdziesz wszystkie ${STAGES} gier levelu ${c}. Masz ${gamesDone(c - 1)} z ${STAGES}.</span></p>`)
-    + `<button class="btn btn-light lv-trial" id="btnTrial">Zagraj na próbę</button><p class="lv-trial-why">Zajrzyj przez dziurkę od klucza: po trochu ze wszystkich tematów, ulepszenia ustawione jak w połowie levelu. Nie daje złota ani gwiazdek.</p>`;
+  top.innerHTML = levelOpen(c)
+    ? `<button class="btn btn-light lv-trial" id="btnTrial">Zagraj na próbę</button><p class="lv-trial-why">Zajrzyj przez dziurkę od klucza: po trochu ze wszystkich tematów, ulepszenia ustawione jak w połowie levelu. Nie daje złota ani gwiazdek.</p>`
+    : `<p class="lv-lock">${ICON.lock}<span>Level ${c + 1} otworzy się, gdy przejdziesz wszystkie ${STAGES} gier levelu ${c} (masz ${gamesDone(c - 1)} z ${STAGES}) albo zdasz egzamin.</span></p>`
+      + `<button class="btn btn-gold lv-trial" id="btnTrial">Egzamin</button><p class="lv-trial-why">Po trochu ze wszystkich tematów tego levelu. Wygraj bez ani jednego błędu, a level otworzy się razem z niższymi i dostaniesz złoto na start.</p>`;
   box.appendChild(top);
   top.querySelector('#btnTrial').addEventListener('click', () => { Snd.unlock(); Snd.tap(); openIntro(c, TRIAL_S, true); });
   K.tematy.forEach((tm, b) => {
@@ -3067,6 +3217,13 @@ tap('btnResultMenu', goMenu);
 tap('btnArmory', () => openArmory('menu'));
 tap('btnResultArmory', () => openArmory('result'));
 tap('btnArmoryBack', closeArmory);
+$('arAuto').addEventListener('click', () => { Snd.unlock(); buyRecommended(); });
+se.L.addEventListener('click', () => selPick(true));
+se.R.addEventListener('click', () => selPick(false));
+tap('seGo', selGo);
+tap('seBack', selBack);
+tap('stBegin', chooseBegin);
+tap('stSelect', openSelect);
 ch.L.addEventListener('click', () => chestPick(true));
 ch.R.addEventListener('click', () => chestPick(false));
 tap('chGo', chestGo);
@@ -3236,6 +3393,7 @@ window.addEventListener('keydown', e => {
   if (!$('scrShare').hidden) { if (e.key === 'Escape') closeShare(); return; }
   if (mode === 'lesson') { if ((L || R) && !e.repeat) lessonPick(L); return; }
   if (mode === 'chest') { if ((L || R) && !e.repeat) chestPick(L); return; }
+  if (mode === 'select') { if ((L || R) && !e.repeat) selPick(L); return; }
   if (L) keys.left = true; else if (R) keys.right = true;
   else if (e.key === 'Escape' || e.key === 'p') { if (mode === 'play') pauseGame(); else if (mode === 'pause') resumeGame(); }
 });
@@ -3275,6 +3433,7 @@ function frame(now) {
     calibFor(game, 3);
   } else if (mode === 'lesson') { lessonTick(dt); calibFor(game, 6); }
   else if (mode === 'chest') { chestTick(dt); step(game, dt); handleEvents(game); }
+  else if (mode === 'select') { selTick(dt); step(game, dt); handleEvents(game); }
   else if (mode !== 'pause') {
     if (mode === 'intro' && pending && pending.calib && calibFor(pending, 8)) showHp();
     step(game, dt);
@@ -3291,6 +3450,7 @@ function boot() {
     navigator.serviceWorker.register('sw.js').catch(() => {});   // lets the game open without internet
   }
   $('btnInstallHelp').hidden = !canOfferInstall();
+  if (!save.start && !save.stars.some(x => x > 0)) openStart();   // a new player: "Jak chcesz grać?"
   if (canOfferInstall()) openInstall();
   if (document.fonts && document.fonts.load) document.fonts.load(`40px ${FD}`, 'Aąćęńśźż').catch(() => {});
   requestAnimationFrame(t => { last = t; frame(t); });
