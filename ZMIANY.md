@@ -9,6 +9,8 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 
 ## Wersja 14 (20 października 2026)
 
+Zapis w repozytorium: `c28fc04`
+
 ### Dodane
 - **Zbrojownia jak w Archero: 13 ulepszeń na stałe**, kupowanych za złoto poziom po poziomie:
   żołnierze na start, szybkie strzelanie, broń na start, dodatkowa lufa (2 albo 3 pociski obok siebie),
