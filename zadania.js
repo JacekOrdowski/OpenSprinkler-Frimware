@@ -1,4 +1,4 @@
-/* Głupia Gra: zadania matematyczne dla klas 1–8 szkoły podstawowej.
+/* Śmierdzipacha: zadania matematyczne dla klas 1–8 szkoły podstawowej.
 
    Każda klasa ma 8 tematów. Każdy temat to 5 gier: 4 stopnie trudności i powtórka.
    Gra 40 każdej klasy to sprawdzian z całej klasy.

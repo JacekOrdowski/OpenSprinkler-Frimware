@@ -1,9 +1,26 @@
-# Historia wersji: Głupia Gra
+# Historia wersji: Śmierdzipacha
 
-Do wersji 4 gra nazywała się „Armia Liczb”.
+Wcześniejsze nazwy gry: „Armia Liczb” (wersje 1–4), „Głupia Gra” (wersja 5).
 
 Najnowsza wersja jest na górze. Numer wersji widać w grze, na dole menu.
 Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu w repozytorium (np. `64a4bae`).
+
+---
+
+## Wersja 6 (20 października 2026)
+
+### Zmienione
+- **Nowa nazwa gry: Śmierdzipacha.** Wybrały ją dzieci. Widać ją w menu, w tytule strony i pod ikoną na ekranie telefonu.
+- **Polskie litery w dużych napisach wyglądają tak samo jak reszta.** Czcionka gry nie ma liter ą, ć, ę, ń, ś, ź, ż,
+  dlatego wcześniej np. „ę” w „grę” miało inny kształt. Teraz te litery pochodzą z bardzo podobnej czcionki (Paytone One).
+  Bez tego pierwsza litera nazwy, „Ś”, wyglądałaby krzywo.
+- Zapisane gwiazdki i otwarte gry zostają.
+
+### Dodane
+- Nic.
+
+### Usunięte
+- Nic.
 
 ---
 

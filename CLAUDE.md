@@ -1,6 +1,7 @@
-# Głupia Gra: zasady pracy w tym repozytorium
+# Śmierdzipacha: zasady pracy w tym repozytorium
 
-Gra na telefon z matematyką dla klas 1–8 szkoły podstawowej (do wersji 4 nazywała się „Armia Liczb”).
+Gra na telefon z matematyką dla klas 1–8 szkoły podstawowej. Nazwę wybrały dzieci właściciela.
+Wcześniejsze nazwy: „Armia Liczb” (wersje 1–4), „Głupia Gra” (wersja 5).
 W grze klasy nazywają się levelami: level 1 to 1. klasa, level 8 to 8. klasa. Właściciel nie jest programistą:
 rozmawiaj po polsku, prosto, bez technicznego żargonu.
 

@@ -6,14 +6,16 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Głupia Gra">
+<meta name="apple-mobile-web-app-title" content="Śmierdzipacha">
 <meta name="theme-color" content="#1a5f9e">
 <link rel="apple-touch-icon" href="ikona-180.png">
 <link rel="icon" type="image/png" href="ikona-180.png">
 <link rel="manifest" href="manifest.webmanifest">
 <!-- ARTIFACT-START -->
-<title>Głupia Gra</title>
+<title>Śmierdzipacha</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@700;800;900&display=swap">
+<!-- Lilita One has no ą ć ę ń ś ź ż: only these letters come from the similar Paytone One -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Paytone+One&text=%C4%85%C4%87%C4%99%C5%84%C5%9B%C5%BA%C5%BC%C4%84%C4%86%C4%98%C5%83%C5%9A%C5%B9%C5%BB&display=swap">
 <style>
 :root {
   /* Layout: full-bleed bridge scene on a canvas; HUD pinned to the top safe area; fight answers pinned to the bottom; menus are cards over a dimmed scene */
@@ -27,7 +29,7 @@
   --red: #e5463b;
   --good: #1f9d55;
   --muted: #5f6b7d;
-  --display: "Lilita One", "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
+  --display: "Lilita One", "Paytone One", "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
   --body: "Nunito", "Avenir Next", "Segoe UI", system-ui, sans-serif;
   color-scheme: light;
 }
@@ -327,7 +329,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
 
 <div class="screen menu" id="scrMenu">
   <div class="menu-wrap">
-    <h1 class="logo"><span>Głupia</span><span class="gold">Gra</span></h1>
+    <h1 class="logo"><span>Śmierdzi</span><span class="gold">pacha</span></h1>
     <div class="logo-gate" aria-hidden="true"><span class="q">7 · 8 = ?</span><span>54</span><span>56</span></div>
     <p class="tagline">Matematyka ze szkoły podstawowej w biegu i w walce. Level 1 to 1. klasa, a level 8 to 8. klasa.</p>
     <button class="btn btn-gold" id="btnPlay">Graj</button>
@@ -343,7 +345,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
       <button class="btn btn-ghost" data-toggle="sfx" aria-pressed="true">Dźwięki: wł.</button>
     </div>
     <button class="btn btn-ghost" data-toggle="learn" aria-pressed="true">Nauka po błędzie: wł.</button>
-    <p class="version" id="menuVersion">Wersja 5</p>
+    <p class="version" id="menuVersion">Wersja 6</p>
   </div>
 </div>
 

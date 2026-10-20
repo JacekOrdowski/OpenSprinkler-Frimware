@@ -1,10 +1,10 @@
-/* Głupia Gra: silnik gry (ruch, walka, grafika, dźwięk, ekrany).
+/* Śmierdzipacha: silnik gry (ruch, walka, grafika, dźwięk, ekrany).
    Zadania matematyczne dla klas 1–8 są w pliku zadania.js. */
 (() => {
 'use strict';
 const HAS_DOM = typeof document !== 'undefined';
 const Z = globalThis.Zadania;
-const WERSJA = 5;          // numer wersji gry; opis zmian w ZMIANY.md
+const WERSJA = 6;          // numer wersji gry; opis zmian w ZMIANY.md
 
 /* ============================================================
    Helpers
@@ -515,7 +515,7 @@ function parseRich(s) {
    ============================================================ */
 const canvas = document.getElementById('scene');
 const ctx = canvas.getContext('2d');
-const FD = '"Lilita One", "Arial Rounded MT Bold", "Trebuchet MS", sans-serif';
+const FD = '"Lilita One", "Paytone One", "Arial Rounded MT Bold", "Trebuchet MS", sans-serif';
 const REDUCED = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 const PITCH = 36 * Math.PI / 180, SINP = Math.sin(PITCH), COSP = Math.cos(PITCH), TANP = Math.tan(PITCH);
 const CAM_H = 10, CAM_BACK = 8;
@@ -1488,7 +1488,7 @@ function frame(now) {
 function boot() {
   layout();
   goMenu();
-  if (document.fonts && document.fonts.load) document.fonts.load(`40px ${FD}`).catch(() => {});
+  if (document.fonts && document.fonts.load) document.fonts.load(`40px ${FD}`, 'Aąćęńśźż').catch(() => {});
   requestAnimationFrame(t => { last = t; frame(t); });
 }
 const hot = window.claude && window.claude.hot;
