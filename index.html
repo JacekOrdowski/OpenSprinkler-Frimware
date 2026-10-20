@@ -6,13 +6,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Armia Liczb">
+<meta name="apple-mobile-web-app-title" content="Głupia Gra">
 <meta name="theme-color" content="#1a5f9e">
 <link rel="apple-touch-icon" href="ikona-180.png">
 <link rel="icon" type="image/png" href="ikona-180.png">
 <link rel="manifest" href="manifest.webmanifest">
 <!-- ARTIFACT-START -->
-<title>Armia Liczb</title>
+<title>Głupia Gra</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@700;800;900&display=swap">
 <style>
 :root {
@@ -299,7 +299,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
     <button class="icon-btn" id="btnPause" aria-label="Pauza">
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="5" y="4" width="5" height="16" rx="1.5"/><rect x="14" y="4" width="5" height="16" rx="1.5"/></svg>
     </button>
-    <div class="hud-level"><span id="hudLevel">Klasa 1 · gra 1</span><div class="bar"><i id="hudProg"></i></div></div>
+    <div class="hud-level"><span id="hudLevel">Level 1 · gra 1</span><div class="bar"><i id="hudProg"></i></div></div>
     <div class="score" aria-label="Dobre odpowiedzi">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>
       <span id="hudScore">0</span>
@@ -327,11 +327,11 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
 
 <div class="screen menu" id="scrMenu">
   <div class="menu-wrap">
-    <h1 class="logo"><span>Armia</span><span class="gold">Liczb</span></h1>
+    <h1 class="logo"><span>Głupia</span><span class="gold">Gra</span></h1>
     <div class="logo-gate" aria-hidden="true"><span class="q">7 · 8 = ?</span><span>54</span><span>56</span></div>
-    <p class="tagline">Matematyka ze szkoły podstawowej, od 1. do 8. klasy, w biegu i w walce.</p>
+    <p class="tagline">Matematyka ze szkoły podstawowej w biegu i w walce. Level 1 to 1. klasa, a level 8 to 8. klasa.</p>
     <button class="btn btn-gold" id="btnPlay">Graj</button>
-    <button class="btn btn-light" id="btnLevels">Wybierz klasę i grę</button>
+    <button class="btn btn-light" id="btnLevels">Wybierz level i grę</button>
     <ol class="howto">
       <li>Przesuwaj palcem w lewo i w prawo.</li>
       <li><span>Wbiegnij w bramkę z dobrym wynikiem. Zielona liczba mówi, ilu żołnierzy dostaniesz, na przykład <b>+14</b>. Zła odpowiedź tyle samo zabiera.</span></li>
@@ -343,7 +343,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
       <button class="btn btn-ghost" data-toggle="sfx" aria-pressed="true">Dźwięki: wł.</button>
     </div>
     <button class="btn btn-ghost" data-toggle="learn" aria-pressed="true">Nauka po błędzie: wł.</button>
-    <p class="version" id="menuVersion">Wersja 4</p>
+    <p class="version" id="menuVersion">Wersja 5</p>
   </div>
 </div>
 
@@ -351,17 +351,17 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
   <div class="panel" role="dialog" aria-labelledby="lvClass">
     <div class="panel-head">
       <div class="panel-top">
-        <h2 id="lvClass">Klasa 1</h2>
+        <h2 id="lvClass">Level 1</h2>
         <button class="icon-btn" id="btnLevelsClose" aria-label="Zamknij">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
       </div>
       <p id="lvAbout">Liczby do 20</p>
-      <div class="tabs-label">Klasa</div>
+      <div class="tabs-label">Level</div>
       <div class="tabs" id="classTabs"></div>
     </div>
     <div class="panel-body">
-      <p class="legend"><i></i>Niebieskie pola to powtórki. Gra 40 to sprawdzian z całej klasy.</p>
+      <p class="legend"><i></i>Niebieskie pola to powtórki. Gra 40 to sprawdzian z całego levelu.</p>
       <div id="levelList" style="display:grid;gap:14px"></div>
     </div>
   </div>
@@ -369,7 +369,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
 
 <div class="screen" id="scrIntro" hidden>
   <div class="card" role="dialog" aria-labelledby="inTitle">
-    <div class="eyebrow" id="inWorld">Klasa 1 · gra 1 z 40</div>
+    <div class="eyebrow" id="inWorld">Level 1 · gra 1 z 40</div>
     <h2 id="inTitle">Dodawanie do 10</h2>
     <p class="topic" id="inTopic">Liczby do 20 · stopień 1 z 4</p>
     <div class="example"><small>Przykład</small><strong id="inExample">2 + 3 = ?</strong></div>
@@ -421,7 +421,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
 
 <div class="screen" id="scrResult" hidden>
   <div class="card" role="dialog" aria-labelledby="reTitle">
-    <div class="eyebrow" id="reLevel">Klasa 1 · gra 1</div>
+    <div class="eyebrow" id="reLevel">Level 1 · gra 1</div>
     <h2 id="reTitle">Wygrana!</h2>
     <div class="stars" id="reStars"></div>
     <p class="hint" id="reNote"></p>

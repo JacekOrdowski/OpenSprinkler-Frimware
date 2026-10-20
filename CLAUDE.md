@@ -1,6 +1,7 @@
-# Armia Liczb: zasady pracy w tym repozytorium
+# Głupia Gra: zasady pracy w tym repozytorium
 
-Gra na telefon z matematyką dla klas 1–8 szkoły podstawowej. Właściciel nie jest programistą:
+Gra na telefon z matematyką dla klas 1–8 szkoły podstawowej (do wersji 4 nazywała się „Armia Liczb”).
+W grze klasy nazywają się levelami: level 1 to 1. klasa, level 8 to 8. klasa. Właściciel nie jest programistą:
 rozmawiaj po polsku, prosto, bez technicznego żargonu.
 
 ## Każda nowa wersja gry

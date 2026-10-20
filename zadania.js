@@ -1,4 +1,4 @@
-/* Armia Liczb: zadania matematyczne dla klas 1–8 szkoły podstawowej.
+/* Głupia Gra: zadania matematyczne dla klas 1–8 szkoły podstawowej.
 
    Każda klasa ma 8 tematów. Każdy temat to 5 gier: 4 stopnie trudności i powtórka.
    Gra 40 każdej klasy to sprawdzian z całej klasy.
@@ -831,7 +831,7 @@ function stage(c, s) {
   if (pos < 4) { const tm = K.tematy[b]; return { name: tm.nazwa, tier: pos + 1, review: false, final: false, gen: () => make(tm, pos + 1), time: tm.czas }; }
   const final = s === 39, pool = K.tematy.slice(0, final ? K.tematy.length : b + 1);
   const gen = () => { const i = final ? randi(0, pool.length - 1) : (Math.random() < 0.4 ? b : randi(0, b)); return make(pool[i], randi(2, 4)); };
-  return { name: final ? `Sprawdzian: klasa ${c + 1}` : 'Powtórka', tier: 4, review: true, final, gen, time: Math.max(...pool.map(tm => tm.czas)) };
+  return { name: final ? `Sprawdzian: level ${c + 1}` : 'Powtórka', tier: 4, review: true, final, gen, time: Math.max(...pool.map(tm => tm.czas)) };
 }
 // Two practice problems of the same kind as p (same way of calculating, if possible)
 function practice(p, n = 2) {

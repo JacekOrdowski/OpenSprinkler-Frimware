@@ -1,7 +1,26 @@
-# Historia wersji: Armia Liczb
+# Historia wersji: Głupia Gra
+
+Do wersji 4 gra nazywała się „Armia Liczb”.
 
 Najnowsza wersja jest na górze. Numer wersji widać w grze, na dole menu.
 Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu w repozytorium (np. `64a4bae`).
+
+---
+
+## Wersja 5 (20 października 2026)
+
+### Zmienione
+- **Nowa nazwa gry: Głupia Gra** (wcześniej Armia Liczb). Widać ją w menu, w tytule strony i pod ikoną na ekranie telefonu.
+- **Klasy nazywają się teraz levelami.** Level 1 to 1. klasa, level 8 to 8. klasa. Zadania są takie same jak wcześniej.
+  Przy wyborze levelu widać, której klasie odpowiada, np. „1. klasa · Liczby do 20, porównywanie, pieniądze”.
+- Sprawdzian na końcu nazywa się „Sprawdzian: level 1” (i tak dalej).
+- Zapisane gwiazdki i otwarte gry zostają, bo zapis w telefonie się nie zmienił.
+
+### Dodane
+- Nic.
+
+### Usunięte
+- Nic.
 
 ---
 

@@ -1,6 +1,6 @@
-# Armia Liczb
+# Głupia Gra
 
-Gra na telefon z matematyką ze szkoły podstawowej, od 1. do 8. klasy.
+Gra na telefon z matematyką ze szkoły podstawowej, od 1. do 8. klasy. Do wersji 4 nazywała się „Armia Liczb”.
 
 Armia biegnie po moście. Przed każdą bramką pojawia się działanie, a na bramkach dwie odpowiedzi.
 Wbiegasz w bramkę z dobrym wynikiem i dostajesz tylu żołnierzy, ile pokazuje zielona liczba (na przykład +14).
@@ -26,12 +26,13 @@ Siła potwora jest liczona osobno dla każdej gry. Według symulacji (tysiące r
 - wszystkie odpowiedzi w walce dobre: wygrana zawsze, niezależnie od tego, jak szybko się odpowiada.
   Cios potwora nigdy nie zabiera więcej żołnierzy, niż daje dobra odpowiedź.
 
-## Klasy i gry
+## Levele i gry
 
-8 klas, w każdej 40 gier (razem 320). Każda klasa ma 8 tematów. Każdy temat to 4 gry o rosnącej trudności i jedna powtórka.
-Gra 40 to sprawdzian z całej klasy. Pierwsza gra każdej klasy jest od razu otwarta, następne otwierają się po wygranej.
+8 leveli, a każdy level to jedna klasa: level 1 to 1. klasa, level 8 to 8. klasa.
+W każdym levelu jest 40 gier (razem 320) i 8 tematów. Każdy temat to 4 gry o rosnącej trudności i jedna powtórka.
+Gra 40 to sprawdzian z całego levelu. Pierwsza gra każdego levelu jest od razu otwarta, następne otwierają się po wygranej.
 
-| Klasa | Tematy |
+| Level (klasa) | Tematy |
 |---|---|
 | 1 | dodawanie i odejmowanie do 10 i do 20, z przekroczeniem progu, porównywanie liczb, okienka, pieniądze do 20 zł |
 | 2 | dziesiątki, dodawanie i odejmowanie do 100, mnożenie i dzielenie do 30, okienka, pieniądze i miary, liczby rzymskie do XII |

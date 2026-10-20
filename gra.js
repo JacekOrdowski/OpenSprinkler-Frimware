@@ -1,10 +1,10 @@
-/* Armia Liczb: silnik gry (ruch, walka, grafika, dźwięk, ekrany).
+/* Głupia Gra: silnik gry (ruch, walka, grafika, dźwięk, ekrany).
    Zadania matematyczne dla klas 1–8 są w pliku zadania.js. */
 (() => {
 'use strict';
 const HAS_DOM = typeof document !== 'undefined';
 const Z = globalThis.Zadania;
-const WERSJA = 4;          // numer wersji gry; opis zmian w ZMIANY.md
+const WERSJA = 5;          // numer wersji gry; opis zmian w ZMIANY.md
 
 /* ============================================================
    Helpers
@@ -1061,7 +1061,7 @@ let game = createGame(0, 0, true);
 let mode = 'menu';            // menu | levels | intro | play | pause | lesson | result
 let pending = null;           // the stage shown on the intro card, started by "Start"
 const ui = { shownGate: null, until: 0, lessonQ: null };
-const stageLabel = (c, s) => `Klasa ${c + 1} · gra ${s + 1}`;
+const stageLabel = (c, s) => `Level ${c + 1} · gra ${s + 1}`;
 const solved = p => p.sol || (p.q.includes('?') ? p.q.replace('?', p.a) : /^x [<>≤≥]/.test(p.a) ? `${p.q}, więc ${p.a}` : `${p.q}, ${p.ask || 'x'} = ${p.a}`);
 
 function show(name) { for (const k in screens) screens[k].hidden = k !== name; }
@@ -1077,7 +1077,7 @@ function openIntro(c, s) {
   const info = pending.cfg.info, M = MONSTERS[c];
   $('inWorld').textContent = `${stageLabel(c, s)} z ${STAGES}`;
   $('inTitle').textContent = info.name;
-  $('inTopic').textContent = info.final ? 'Sprawdzian z całej klasy' : info.review ? 'Powtórka: wszystkie dotychczasowe tematy tej klasy' : `Stopień trudności ${info.tier} z 4`;
+  $('inTopic').textContent = info.final ? 'Sprawdzian z całego levelu' : info.review ? 'Powtórka: wszystkie dotychczasowe tematy tego levelu' : `Stopień trudności ${info.tier} z 4`;
   $('inExample').innerHTML = richHTML(pending.gen().q);
   $('inMonster').textContent = M.name;
   $('inHp').textContent = group(pending.monster.max);
@@ -1356,7 +1356,7 @@ function showResult(g) {
   $('reReview').hidden = g.mistakes.length === 0;
   const lastOne = c === NCLS - 1 && s === STAGES - 1;
   $('btnNext').hidden = !won;
-  $('btnNext').textContent = lastOne ? 'Cała gra ukończona!' : s === STAGES - 1 ? `Klasa ${c + 2}` : 'Następna gra';
+  $('btnNext').textContent = lastOne ? 'Cała gra ukończona!' : s === STAGES - 1 ? `Level ${c + 2}` : 'Następna gra';
   $('btnNext').disabled = lastOne;
   show('result');
 }
@@ -1367,14 +1367,14 @@ function buildLevelList() {
   Z.KLASY.forEach((K, c) => {
     const b = document.createElement('button');
     b.className = 'tab' + (c === save.tab ? ' on' : ''); b.textContent = String(c + 1);
-    b.setAttribute('aria-label', `Klasa ${c + 1}`); b.setAttribute('aria-pressed', String(c === save.tab));
+    b.setAttribute('aria-label', `Level ${c + 1}`); b.setAttribute('aria-pressed', String(c === save.tab));
     b.addEventListener('click', () => { Snd.unlock(); Snd.tap(); save.tab = c; persist(); buildLevelList(); });
     tabs.appendChild(b);
   });
   const c = save.tab, K = Z.KLASY[c];
   const done = save.stars.slice(c * STAGES, c * STAGES + STAGES).filter(x => x > 0).length;
-  $('lvClass').textContent = `Klasa ${c + 1}`;
-  $('lvAbout').textContent = `${K.opis} · ukończone: ${done} z ${STAGES}`;
+  $('lvClass').textContent = `Level ${c + 1}`;
+  $('lvAbout').textContent = `${c + 1}. klasa · ${K.opis} · ukończone: ${done} z ${STAGES}`;
   box.innerHTML = '';
   K.tematy.forEach((tm, b) => {
     const sec = document.createElement('section'); sec.className = 'topic-row';
