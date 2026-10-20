@@ -374,7 +374,7 @@ if (!HAS_DOM) { globalThis.ArmiaLiczb = { STAGES, stageConfig, createGame, step,
    ============================================================ */
 const KEY = 'armia-liczb-v2';
 const NCLS = Z.KLASY.length;
-const save = { stars: new Array(NCLS * STAGES).fill(0), next: [0, 0], music: true, sfx: true, learn: true, tab: 0, gold: 0, arm: { ...NO_ARM }, skin: 0, skins: [0], musicStyle: 'auto' };
+const save = { stars: new Array(NCLS * STAGES).fill(0), next: [0, 0], music: true, sfx: true, learn: true, tab: 0, gold: 0, arm: { ...NO_ARM }, skin: 0, skins: [0] };
 try { Object.assign(save, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { /* storage blocked */ }
 if (!Array.isArray(save.stars) || save.stars.length !== NCLS * STAGES) save.stars = new Array(NCLS * STAGES).fill(0);
 if (!Array.isArray(save.next) || save.next.length !== 2) save.next = [0, 0];
@@ -382,10 +382,10 @@ save.gold = Math.max(0, Math.floor(+save.gold || 0));
 save.arm = Object.fromEntries(Object.keys(NO_ARM).map(k => [k, clamp(Math.floor(+(save.arm || {})[k] || 0), 0, ARMORY[k].prices.length)]));
 if (!Array.isArray(save.skins)) save.skins = [0];
 if (!save.skins.includes(save.skin)) save.skin = 0;
-const MUSIC_STYLES = { auto: 'Auto', wesola: 'Wesoła', przygoda: 'Przygoda', chill: 'Chill', elektro: 'Elektro', retro: 'Retro', off: 'wył.' };
-if (!(save.musicStyle in MUSIC_STYLES)) save.musicStyle = 'auto';
-if (save.music === false) save.musicStyle = 'off';
-save.music = save.musicStyle !== 'off';
+// music is no longer chosen by the player: every game draws one of the styles (an old "off" setting is kept)
+if (save.musicStyle === 'off') save.music = false;
+delete save.musicStyle;
+save.music = save.music !== false;
 const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) { /* storage blocked */ } };
 const starsOf = (c, s) => save.stars[c * STAGES + s];
 const unlocked = (c, s) => s === 0 || starsOf(c, s - 1) > 0 || starsOf(c, s) > 0;
@@ -530,8 +530,10 @@ const Snd = (() => {
 
   /* ---------- recorded music: loops in muzyka/, made by narzedzia/muzyka.py with real instrument sounds ---------- */
   // where the loop starts and ends in every file (printed by narzedzia/muzyka.py)
-  const MUSIC_LOOPS = { 'wesola-bieg': [0.5, 33.603424], 'wesola-walka': [0.5, 29.590884], 'przygoda-bieg': [0.5, 36.055578], 'przygoda-walka': [0.5, 27.928549],
-    'chill-bieg': [0.5, 46.214308], 'chill-walka': [0.5, 41.351066], 'elektro-bieg': [0.5, 33.042404], 'elektro-walka': [0.5, 29.156712] };
+  const MUSIC_LOOPS = { 'wesola-bieg': [0.5, 33.603424], 'wesola-walka': [0.5, 29.590884],
+    'chill-bieg': [0.5, 46.214308], 'chill-walka': [0.5, 41.351066], 'elektro-bieg': [0.5, 33.042404], 'elektro-walka': [0.5, 29.156712],
+    'turbo-bieg': [0.5, 30.5], 'turbo-walka': [0.5, 27.928549], 'neon-bieg': [0.5, 28.735261], 'neon-walka': [0.5, 26.1],
+    'skok-bieg': [0.5, 27.928549], 'skok-walka': [0.5, 26.1] };
   const buffers = {}, loading = {}, failed = {};
   let cur = null, want = null;
   function loadLoop(file) {
@@ -559,7 +561,7 @@ const Snd = (() => {
     gn.gain.cancelScheduledValues(t); gn.gain.setValueAtTime(Math.max(0.0001, gn.gain.value), t); gn.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
     src.stop(t + 0.65); cur = null;
   }
-  // name: menu, run or fight; style: wesola, przygoda, chill, elektro, retro (the old tunes made in code) or null (off)
+  // name: menu, run or fight; style: wesola, chill, elektro, turbo, neon, skok, retro (the old tunes made in code) or null (off)
   function play(name, style, retry) {
     want = { name, style };
     if (!style) { track = null; stopLoop(); return; }
@@ -1781,7 +1783,7 @@ function startStage(g) {
   view.topY = $('hudTop').getBoundingClientRect().bottom + 56;
   layout();
   view.camX = 0;
-  playMusic('run', g.cls); Snd.duck(false);
+  drawMusicStyle(); playMusic('run', g.cls); Snd.duck(false);
 }
 const restart = g => startStage(createGame(g.cls, g.s, false, save.arm));
 function pauseGame() { if (mode !== 'play') return; mode = 'pause'; show('pause'); Snd.duck(true); }
@@ -2144,30 +2146,20 @@ function buildLevelList() {
     box.appendChild(sec);
   });
 }
-// Music style: Auto picks by age (cheerful for levels 1–3, adventure for 4–6, electro for 7–8); the player may pick any
-const styleFor = cls => { const m = save.musicStyle; return m === 'off' ? null : m !== 'auto' ? m : cls < 3 ? 'wesola' : cls < 6 ? 'przygoda' : 'elektro'; };
-function playMusic(track, cls) { ui.music = { track, cls }; Snd.play(track, styleFor(cls)); }
+// Music: every game draws a style at random, never the same twice in a row; the fight keeps the style of its game
+const MUSIC_POOL = ['elektro', 'retro', 'wesola', 'chill', 'turbo', 'neon', 'skok'];
+let musicStyle = MUSIC_POOL[Math.floor(Math.random() * MUSIC_POOL.length)];
+function drawMusicStyle() { const rest = MUSIC_POOL.filter(m => m !== musicStyle); musicStyle = rest[Math.floor(Math.random() * rest.length)]; }
+function playMusic(track, cls) { ui.music = { track, cls }; Snd.play(track, save.music ? musicStyle : null); }
 function updateSoundBtns() {
-  for (const [key, label] of [['sfx', 'Dźwięki'], ['learn', 'Nauka po błędzie']]) {
+  for (const [key, label] of [['music', 'Muzyka'], ['sfx', 'Dźwięki'], ['learn', 'Nauka po błędzie']]) {
     for (const b of document.querySelectorAll(`[data-toggle="${key}"]`)) { b.textContent = `${label}: ${save[key] ? 'wł.' : 'wył.'}`; b.setAttribute('aria-pressed', String(save[key])); }
-  }
-  for (const b of document.querySelectorAll('[data-toggle="music"]')) {
-    b.textContent = `Muzyka: ${MUSIC_STYLES[save.musicStyle]}`;
-    b.setAttribute('aria-label', `Muzyka: ${MUSIC_STYLES[save.musicStyle]}. Stuknij, żeby zmienić styl.`);
   }
 }
 function toggle(key) {
-  if (key === 'music') {      // the music button goes through the styles
-    const keys = Object.keys(MUSIC_STYLES);
-    save.musicStyle = keys[(keys.indexOf(save.musicStyle) + 1) % keys.length];
-    save.music = save.musicStyle !== 'off';
-    persist(); updateSoundBtns();
-    Snd.unlock(); Snd.setMusic(save.music);
-    if (ui.music) playMusic(ui.music.track, ui.music.cls);
-    return;
-  }
   save[key] = !save[key]; persist(); updateSoundBtns();
   if (save[key] && key !== 'learn') Snd.unlock();
+  if (key === 'music') { Snd.setMusic(save.music); if (ui.music) playMusic(ui.music.track, ui.music.cls); }
 }
 
 const tap = (id, fn) => $(id).addEventListener('click', () => { Snd.unlock(); Snd.tap(); fn(); });

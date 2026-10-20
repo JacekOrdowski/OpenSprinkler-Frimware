@@ -59,10 +59,18 @@ class Song:
         self.rng = random.Random(seed)
         self.tempo = mido.bpm2tempo(bpm)
 
-    def part(self, program, channel, vol=100, pan=64, rev=40):
+    def part(self, program, channel, vol=100, pan=64, rev=40, pump=False, detune=0, lfo=None):
+        """pump: the part ducks on every beat like in dance music; detune: in cents, for a wider sound;
+        lfo: (beats per wobble for every bar, lowest volume 0-127) for a wobbling bass"""
         ev = []
-        self.tracks.append((program, channel, vol, pan, rev, ev))
+        self.tracks.append((program, channel, vol, pan, rev, ev, {'pump': pump, 'detune': detune, 'lfo': lfo}))
         return ev
+
+    @staticmethod
+    def keep(ev, bars):
+        """keep only the notes in the given bars (to leave a part out of a section)"""
+        bars = set(bars)
+        ev[:] = [e for e in ev if e[0] // (4 * TPB) in bars]
 
     def vel(self, v):
         return max(1, min(127, v + self.rng.randint(-5, 5)))
@@ -130,9 +138,18 @@ class Song:
                 if octave_up:
                     self.note(ev, bar, beat, dur / 4 * 0.95, n + 12, v - 30)
 
-    def drums(self, ev, grid, fills=True, crash=True, swing=0.0, v=90):
-        """grid: {drum note: 16-step string}, x = hit, X = accent, o = soft"""
+    def drums(self, ev, grid, fills=True, crash=True, swing=0.0, v=90, roll=False):
+        """grid: {drum note: 16-step string}, x = hit, X = accent, o = soft; roll: snare roll before the second half"""
         for b in range(BARS):
+            if roll and b == 7:
+                for i in range(16):
+                    self.note(ev, b, i / 4, 0.2, 38, v - 40 + i * 3)
+                for n, pat in grid.items():
+                    if n not in (38, 39, 40):
+                        for i, ch in enumerate(pat[:8]):
+                            if ch != '.':
+                                self.note(ev, b, i / 4, 0.2, n, {'x': v, 'X': v + 18, 'o': v - 30}[ch])
+                continue
             last = fills and b in (7, 15)
             for n, pat in grid.items():
                 for i, ch in enumerate(pat):
@@ -147,29 +164,46 @@ class Song:
                 self.note(ev, b, 0, 1, 49, v + 5)
 
     # ---------- output ----------
-    def midi(self, cycles=3):
+    def midi(self, cycles=3, pump=None):
+        """pump=None: all parts; True or False: only the parts that duck on the beat, or only the others"""
+        import math
         mid = mido.MidiFile(ticks_per_beat=TPB)
         meta = mido.MidiTrack()
         mid.tracks.append(meta)
         meta.append(mido.MetaMessage('set_tempo', tempo=self.tempo, time=0))
         cyc = BARS * 4 * TPB
-        for program, ch, vol, pan, rev, ev in self.tracks:
+        for program, ch, vol, pan, rev, ev, opt in self.tracks:
+            if pump is not None and opt['pump'] != pump:
+                continue
             t = mido.MidiTrack()
             mid.tracks.append(t)
             if ch != 9:
                 t.append(mido.Message('program_change', program=program, channel=ch, time=0))
             for cc, val in ((7, vol), (10, pan), (91, rev), (93, 10)):
                 t.append(mido.Message('control_change', control=cc, value=val, channel=ch, time=0))
+            if opt['detune']:
+                t.append(mido.Message('pitchwheel', pitch=int(opt['detune'] / 200 * 8191), channel=ch, time=0))
             msgs = []
             for c in range(cycles):
                 for start, dur, n, v in ev:
                     s = start + c * cyc
-                    msgs.append((s, 1, n, v))
+                    msgs.append((s, 2, n, v))
                     msgs.append((s + dur, 0, n, 0))
+            if opt['lfo']:
+                rates, low = opt['lfo']
+                step = TPB // 32
+                for c in range(cycles):
+                    for k in range(0, cyc, step):
+                        per = rates[(k // (4 * TPB)) % len(rates)] * TPB
+                        ph = (k % per) / per
+                        msgs.append((k + c * cyc, 1, 11, int(low + (127 - low) * (0.5 - 0.5 * math.cos(2 * math.pi * ph)))))
             msgs.sort(key=lambda m: (m[0], m[1]))
             now = 0
-            for tm, on, n, v in msgs:
-                t.append(mido.Message('note_on' if on else 'note_off', note=n, velocity=v, channel=ch, time=tm - now))
+            for tm, kind, n, v in msgs:
+                if kind == 1:
+                    t.append(mido.Message('control_change', control=n, value=v, channel=ch, time=tm - now))
+                else:
+                    t.append(mido.Message('note_on' if kind == 2 else 'note_off', note=n, velocity=v, channel=ch, time=tm - now))
                 now = tm
         return mid
 
@@ -201,33 +235,6 @@ def wesola_walka():
         [(0, 4, 4), (4, 5, 4), (8, 4, 2), (10, 2, 2), (12, 0, 4), (16, 1, 4), (20, 2, 4), (24, 4, 8)]], 76, 86)
     s.melody(s.part(73, 4, 80, 50, 45), [[(0, 0, 4), (8, 2, 8)], [(0, 4, 8), (16, 2, 8)]], 72, 62)                           # flute
     s.drums(s.part(0, 9, 95, 64, 20), {36: 'x...x...x...x...', 38: '....x.......x...', 42: 'x.x.x.x.x.x.x.x.', 47: '..............o.'}, v=90)
-    return s
-
-
-def przygoda_bieg():
-    s = Song('przygoda-bieg', 108, 'D', 'minor', ['Dm', 'Bb', 'F', 'C', 'Dm', 'Bb', 'C', 'A', 'Bb', 'C', 'Dm', 'Dm', 'Bb', 'C', 'A', 'A'], 21)
-    s.pad(s.part(48, 0, 90, 64, 70), 62, 56)                                   # strings
-    s.arp(s.part(46, 1, 85, 40, 55), 0.5, 67, 2, 58, 'up')                     # harp
-    s.bass(s.part(42, 2, 95, 64, 50), [(0, 'R', 1.9), (2, '5', 1.9)], 36, 76)  # cello
-    s.bass(s.part(47, 3, 100, 64, 50), [(0, 'R', 0.9), (2.5, 'R', 0.4), (3, '5', 0.9)], 36, 92)   # timpani
-    s.melody(s.part(60, 4, 105, 70, 60), [
-        [(0, 0, 6), (6, 1, 2), (8, 2, 4), (12, 4, 4), (16, 3, 6), (22, 2, 2), (24, 1, 8)],
-        [(0, 4, 4), (4, 5, 4), (8, 6, 4), (12, 7, 4), (16, 6, 6), (22, 5, 2), (24, 4, 8)]], 67, 88)   # french horn
-    s.melody(s.part(73, 5, 70, 40, 60), [[(8, 4, 8), (24, 2, 8)], [(0, 7, 8), (16, 6, 16)]], 79, 54)  # flute, high and light
-    s.drums(s.part(0, 9, 80, 64, 50), {36: 'x.......x.....o.', 38: '........o.......', 51: 'o...o...o...o...'}, v=82)
-    return s
-
-
-def przygoda_walka():
-    s = Song('przygoda-walka', 140, 'D', 'minor', ['Dm', 'C', 'Bb', 'A', 'Dm', 'C', 'Bb', 'A', 'Gm', 'Dm', 'A', 'Dm', 'Gm', 'Bb', 'A', 'A'], 22)
-    s.bass(s.part(49, 0, 95, 50, 50), [(i / 2, w, 0.4) for i, w in enumerate('R5858R85')], 50, 74)   # staccato strings ostinato
-    s.stabs(s.part(61, 1, 90, 78, 55), [(0, 0.6), (1.5, 0.4), (2.5, 0.4)], 62, 74)                   # brass stabs
-    s.bass(s.part(58, 2, 100, 64, 40), [(0, 'R', 0.9), (1, 'R', 0.9), (2, '5', 0.9), (3, 'R', 0.9)], 36, 84)   # tuba
-    s.bass(s.part(116, 3, 105, 64, 40), [(0, 'R', 0.5), (1.5, 'R', 0.5), (2, 'R', 0.5), (3, 'R', 0.3), (3.5, 'R', 0.3)], 36, 100)   # taiko
-    s.melody(s.part(56, 4, 105, 64, 55), [
-        [(0, 0, 3), (3, 0, 1), (4, 2, 4), (8, 4, 4), (12, 3, 2), (14, 2, 2), (16, 1, 4), (20, 0, 4), (24, -1, 8)],
-        [(0, 4, 2), (2, 4, 2), (4, 5, 4), (8, 7, 6), (14, 6, 2), (16, 5, 4), (20, 4, 4), (24, 2, 8)]], 72, 92)   # trumpet
-    s.drums(s.part(0, 9, 90, 64, 45), {36: 'x.....x.x.......', 38: '....x.......x...', 42: 'o.o.o.o.o.o.o.o.'}, v=88)
     return s
 
 
@@ -279,7 +286,103 @@ def elektro_walka():
     return s
 
 
-SONGS = [wesola_bieg, wesola_walka, przygoda_bieg, przygoda_walka, chill_bieg, chill_walka, elektro_bieg, elektro_walka]
+# ---------- fast dance tunes in the spirit of Geometry Dash: pumping chords, sharp synths, a drum roll before the drop ----------
+HOUSE = {36: 'x...x...x...x...', 39: '....x.......x...', 46: '..x...x...x...x.', 42: 'o.o.o.o.o.o.o.o.'}
+HALF = {36: 'x.........x.....', 38: '........X.......', 39: '........x.......', 46: '..o...o...o...o.', 42: 'oooooooooooooooo'}
+
+
+def turbo_bieg():
+    """electro house"""
+    s = Song('turbo-bieg', 128, 'G', 'major', ['G', 'D', 'Em', 'C', 'G', 'D', 'Em', 'C', 'C', 'D', 'Em', 'Em', 'C', 'D', 'G', 'D'], 51)
+    s.pad(s.part(81, 0, 72, 40, 45, pump=True, detune=12), 62, 58)            # two slightly detuned saw chords, pumping
+    s.pad(s.part(81, 1, 72, 88, 45, pump=True, detune=-12), 62, 58)
+    s.bass(s.part(39, 2, 100, 64, 15), [(0.5, 'R', 0.35), (1.5, 'R', 0.35), (2.5, 'R', 0.35), (3.5, '8', 0.35)], 36, 92)   # bass on the off-beats
+    arp = s.part(80, 3, 62, 96, 35)
+    s.arp(arp, 0.25, 74, 2, 50, 'up')
+    s.keep(arp, range(8))
+    s.melody(s.part(80, 4, 92, 54, 40), [
+        [(0, 4, 2), (3, 4, 1), (4, 2, 2), (6, 4, 2), (8, 5, 2), (10, 4, 2), (12, 2, 2), (14, 1, 2), (16, 0, 2), (19, 0, 1), (20, 1, 2), (22, 2, 2), (24, 4, 4), (28, 2, 4)],
+        []], 74, 82)                                                          # square lead in the first half
+    s.melody(s.part(81, 5, 100, 70, 45), [[], [
+        (0, 0, 2), (2, 2, 2), (4, 4, 3), (7, 5, 1), (8, 4, 2), (10, 2, 2), (12, 4, 2), (14, 7, 2), (16, 6, 3), (19, 5, 1), (20, 4, 2), (22, 2, 2), (24, 4, 4), (28, 5, 2), (30, 4, 2)]],
+        74, 88, octave_up=True)                                               # saw lead with its octave: the drop
+    s.drums(s.part(0, 9, 100, 64, 20), HOUSE, fills=True, roll=True, v=92)
+    return s
+
+
+def turbo_walka():
+    s = Song('turbo-walka', 140, 'E', 'minor', ['Em', 'C', 'G', 'D', 'Em', 'C', 'G', 'B', 'C', 'D', 'Em', 'Em', 'C', 'D', 'B', 'B'], 52)
+    s.pad(s.part(81, 0, 70, 40, 40, pump=True, detune=14), 62, 58)
+    s.pad(s.part(81, 1, 70, 88, 40, pump=True, detune=-14), 62, 58)
+    s.bass(s.part(39, 2, 100, 64, 10), [(i / 4, 'R' if i % 8 != 6 else '8', 0.2) for i in range(16)], 36, 90)   # rolling sixteenths
+    s.arp(s.part(80, 3, 58, 96, 30), 0.25, 76, 2, 46)
+    s.melody(s.part(81, 4, 100, 60, 40), [
+        [(0, 0, 2), (2, 0, 2), (4, 2, 2), (6, 4, 2), (8, 3, 2), (10, 2, 2), (12, 0, 2), (14, 2, 2), (16, 4, 2), (18, 4, 2), (20, 5, 2), (22, 4, 2), (24, 2, 4), (28, 1, 4)],
+        [(0, 4, 2), (2, 7, 2), (4, 6, 2), (6, 4, 2), (8, 5, 4), (12, 4, 2), (14, 2, 2), (16, 4, 2), (18, 2, 2), (20, 0, 2), (22, 2, 2), (24, 4, 6), (30, 5, 2)]],
+        76, 90, octave_up=True)
+    s.drums(s.part(0, 9, 100, 64, 20), {**HOUSE, 38: '....x.......x...'}, roll=True, v=94)
+    return s
+
+
+def neon_bieg():
+    """chiptune dance: square-wave melodies and quick arpeggios"""
+    s = Song('neon-bieg', 136, 'A', 'minor', ['Am', 'F', 'C', 'G', 'Am', 'F', 'G', 'E', 'F', 'G', 'Am', 'Am', 'F', 'G', 'E', 'E'], 61)
+    s.pad(s.part(90, 0, 60, 64, 50, pump=True), 60, 50)                       # soft synth chords, pumping
+    s.bass(s.part(38, 1, 100, 64, 10), [(i / 2, 'R' if i % 2 == 0 else '8', 0.4) for i in range(8)], 33, 90)
+    s.arp(s.part(80, 2, 66, 30, 30), 0.25, 79, 3, 52, 'up')                   # fast square arpeggio
+    s.melody(s.part(80, 3, 100, 80, 35), [
+        [(0, 0, 1), (1, 2, 1), (2, 4, 2), (4, 2, 2), (6, 4, 2), (8, 5, 2), (10, 4, 1), (11, 2, 1), (12, 4, 4), (16, 0, 1), (17, 2, 1), (18, 4, 2), (20, 7, 2), (22, 6, 2), (24, 4, 4), (28, 2, 4)],
+        [(0, 7, 2), (2, 6, 2), (4, 7, 2), (6, 4, 2), (8, 5, 2), (10, 4, 2), (12, 2, 2), (14, 4, 2), (16, 0, 2), (18, 2, 2), (20, 4, 2), (22, 5, 2), (24, 4, 8)]],
+        76, 88)
+    s.melody(s.part(98, 4, 60, 40, 60), [[(0, 7, 2), (16, 9, 2)], [(0, 7, 2), (8, 9, 2), (16, 11, 2), (24, 9, 2)]], 84, 60)   # crystal sparkles
+    s.drums(s.part(0, 9, 98, 64, 20), {36: 'x...x...x...x...', 38: '....x.......x...', 42: 'xoxoxoxoxoxoxoxo', 46: '..............o.'}, roll=True, v=90)
+    return s
+
+
+def neon_walka():
+    s = Song('neon-walka', 150, 'D', 'minor', ['Dm', 'Bb', 'C', 'A', 'Dm', 'Bb', 'C', 'A', 'Gm', 'A', 'Dm', 'Dm', 'Bb', 'C', 'A', 'A'], 62)
+    s.pad(s.part(90, 0, 60, 64, 45, pump=True), 60, 50)
+    s.bass(s.part(38, 1, 100, 64, 10), [(i / 4, ['R', 'R', '8', 'R'][i % 4], 0.2) for i in range(16)], 33, 88)
+    s.arp(s.part(80, 2, 62, 30, 25), 0.25, 79, 3, 50)
+    s.melody(s.part(80, 3, 100, 80, 35), [
+        [(0, 0, 2), (2, 4, 2), (4, 7, 2), (6, 4, 2), (8, 5, 2), (10, 4, 2), (12, 2, 2), (14, 1, 2), (16, 0, 2), (18, 4, 2), (20, 7, 2), (22, 9, 2), (24, 7, 4), (28, 5, 4)],
+        [(0, 7, 1), (1, 7, 1), (2, 9, 2), (4, 7, 2), (6, 5, 2), (8, 4, 2), (10, 5, 2), (12, 4, 2), (14, 2, 2), (16, 0, 1), (17, 0, 1), (18, 2, 2), (20, 4, 2), (22, 5, 2), (24, 4, 4), (28, 2, 4)]],
+        76, 90, octave_up=True)
+    s.drums(s.part(0, 9, 100, 64, 20), {36: 'x...x...x...x.x.', 38: '....X.......X...', 42: 'xxxxxxxxxxxxxxxx', 46: '..o...o...o...o.'}, roll=True, v=92)
+    return s
+
+
+def skok_bieg():
+    """half-time dance with a wobbling bass"""
+    s = Song('skok-bieg', 140, 'F', 'minor', ['Fm', 'Db', 'Ab', 'Eb', 'Fm', 'Db', 'Ab', 'Eb', 'Db', 'Eb', 'Fm', 'Fm', 'Db', 'Eb', 'C', 'C'], 71)
+    s.bass(s.part(38, 0, 110, 64, 10, lfo=([1, 0.5, 1, 0.5, 0.5, 0.5, 1, 0.25] * 2, 18)), [(0, 'R', 1.95), (2, 'R', 1.45), (3.5, '8', 0.45)], 33, 100)   # wobble bass
+    s.pad(s.part(89, 1, 55, 64, 70, pump=True), 60, 46)
+    arp = s.part(81, 2, 55, 90, 50)
+    s.arp(arp, 0.5, 72, 2, 50, 'up')
+    s.keep(arp, range(8))
+    s.melody(s.part(81, 3, 100, 50, 45), [
+        [(0, 0, 4), (6, 2, 2), (8, 4, 4), (12, 3, 4), (16, 2, 4), (22, 0, 2), (24, -1, 8)],
+        [(0, 4, 2), (2, 4, 1), (3, 5, 1), (4, 4, 2), (6, 2, 2), (8, 7, 4), (12, 6, 2), (14, 4, 2), (16, 5, 2), (18, 4, 2), (20, 2, 2), (22, 4, 2), (24, 0, 8)]],
+        74, 88, octave_up=True)
+    s.drums(s.part(0, 9, 100, 64, 25), HALF, roll=True, v=94)
+    return s
+
+
+def skok_walka():
+    s = Song('skok-walka', 150, 'C#', 'minor', ['C#m', 'A', 'E', 'B', 'C#m', 'A', 'E', 'B', 'A', 'B', 'C#m', 'C#m', 'A', 'B', 'G#', 'G#'], 72)
+    s.bass(s.part(38, 0, 110, 64, 10, lfo=([0.5, 0.25, 0.5, 1 / 6, 0.25, 0.25, 0.5, 1 / 6] * 2, 14)), [(0, 'R', 1.45), (1.5, 'R', 0.45), (2, '8', 0.95), (3, 'R', 0.95)], 33, 100)
+    s.pad(s.part(89, 1, 55, 64, 70, pump=True), 60, 46)
+    s.arp(s.part(80, 2, 52, 90, 35), 0.25, 76, 2, 44, 'up')
+    s.melody(s.part(81, 3, 100, 50, 45), [
+        [(0, 0, 2), (2, 0, 1), (3, 2, 1), (4, 4, 2), (6, 2, 2), (8, 5, 4), (12, 4, 2), (14, 2, 2), (16, 0, 2), (18, 2, 2), (20, 4, 2), (22, 7, 2), (24, 6, 4), (28, 4, 4)],
+        [(0, 7, 2), (2, 7, 2), (4, 9, 2), (6, 7, 2), (8, 6, 2), (10, 4, 2), (12, 6, 2), (14, 7, 2), (16, 4, 4), (20, 2, 2), (22, 4, 2), (24, 0, 8)]],
+        74, 90, octave_up=True)
+    s.drums(s.part(0, 9, 100, 64, 25), {**HALF, 36: 'x.........x...x.', 42: 'xoxoxoxoxoxoxoxo'}, roll=True, v=96)
+    return s
+
+
+SONGS = [wesola_bieg, wesola_walka, chill_bieg, chill_walka, elektro_bieg, elektro_walka,
+         turbo_bieg, turbo_walka, neon_bieg, neon_walka, skok_bieg, skok_walka]
 
 
 def run(cmd):
@@ -293,12 +396,23 @@ def render(song):
     """MIDI -> FluidSynth -> one seamless loop -> .mp3. Returns (file, loop start, loop end in seconds)."""
     import numpy as np
     os.makedirs(TMP, exist_ok=True)
-    mid, wav, loop = (os.path.join(TMP, song.name + ext) for ext in ('.mid', '.wav', '.loop.wav'))
-    song.midi().save(mid)
-    run(['fluidsynth', '-ni', '-g', '0.5', '-r', str(SR), '-F', wav, SF2, mid])
-    raw = run_bytes(['ffmpeg', '-v', 'error', '-i', wav, '-f', 'f32le', '-ac', '2', '-ar', str(SR), '-'])
-    a = np.frombuffer(raw, dtype='<f4').reshape(-1, 2)
+    loop = os.path.join(TMP, song.name + '.loop.wav')
+    def synth(tag, pump):
+        mid, wav = (os.path.join(TMP, song.name + tag + ext) for ext in ('.mid', '.wav'))
+        song.midi(pump=pump).save(mid)
+        run(['fluidsynth', '-ni', '-g', '0.5', '-r', str(SR), '-F', wav, SF2, mid])
+        raw = run_bytes(['ffmpeg', '-v', 'error', '-i', wav, '-f', 'f32le', '-ac', '2', '-ar', str(SR), '-'])
+        return np.frombuffer(raw, dtype='<f4').reshape(-1, 2)
     n = round(song.loop_seconds() * SR)
+    if any(opt['pump'] for *_, opt in song.tracks):
+        a, p = synth('', False), synth('.pump', True)
+        m = min(len(a), len(p))
+        beat = 60 / song.bpm * SR
+        ph = (np.arange(m) % beat) / beat                          # where in the beat every sample is
+        env = 0.3 + 0.7 * np.minimum(1, ph / 0.55) ** 0.8          # duck at the kick, come back within half a beat
+        a = a[:m] + p[:m] * env[:, None]
+    else:
+        a = synth('', None)
     # the middle repeat already holds the echo of the one before; its start is cross-faded with what really
     # follows its end, so the jump from the end of the loop back to its start is smooth
     f = a[n:2 * n].copy()
