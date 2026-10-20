@@ -7,6 +7,51 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 
 ---
 
+## Wersja 14 (w przygotowaniu)
+
+### Dodane
+- **Zbrojownia jak w Archero: 13 ulepszeń na stałe**, kupowanych za złoto poziom po poziomie:
+  żołnierze na start, szybkie strzelanie, broń na start, dodatkowa lufa (2 albo 3 pociski obok siebie),
+  pociski przeszywające, podwójny strzał, ogniste, mrożące i zatrute pociski, boczne lufy pod kątem do przodu,
+  odbijanie od ścian, działo elektryczne (piorun skacze po wrogach) i wybuchający wrogowie.
+  Nowe ulepszenia otwierają się na kolejnych levelach (od 1 do 6), więc na każdym levelu jest na co zbierać.
+  Każde ma swój wygląd w grze: kolorowe pociski, płomienie nad wrogiem, bryła lodu, zielone bąbelki trucizny, pioruny, wybuchy.
+- **Skrzynia po potworze:** 5 zadań na czas z paskiem, który leci cały czas. Dobra odpowiedź to punkt, skończenie przed
+  znakiem ⚡ to jeszcze jeden. Skrzynia drewniana, srebrna, złota albo diamentowa: w środku złoto i ulepszenia
+  na następną grę (częściej te jeszcze niekupione, żeby je wypróbować).
+- **Gra na próbę w każdym levelu**, także zamkniętym: po trochu ze wszystkich tematów levelu, ulepszenia ustawione jak
+  w połowie levelu. Nie daje złota, gwiazdek ani skrzyni.
+- **Płonący autobus i TIR** na połowie drogi zamiast dziury w nawierzchni.
+- **Licznik odwiedzin GoatCounter** (bez ciasteczek): liczy wejścia na stronę i rozpoczęte gry według levelu.
+- W ćwiczeniu po błędzie: 20 spokojnych sekund na zadanie, potem napis „Ale bez przesady” i pasek czasu
+  (gdy się skończy, liczy się to jak zła odpowiedź).
+- Program `narzedzia/balans.js`, który dobiera siłę wrogów do ulepszeń.
+
+### Zmienione
+- **Złoto głównie za gwiazdki:** na levelu 1 za 1 gwiazdkę 40, za 2 gwiazdki 75, za 3 gwiazdki 100, wyższe levele płacą więcej.
+  Liczy się najlepszy wynik gry: powtórka daje złoto tylko za nowe gwiazdki i lepszą skrzynię (i trochę za dobre odpowiedzi).
+  Za dobre odpowiedzi w grze jest teraz mniej złota (1–4 zamiast 5).
+- **Siła wrogów i potworów nie zależy już od tego, co dziecko kupiło.** Jest ustawiona pod gracza, który zebrał
+  około 80% złota. Kto ma mniej, ma trudniej; kto ma więcej, łatwiej. Same dobre odpowiedzi zawsze wygrywają.
+- **Następny level otwiera się dopiero po przejściu wszystkich 40 gier poprzedniego.** Levele zaczęte wcześniej zostają otwarte.
+- Złoto za gwiazdki zdobyte przed tą wersją doliczyło się raz, według nowych stawek. Kupione ulepszenia zostały
+  („Siła ognia” to teraz „Szybkie strzelanie”).
+- Wrogów jest około 4 razy więcej niż w wersji 13, w kilku falach na każdym odcinku. Strzały przechodzą przez kilku wrogów,
+  armia strzela szybciej, a nagrody w późniejszych grach są większe.
+- Pocisk trafia wszystkich wrogów na swojej drodze w jednej chwili, więc gra działa tak samo na szybkim i wolnym telefonie.
+- Kula ognia po złej odpowiedzi w walce zabiera co najmniej 15% armii, żeby walka wymagała dobrych odpowiedzi także dużą armią.
+- Siła potwora jest liczona w tle, gdy widać kartę przed grą i w czasie biegu, więc gra nie przycina przy starcie.
+
+### Usunięte
+- Dziura w drodze (zastąpiona płonącym autobusem i TIR-em).
+- Dopasowywanie siły potwora do kupionych ulepszeń.
+
+### Do sprawdzenia
+- Płynność na starszych telefonach przy wielu ulepszeniach naraz (w testach na komputerze bez karty graficznej:
+  53 klatki na sekundę zamiast 59).
+
+---
+
 ## Wersja 13 (20 października 2026)
 
 Zapis w repozytorium: `9098b43`

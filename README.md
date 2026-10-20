@@ -17,15 +17,24 @@ Po każdej bramce jest stały porządek:
 2. Po chwili wyskakują wrogowie i pojawiają się przeszkody. Wrogowie różnią się trudnością: zombie, mrówki (szybkie, w gromadach),
    osy (latają zygzakiem), węże (2 trafienia) i klauny (3 trafienia, zabierają po 2 żołnierzy). Od 9. gry gromadę może prowadzić
    duża wersja wroga. Nowe rodzaje dochodzą w kolejnych grach. Wróg, który minie armię, też zabiera żołnierzy.
-   Przeszkody: dziura w drodze, młot spadający z góry i płonące beczki (beczki da się zestrzelić).
+   Przeszkody: płonący autobus albo TIR na połowie drogi, młot spadający z góry i płonące beczki (beczki da się zestrzelić).
 3. Dopiero gdy wrogowie znikną, pojawia się następne zadanie, z pełnym czasem na liczenie.
 
 W biegu armia nigdy nie traci ostatniego żołnierza, więc zawsze dochodzi do potwora.
 
 Na końcu drogi walczysz z potworem. Walka idzie w rundach: na dole ekranu pojawia się zadanie,
 a każda odpowiedź to jedna runda. Dobra odpowiedź przynosi posiłki, potem armia strzela, a na końcu potwór oddaje cios.
-Zła albo spóźniona odpowiedź: nie ma posiłków, a potwór dorzuca kulę ognia. Szybkość odpowiedzi nie ma znaczenia,
-liczy się tylko to, czy jest dobra (i czy zmieści się w czasie).
+Zła albo spóźniona odpowiedź: nie ma posiłków, a potwór dorzuca kulę ognia, która zabiera co najmniej 15% armii
+(więc duża armia też ją czuje). Szybkość odpowiedzi nie ma znaczenia, liczy się tylko to, czy jest dobra (i czy zmieści się w czasie).
+
+## Skrzynia po potworze
+
+Po pokonaniu potwora jest skrzynia: 5 zadań i jeden pasek czasu, który leci cały czas (także podczas odpowiedzi).
+Każda dobra odpowiedź to punkt, a skończenie przed znakiem ⚡ (zostało co najmniej 35% paska) to jeszcze jeden punkt.
+6 punktów: skrzynia diamentowa, 5: złota, 3–4: srebrna, mniej: drewniana. Skrzynia poprawia się na oczach dziecka.
+W środku jest złoto (liczy się najlepsza skrzynia w danej grze, jak przy gwiazdkach) i ulepszenia ze Zbrojowni
+tylko na następną grę: drewniana 1, srebrna 2, złota 2 (jedno o dwa poziomy), diamentowa 2 (oba o dwa poziomy).
+Częściej trafiają się ulepszenia jeszcze niekupione, żeby można je było wypróbować przed zakupem.
 
 ## Nauka po błędzie
 
@@ -35,29 +44,66 @@ Potem jest ćwiczenie: przez pierwsze 20 sekund każdego zadania bez pośpiechu,
 i pasek czasu jak w zwykłej grze (gdy się skończy, liczy się to jak zła odpowiedź). Na środku jest pasek odpowiedzi: dobra odpowiedź przesuwa go o jedno pole w prawo (zielone),
 zła o jedno pole w lewo (czerwone). Trzy pola w prawo: gra toczy się dalej. Trzy pola w lewo: koniec gry
 z napisem „Chyba śmierdzi Ci spod pachy!”. Po złej odpowiedzi jest podpowiedź do tego zadania i nowe zadanie.
-Za każde dobrze rozwiązane zadanie jest +3 złota.
+Za każde dobrze rozwiązane zadanie jest trochę złota, tyle co za dobrą bramkę.
 
 ## Złoto i Zbrojownia
 
-Złoto dostaje się za dobre odpowiedzi (+5), za zadania po błędzie (+3), za duże zombie (+2) i za każdą gwiazdkę (+10).
-W Zbrojowni kupuje się za nie ulepszenia na stałe (broń na start, więcej żołnierzy na start, szybsze strzelanie)
-i kolor armii. Ceny są znane z góry. Nic się nie losuje, nie ma reklam ani zakupów za prawdziwe pieniądze.
+Złoto jest głównie za gwiazdki. Na levelu 1: 1 gwiazdka 40, 2 gwiazdki 75, 3 gwiazdki 100 złota; każdy wyższy level
+płaci o jedną czwartą więcej (level 8: 110, 205, 275). Do tego skrzynia po potworze (na levelu 1: drewniana 15, srebrna 35,
+złota 50, diamentowa 70) i trochę za każdą dobrą odpowiedź (1 na levelach 1–2, 2 na 3–4, 3 na 5–6, 4 na 7–8)
+i za każdego dużego wroga. Liczy się najlepszy wynik każdej gry: powtórka daje złoto tylko za nowe gwiazdki
+i lepszą skrzynię (i za dobre odpowiedzi). Gra na próbę nie daje nic.
+
+W Zbrojowni kupuje się ulepszenia na stałe, jak w grze Archero. Nowe otwierają się na kolejnych levelach:
+
+| Ulepszenie | Od levelu | Co robi |
+|---|---|---|
+| Żołnierze na start | 1 | +3 żołnierzy na start za każdy poziom (8 poziomów) |
+| Szybkie strzelanie | 1 | +6% szybsze strzelanie za każdy poziom (8 poziomów) |
+| Broń na start | 1 | gra zaczyna się z Turboblasterem albo Plazmą |
+| Dodatkowa lufa | 1 | 2, potem 3 pociski obok siebie (serie są trochę rzadsze) |
+| Pociski przeszywające | 1 | każdy pocisk trafia o 1, 2 albo 3 wrogów więcej |
+| Podwójny strzał | 2 | druga seria tuż za pierwszą w 20%, 35% albo 50% strzałów |
+| Ogniste pociski | 2 | trafiony wróg płonie przez 2,5 s; potwór dostaje 10–25% więcej |
+| Mrożące pociski | 3 | trafiony wróg zwalnia, 10–30% zamarza; zamrożony rozbija się o armię bez strat; potwór uderza 12–30% słabiej |
+| Boczne lufy | 3 | dwa pociski pod kątem do przodu w 25% albo 50% strzałów |
+| Odbijanie od ścian | 4 | pociski z bocznych luf odbijają się od brzegu drogi 1 albo 2 razy (najpierw trzeba kupić boczne lufy) |
+| Zatrute pociski | 4 | trucizna przez 6 s, kolejne trafienia ją wzmacniają (do 2, 3 albo 4 razy); potwór dostaje 10–25% więcej |
+| Działo elektryczne | 5 | co 2, 1,6 albo 1,3 s piorun skacze po 3, 4 albo 5 wrogach; potwór dostaje 8–20% więcej |
+| Wybuchający wrogowie | 6 | pokonany wróg wybucha w 12%, 20% albo 30% przypadków i rani sąsiadów; duzi wybuchają zawsze |
+
+Ceny rosną z każdym poziomem (od 50 do 9500 złota). Ktoś, kto zbiera około 80% złota, kupuje coś nowego na każdym levelu
+i ma prawie wszystko pod koniec levelu 8; kto zbiera wszystko, kupuje wszystko. Kolor armii też kupuje się za złoto.
+Ceny są znane z góry. Nic się nie kupuje za prawdziwe pieniądze i nie ma reklam.
 Naukę można wyłączyć w menu albo w pauzie: „Nauka po błędzie: wył.”.
 
-## Jak trudny jest potwór
+## Jak trudni są wrogowie i potwór
 
-Siła potwora jest liczona osobno dla każdej gry. Według symulacji (tysiące rozegranych gier):
+Siła wrogów i potworów nie zależy od tego, co dziecko kupiło. Jest ustawiona pod gracza, który zebrał około 80% złota
+i wydał je w Zbrojowni: taki gracz traci na wrogów tyle żołnierzy, ile armia bez ulepszeń w pierwszych grach.
+Siłę wrogów mierzy program `narzedzia/balans.js` (tabela w `gra.js`), a siłę potwora gra liczy sama dla każdej gry
+z próbnych przejść trasy. Według symulacji (po kilkaset gier na każdy przypadek):
 
-- wszystkie odpowiedzi w walce dobre: wygrana zawsze, niezależnie od tego, jak szybko się odpowiada.
-  Cios potwora nigdy nie zabiera więcej żołnierzy, niż daje dobra odpowiedź,
-- wszystkie bramki dobrze, a w walce odpowiedzi na chybił trafił (gracz strzela w nagrody i omija przeszkody): wygrana w około 40% gier,
-- to samo z połową ulepszeń ze Zbrojowni: około 58%, ze wszystkimi: około 68%.
+| Kto gra | Wygrane |
+|---|---|
+| wszystkie odpowiedzi dobre, dowolne złoto | zawsze (armia w biegu nie traci ostatniego żołnierza, a w walce dobra odpowiedź daje więcej, niż zabiera cios) |
+| 80% złota, bramki dobrze, w walce na chybił trafił | około 52% |
+| 85% dobrych bramek, 75% dobrych odpowiedzi w walce, 100% złota | około 83% |
+| to samo, 80% złota | około 81% (podobnie na każdym levelu) |
+| to samo, 50% złota | około 51% |
+| to samo, 30% złota | około 39% (na levelach 4–8 dużo mniej) |
+
+Kto ma mało złota, idzie dalej z trudem i opłaca mu się poprawić gwiazdki we wcześniejszych grach.
 
 ## Levele i gry
 
 8 leveli, a każdy level to jedna klasa: level 1 to 1. klasa, level 8 to 8. klasa.
 W każdym levelu jest 40 gier (razem 320) i 8 tematów. Każdy temat to 4 gry o rosnącej trudności i jedna powtórka.
-Gra 40 to sprawdzian z całego levelu. Pierwsza gra każdego levelu jest od razu otwarta, następne otwierają się po wygranej.
+Gra 40 to sprawdzian z całego levelu. W levelu gry otwierają się po kolei, po wygranej. Następny level otwiera się,
+gdy przejdzie się wszystkie 40 gier poprzedniego (levele zaczęte przed wersją 14 zostają otwarte).
+Do każdego levelu, także zamkniętego, można zajrzeć w **grze na próbę**: 6 bramek z zadaniami po trochu ze wszystkich
+tematów levelu (stopnie 1–3) i ulepszenia ustawione jak u gracza w połowie tego levelu. Gra na próbę nie daje złota,
+gwiazdek ani skrzyni i niczego nie otwiera.
 
 | Level (klasa) | Tematy |
 |---|---|
@@ -119,4 +165,5 @@ Postęp (gwiazdki, otwarte gry) zapisuje się w telefonie, na którym grasz.
 - `zadania.js` – wszystkie zadania dla klas 1–8 i objaśnienia, jak je policzyć
 - `gra.js` – sama gra: bieg, walka z potworem, grafika, muzyka
 - `muzyka/` – utwory w kilku stylach (MP3), `narzedzia/muzyka.py` – program, który je tworzy
+- `narzedzia/balans.js` – program, który dobiera siłę wrogów do ulepszeń (uruchom po zmianie ulepszeń, cen albo złota)
 - `manifest.webmanifest`, `ikona-180.png`, `ikona-512.png` – ikona i nazwa na ekranie telefonu

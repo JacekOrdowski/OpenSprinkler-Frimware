@@ -27,3 +27,8 @@ Gdy zmiany w grze są gotowe i zapisywane w repozytorium:
   i upewnij się, że błędna odpowiedź na bramce nigdy nie jest równa dobrej.
 - Przydział tematów do klas: podstawa programowa 2017 ze zmianami z 2024 oraz rozkłady materiału GWO („Matematyka z plusem”)
   i Nowej Ery („Matematyka z kluczem”).
+
+## Balans
+
+- Siła wrogów to tabela `ENEMY_P` w `gra.js`. Po zmianie ulepszeń, ich cen albo złota uruchom `node narzedzia/balans.js`
+  (kilka minut) i wklej wypisaną tabelę do `gra.js`.
