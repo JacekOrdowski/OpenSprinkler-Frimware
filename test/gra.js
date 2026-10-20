@@ -33,17 +33,24 @@ const LEVEL_WORLDS = [
   ['wulkan', 'las', 'kanion', 'miasto'], ['miasto', 'snieg', 'wulkan', 'kanion'], ['miasto', 'wulkan', 'kosmos', 'snieg'], ['kosmos', 'miasto', 'wulkan', 'kanion'],
 ];
 const worldOf = (cls, s) => LEVEL_WORLDS[cls][s === STAGES - 1 ? 0 : Math.floor(s / 5) % 4];
-function stageConfig(cls, s) {
-  const C = CLASS_CFG[cls], info = Z.stage(cls, s), f = s / (STAGES - 1), d = Math.floor(s / 10);
+// "Gra na próbę": a look through the keyhole into any level, a mix of all its topics (degrees 1–3) on the road of its middle game
+const TRIAL_S = 19;
+function trialInfo(cls) {
+  const T = Z.KLASY[cls].tematy;
+  return { name: 'Gra na próbę', tier: 2, review: true, final: false, trial: true, time: Math.max(...T.map(t => t.czas || 1)),
+    gen: () => Z.stage(cls, randi(0, T.length - 1) * 5 + randi(0, 2)).gen() };
+}
+function stageConfig(cls, s, trial) {
+  const C = CLASS_CFG[cls], info = trial ? trialInfo(cls) : Z.stage(cls, s), f = s / (STAGES - 1), d = Math.floor(s / 10);
   const think = C.think * (1.1 - 0.3 * f) * (info.time || 1);
   const speed = C.speed + 0.6 * f;
   // After every gate: a calm moment with the reward on the side of the right answer, then enemies and obstacles,
   // and only when they are behind comes the next problem, with the whole thinking time before its gate
   const lead = 1.0, zone = s < 10 ? 4.4 : 5.0;
   return {
-    cls, s, info, think, speed, lead, zone, start: START,
+    cls, s, info, think, speed, lead, zone, start: START, trial: !!trial,
     first: speed * (think + 1.0), spacing: speed * (lead + zone + think),
-    gates: 5 + d + (s >= 35 ? 1 : 0),
+    gates: trial ? 6 : 5 + d + (s >= 35 ? 1 : 0),
     rLo: Math.round((5 + 2 * d) * (1 + 0.7 * f)), rHi: Math.round((15 + 3 * d) * (1 + 0.7 * f)),   // soldiers won or lost at one gate (more in later games, against bigger hordes)
     foeBase: 10 + 2.5 * d,                      // the size of the hordes follows this, not the bigger rewards
     squadsPer: s < 5 ? 2 : s < 15 ? 3 : 4, enemyMul: s === 0 ? 2.6 : 3.8,   // enemies per span = enemyMul × average gate reward, in waves
@@ -81,18 +88,91 @@ const WEAPONS = [
 ];
 const MAX_WEAPON = WEAPONS.length - 1;
 const POWERS = { giant: { name: 'Olbrzymy', dmg: 1.5, rate: 1 }, turbo: { name: 'Szybki ogień', dmg: 1, rate: 1.4 } };
-// Permanent upgrades: price of every next level
-const ARMORY = {
-  weapon: { name: 'Broń na start', prices: [120, 300] },
-  army: { name: 'Żołnierze na start', prices: [40, 80, 130, 190, 260], per: 2 },
-  power: { name: 'Siła ognia', prices: [60, 110, 170, 240, 320], per: 0.1 },
+// Permanent upgrades (like in Archero), bought level by level in the armoury; from: the level of the game that opens them,
+// needs: another upgrade that has to be bought first. Prices of every next level.
+const SKILLS = {
+  army: { name: 'Żołnierze na start', from: 1, prices: [50, 100, 180, 320, 550, 900, 1400, 2200] },
+  rate: { name: 'Szybkie strzelanie', from: 1, prices: [60, 120, 220, 400, 700, 1150, 1800, 2700] },
+  weapon: { name: 'Broń na start', from: 1, prices: [300, 1800] },
+  front: { name: 'Dodatkowa lufa', from: 1, prices: [400, 3800] },
+  pierce: { name: 'Pociski przeszywające', from: 1, prices: [150, 900, 3000] },
+  multi: { name: 'Podwójny strzał', from: 2, prices: [600, 2000, 4800] },
+  fire: { name: 'Ogniste pociski', from: 2, prices: [650, 2100, 5000] },
+  ice: { name: 'Mrożące pociski', from: 3, prices: [900, 2600, 5600] },
+  diag: { name: 'Boczne lufy', from: 3, prices: [1300, 4500] },
+  bounce: { name: 'Odbijanie od ścian', from: 4, needs: 'diag', prices: [1700, 4200] },
+  poison: { name: 'Zatrute pociski', from: 4, prices: [2000, 4000, 6800] },
+  bolt: { name: 'Działo elektryczne', from: 5, prices: [2800, 5500, 8800] },
+  boom: { name: 'Wybuchający wrogowie', from: 6, prices: [3500, 6200, 9500] },
 };
-const NO_ARM = { weapon: 0, army: 0, power: 0 };
-const GOLD = { gate: 5, fight: 5, practice: 3, brute: 2, star: 10 };
+const SKILL_KEYS = Object.keys(SKILLS);
+const KIT0 = Object.fromEntries(SKILL_KEYS.map(k => [k, 0]));
+const maxLv = k => SKILLS[k].prices.length;
+// What every level of an upgrade does
+const ARMY_PER = 3, RATE_PER = 0.06;                      // soldiers at the start; faster shooting
+const FRONT = [1, 2, 3], FRONT_RATE = [1, 0.6, 0.47];     // bullets side by side (the volleys come less often)
+const MULTI = [0, 0.2, 0.35, 0.5];                        // chance of a second volley right behind the first
+const DIAG = [0, 0.25, 0.5], DIAG_DX = 0.42;              // chance of two slanting bullets; their step sideways for every step forward
+const BOUNCE = [0, 1, 2];                                 // times a slanting bullet bounces off the edge of the road
+const BURN = [0, 0.4, 0.6, 0.8], BURN_T = 2.5;            // fire: extra damage (share of the shot) over 2.5 s
+const FREEZE = [0, 0.1, 0.2, 0.3], FREEZE_T = 1.3, SLOW_T = 1.5;   // ice: a hit slows, some freeze; a frozen enemy breaks on the army without harm
+const POISON = [0, 2, 3, 4], POISON_DPS = 0.15, POISON_T = 6;        // poison: most stacks; each takes this share of the shot every second
+const BOLT_EVERY = [0, 2.0, 1.6, 1.3], BOLT_JUMPS = [0, 3, 4, 5], BOLT_DMG = 1.2, BOLT_RANGE = 16, BOLT_HOP = 2.8;   // lightning jumping from enemy to enemy
+const BOOM = [0, 0.12, 0.2, 0.3], BOOM_R = 1.0, BOOM_DMG = 1.2;    // a beaten enemy may blow up and hurt the ones next to it (a big one always does)
+// At the monster: more bullets hit harder, fire, poison and lightning add some, ice softens its blow
+const BOSS_FIRE = [0, 0.1, 0.18, 0.25], BOSS_POISON = [0, 0.1, 0.18, 0.25], BOSS_BOLT = [0, 0.08, 0.14, 0.2], BOSS_ICE = [0, 0.12, 0.22, 0.3];
+const bossMul = k => FRONT[k.front] * FRONT_RATE[k.front] * (1 + MULTI[k.multi]) * (1 + 0.5 * DIAG[k.diag]) * (1 + 0.06 * k.pierce + 0.05 * k.bounce)
+  * (1 + BOSS_FIRE[k.fire] + BOSS_POISON[k.poison] + BOSS_BOLT[k.bolt]);
+// Gold: mostly for stars, and for the chest after the monster. The best result of every game counts, so playing a game again
+// pays only for new stars and a better chest (and a little for every right answer). Higher levels pay more.
+const GOLD = { star: [0, 40, 75, 100], chest: [0, 15, 35, 50, 70], brute: 1 };
+const lvlMul = c => 1 + 0.25 * c;
+const starGold = (c, n) => Math.round(GOLD.star[n] * lvlMul(c) / 5) * 5;
+const chestGold = (c, t) => Math.round(GOLD.chest[t] * lvlMul(c) / 5) * 5;
+const answerGold = c => 1 + (c >> 1);
 const PIERCE = [2, 3, 3, 4, 5];     // how many enemies one shot of each weapon can hit
 const shotDmg = g => WEAPONS[g.weapon].dmg * (g.giant ? POWERS.giant.dmg : 1);
-const shotRate = g => WEAPONS[g.weapon].rate * (g.turbo ? POWERS.turbo.rate : 1) * g.fireBonus;
-const firePower = g => shotDmg(g) * shotRate(g);       // how hard one soldier hits the monster
+const shotRate = g => WEAPONS[g.weapon].rate * (g.turbo ? POWERS.turbo.rate : 1) * (1 + RATE_PER * g.kit.rate);
+const firePower = g => shotDmg(g) * shotRate(g) * bossMul(g.kit);       // how hard one soldier hits the monster
+
+// The game is tuned for a player who collected this share of all the gold so far and spent it in the armoury
+// (cheapest upgrade first): with less gold it is harder, with more easier. Right answers always win.
+const EXPECT = 0.8, ANSWERS = 14;
+let KIT_PLAN = null;
+function expectedKit(c, s) {
+  if (!KIT_PLAN) {
+    KIT_PLAN = [];
+    const kit = { ...KIT0 }; let gold = 0;
+    for (let cc = 0; cc < Z.KLASY.length; cc++) for (let ss = 0; ss < STAGES; ss++) {
+      for (;;) {
+        let best = null;
+        for (const k of SKILL_KEYS) if (canBuy(kit, k, cc) && (!best || SKILLS[k].prices[kit[k]] < SKILLS[best].prices[kit[best]])) best = k;
+        if (!best || SKILLS[best].prices[kit[best]] > gold) break;
+        gold -= SKILLS[best].prices[kit[best]]; kit[best]++;
+      }
+      KIT_PLAN.push({ ...kit });
+      gold += EXPECT * (starGold(cc, 3) + chestGold(cc, 4) + answerGold(cc) * ANSWERS);
+    }
+  }
+  return KIT_PLAN[c * STAGES + s];
+}
+// can the next level of this upgrade be bought on level c (counted from 0)?
+const canBuy = (kit, k, c) => kit[k] < maxLv(k) && SKILLS[k].from <= c + 1 && (!SKILLS[k].needs || kit[SKILLS[k].needs] > 0);
+// How much stronger the enemies are than in the first game (all their lives together), so that the expected armoury
+// loses as many soldiers to them as an army without upgrades in the first games. Measured by narzedzia/balans.js
+// (run it again after changing upgrades or prices): [game number counted from 0 over all levels, strength].
+const ENEMY_P = [[0, 1], [4, 1.04], [14, 2.04], [24, 3.2], [34, 3.34], [44, 3.36], [54, 5.12], [64, 6.17], [74, 5.36], [84, 6.06], [94, 9.02], [104, 11.95], [114, 13.83], [124, 16.88], [134, 17.69], [144, 15.83], [154, 16.01], [164, 18.75], [174, 20.12], [184, 18.86], [194, 18.11], [204, 19.65], [214, 21.21], [224, 20.71], [234, 22.61], [244, 27.27], [254, 28.08], [264, 25.57], [274, 25.87], [284, 28.58], [294, 28.08], [304, 25.87], [314, 24.98]];
+let scaleHook = null;     // only for the balance tests
+function enemyScale(c, s) {
+  if (scaleHook) return scaleHook(c, s);
+  const G = c * STAGES + s, T = ENEMY_P;
+  if (G >= T[T.length - 1][0]) return T[T.length - 1][1];
+  let i = 0; while (T[i + 1][0] < G) i++;
+  const [g0, p0] = T[i], [g1, p1] = T[i + 1], f = (G - g0) / (g1 - g0);
+  return Math.exp(Math.log(p0) + f * (Math.log(p1) - Math.log(p0)));
+}
+// the growth comes as more enemies (up to 1.7 times as many) and the rest as more lives
+const foeSplit = P => { const n = Math.min(1.7, Math.pow(P, 0.3)); return [n, P / n]; };
 
 /* ============================================================
    Simulation (no drawing here, so it can be tested without a browser)
@@ -108,8 +188,8 @@ const FIGHT_DIST = 11;    // the army stops this far in front of the monster
 const ATK_FRAC = 0.075;   // the monster's blow kills this share of the expected army, never more than the smallest reward,
                           // so a right answer always brings at least as many soldiers as the blow takes
 const ROUNDS = 6;         // monster life ≈ this many volleys of the expected army
+const BLAST_SHARE = 0.15; // the fireball after a wrong answer takes at least this share of the army
 const HP_K = 1.8;         // monster strength: with every gate right and fight answers at random it wins about 1 time in 3
-const ARM_EASE = 0.12;    // share of the extra fire power from armoury upgrades that really weakens the monster
 const OX = new Float32Array(CAP), OZ = new Float32Array(CAP);
 for (let i = 0; i < CAP; i++) { const r = FORM * Math.sqrt(i + 0.35), t = i * 2.39996; OX[i] = Math.cos(t) * r; OZ[i] = Math.sin(t) * r * 0.9; }
 const radius = n => FORM * Math.sqrt(clamp(n, 1, CAP)) + 0.3;
@@ -136,18 +216,25 @@ function freshProblem(g) {
   return p;
 }
 
-function createGame(cls, s, attract, arm) {
-  const cfg = stageConfig(cls, s);
-  arm = arm || NO_ARM;
+// kit: the levels of the armoury upgrades (bought ones plus the ones from the last chest); trial: "gra na próbę"
+// with the expected armoury of the middle of the level instead of the player's own
+function createGame(cls, s, attract, kit, trial, lazy) {
+  if (trial) { s = TRIAL_S; kit = expectedKit(cls, s + 1); }
+  const cfg = stageConfig(cls, s, trial);
+  kit = { ...KIT0, ...(kit || {}) };
+  for (const k of SKILL_KEYS) kit[k] = clamp(kit[k] | 0, 0, maxLv(k));
   const g = {
-    cls, s, cfg, arm, attract: !!attract, time: 0, state: 'run', endAt: 0, gen: cfg.info.gen, used: new Set(), world: worldOf(cls, s),
-    army: { x: 0, tx: 0, z: 0, n: attract ? 40 : cfg.start + ARMORY.army.per * arm.army, born: new Float32Array(CAP).fill(-10) },
-    gates: [], squads: [], props: [], obst: [], bullets: [], hits: [], monster: null, fight: null, finishZ: 1e9,
-    fire: 0, correct: 0, answered: 0, mistakes: [], events: [], gold: 0,
-    weapon: arm.weapon, fireBonus: 1 + ARMORY.power.per * arm.power, giant: false, turbo: false,
+    cls, s, cfg, kit, attract: !!attract, trial: !!trial, time: 0, state: 'run', endAt: 0, gen: cfg.info.gen, used: new Set(), world: worldOf(cls, s),
+    army: { x: 0, tx: 0, z: 0, n: attract ? 40 : cfg.start + ARMY_PER * kit.army, born: new Float32Array(CAP).fill(-10) },
+    gates: [], squads: [], live: [], props: [], obst: [], bullets: [], blasts: [], hits: [], monster: null, fight: null, finishZ: 1e9,
+    fire: 0, boltT: 0, correct: 0, answered: 0, mistakes: [], events: [], gold: 0, goldPer: trial ? 0 : answerGold(cls),
+    weapon: kit.weapon, giant: false, turbo: false,
   };
   if (attract) return g;
-  const key = `${cls}-${s}`, rec = RECENT.get(key) || [];
+  // enemies do not follow the player's armoury: they are as strong as the armoury expected at this game
+  const [nK, hpK] = foeSplit(enemyScale(cls, s));
+  g.hpK = hpK;
+  const key = `${cls}-${trial ? 'proba' : s}`, rec = RECENT.get(key) || [];
   RECENT.set(key, [g.used, ...rec].slice(0, 3));          // this game and the two before it
   let z = 6;
   for (let k = 0; k < cfg.gates; k++) {
@@ -165,7 +252,7 @@ function createGame(cls, s, attract, arm) {
     const gt = g.gates[k], z0 = gt.z, end = k + 1 < cfg.gates ? g.gates[k + 1].showZ : z0 + tail - FIGHT_DIST - 4;
     const side = gt.left ? -1 : 1;                     // the side of the right answer: the reward is waiting there
     if (k < cfg.gates - 1 || cfg.gates === 1) {
-      const kind = kinds[k], hp = Math.round(avgR * { cage: 0.6, crate: 0.75, bridge: 1.1 }[kind]) + randi(1, 3);
+      const kind = kinds[k], hp = Math.round((avgR * { cage: 0.6, crate: 0.75, bridge: 1.1 }[kind] + randi(1, 3)) * hpK);
       const prop = { kind, x: side * (kind === 'bridge' ? 3.0 : 2.7), z: z0 + cfg.speed * 0.8 + (kind === 'bridge' ? 5 : 4), hp, max: hp, hit: -1, done: false, doneAt: 0 };
       if (kind === 'cage') prop.reward = randi(cfg.rLo, cfg.rHi);
       if (kind === 'bridge') prop.power = Math.random() < 0.5 ? 'giant' : 'turbo';
@@ -175,13 +262,13 @@ function createGame(cls, s, attract, arm) {
     const wake = z0 + cfg.speed * cfg.lead;
     for (let j = 0; j < cfg.squadsPer; j++) {
       const kind = pick(cfg.foes), F = FOES[kind];
-      const n = Math.max(3, Math.round(avgR * cfg.enemyMul / cfg.squadsPer * F.n) + randi(0, 2));
+      const n = Math.max(3, Math.round(avgR * cfg.enemyMul / cfg.squadsPer * F.n * nK) + randi(0, 2));
       // waves one after another through the whole stretch, each from its own spot
       const ahead = 18 + rand(0, 6), w0 = wake + j * cfg.speed * cfg.zone * 0.8 / cfg.squadsPer, sz = w0 + ahead;
       const sq = { kind, x: rand(-2.6, 2.6), z: sz, wake: w0, men: makeGroup(n, kind === 'ant' ? 0.85 : 1.0), active: false, span: k, ph: rand(0, 6) };
-      for (const m of sq.men) { m.hp = m.max = F.hp; }
+      for (const m of sq.men) { m.hp = m.max = F.hp * hpK; }
       if (cfg.brutes && Math.random() < 0.7) {           // a big one walks in front of the horde
-        const hp = Math.round((Math.round(cfg.foeBase * 0.35) + randi(2, 4)) * BIG_HP[kind]);
+        const hp = Math.round((Math.round(cfg.foeBase * 0.35) + randi(2, 4)) * BIG_HP[kind] * hpK);
         sq.men.unshift({ ox: 0, oz: -0.9, ph: Math.random() * 4, hp, max: hp, big: true });
       }
       g.squads.push(sq);
@@ -194,40 +281,53 @@ function createGame(cls, s, attract, arm) {
       const o = { type, side: os, z: oz, span: k, hit: false };
       if (CAR[type]) Object.assign(o, { x: os * (CAR_X0 + CAR_X1) / 2, len: CAR[type].len });
       else if (type === 'hammer') Object.assign(o, { x: os * 1.7, len: 1.2, off: rand(0, HAMMER_P), lastHit: -1 });
-      else Object.assign(o, { x: os * 1.9, len: 0.8, barrels: [os * 1.2, os * 2.5].map(bx => ({ x: bx, hp: 2 + d, max: 2 + d, hit: -1, done: false })) });
+      else Object.assign(o, { x: os * 1.9, len: 0.8, barrels: [os * 1.2, os * 2.5].map(bx => ({ x: bx, hp: (2 + d) * hpK, max: (2 + d) * hpK, hit: -1, done: false })) });
       g.obst.push(o);
     }
   }
   z = g.gates[cfg.gates - 1].z;
   g.monster = { x: 0, z: z + tail, hp: 1, max: 1, kind: cls, atkK: 2, anim: -9, hit: -9, dead: false, deadAt: 0 };
   g.finishZ = g.monster.z + 6;
-  // Monster strength follows what a player would bring with every gate right (a few quick test runs of this very stage).
-  // Armoury upgrades make it easier, but only by the square root of the extra power, so the fight still needs right answers.
-  const test = a => { let n = 0, np = 0; for (let i = 0; i < 3; i++) { const r = perfectRun(g, a); n += r.n / 3; np += r.n * r.power / 3; } return [Math.max(12, n), Math.max(12, np)]; };
-  const [N0, NP0] = test(NO_ARM);
-  const NP1 = arm.weapon || arm.army || arm.power ? Math.max(NP0, test(arm)[1]) : NP0;
-  const atkK = clamp(Math.round(N0 * ATK_FRAC), 2, cfg.rLo);
-  const hp = Math.max(60, Math.round(HP_K * ROUNDS * NP0 * Math.pow(NP1 / NP0, 1 - ARM_EASE) / 10) * 10);
-  Object.assign(g.monster, { hp, max: hp, atkK });
+  // Monster strength follows what a player with the expected armoury would bring with every gate right (a few quick test
+  // runs of this very stage). The player's own armoury does not change it: a stronger army beats it in fewer rounds.
+  // In the browser this is worked out bit by bit (while the card before the game is shown, then during the run).
+  g.calib = { kit: trial ? kit : expectedKit(cls, s), runs: [], sim: null };
+  if (!lazy) calibrate(g, Infinity);
   return g;
 }
+const CALIB_RUNS = 3, CALIB_DT = 1 / 15;
+// Advances the test runs by at most this many steps; true when the monster is ready
+function calibrate(g, steps) {
+  const C = g.calib;
+  if (!C) return true;
+  while (C.runs.length < CALIB_RUNS && steps > 0) {
+    if (!C.sim) C.sim = perfectSim(g, C.kit);
+    const sim = C.sim;
+    for (; steps > 0 && sim.state === 'run' && sim.time < 600; steps--) { sim.army.tx = autoSteer(sim); step(sim, CALIB_DT); sim.events.length = 0; }
+    if (sim.state !== 'run' || sim.time >= 600) { C.runs.push({ n: sim.army.n, power: firePower(sim) }); C.sim = null; }
+  }
+  if (C.runs.length < CALIB_RUNS) return false;
+  let N0 = 0, NP0 = 0;
+  for (const r of C.runs) { N0 += r.n / CALIB_RUNS; NP0 += r.n * r.power / CALIB_RUNS; }
+  N0 = Math.max(12, N0); NP0 = Math.max(12, NP0);
+  const atkK = clamp(Math.round(N0 * ATK_FRAC), 2, g.cfg.rLo);
+  const hp = Math.max(60, Math.round(HP_K * ROUNDS * NP0 / 10) * 10);
+  Object.assign(g.monster, { hp, max: hp, atkK });
+  g.calib = null;
+  return true;
+}
 
-// Plays the running part of a copy of the stage with every gate right and the given armoury, steering to the things
-// at the side of the road between gates; returns the army and its fire power at the monster
-function perfectRun(g, arm) {
-  const sim = {
-    ...g, time: 0, state: 'run', events: [], bullets: [], hits: [], fight: null, fire: 0, correct: 0, answered: 0, mistakes: [], gold: 0,
-    weapon: arm.weapon, fireBonus: 1 + ARMORY.power.per * arm.power, giant: false, turbo: false,
-    army: { x: 0, tx: 0, z: 0, n: g.cfg.start + ARMORY.army.per * arm.army, born: new Float32Array(CAP) },
+// A copy of the stage to be played with every gate right and the given armoury, steering to the things at the side of the road
+// between gates (the army and its fire power at the monster set the monster's strength)
+function perfectSim(g, kit) {
+  return {
+    ...g, calib: null, time: 0, state: 'run', events: [], bullets: [], blasts: [], hits: [], fight: null, fire: 0, boltT: 0, correct: 0, answered: 0, mistakes: [], gold: 0,
+    kit, weapon: kit.weapon, giant: false, turbo: false,
+    army: { x: 0, tx: 0, z: 0, n: g.cfg.start + ARMY_PER * kit.army, born: new Float32Array(CAP) },
     gates: g.gates.map(x => ({ ...x })), props: g.props.map(b => ({ ...b })), monster: { ...g.monster },
     squads: g.squads.map(q => ({ ...q, men: q.men.map(m => ({ ...m })) })),
     obst: g.obst.map(o => ({ ...o, barrels: o.barrels && o.barrels.map(b => ({ ...b })) })),
   };
-  for (let i = 0; i < 9000 && sim.state === 'run'; i++) {
-    sim.army.tx = autoSteer(sim);
-    step(sim, 1 / 20); sim.events.length = 0;
-  }
-  return { n: sim.army.n, power: firePower(sim) };
 }
 
 // How a careful player steers: the right gate when its problem is close, otherwise shoot the reward,
@@ -259,6 +359,75 @@ function propDone(g, p) {
   }
 }
 
+// An enemy is beaten (by a shot, fire, poison, lightning or a blast); with "wybuchający wrogowie" it may blow up
+function killMan(g, s, j) {
+  const m = s.men[j], mx = s.x + m.ox, mz = s.z + m.oz;
+  s.men.splice(j, 1);
+  if (m.big) g.gold += g.goldPer && GOLD.brute;
+  g.events.push({ type: 'kill', x: mx, z: mz, big: !!m.big, kind: s.kind });
+  const p = BOOM[g.kit.boom];
+  if (p && (m.big || Math.random() < p)) g.blasts.push({ x: mx, z: mz, r: m.big ? BOOM_R * 1.6 : BOOM_R });
+}
+// A hit by a shot: the damage, then fire, poison and ice stick to the enemy
+function hitMan(g, s, j, dmg) {
+  const m = s.men[j], K = g.kit, t = g.time;
+  m.hp -= dmg; m.hit = t;
+  if (m.hp <= 0) { killMan(g, s, j); return; }
+  if (K.fire) { m.burn = t + BURN_T; m.bd = BURN[K.fire] * dmg / BURN_T; }
+  if (K.poison) { m.ps = Math.min(POISON[K.poison], (m.pt > t ? m.ps : 0) + 1); m.pt = t + POISON_T; m.pd = POISON_DPS * dmg; }
+  if (K.ice) { m.slow = t + SLOW_T; if (Math.random() < FREEZE[K.ice]) m.frz = t + FREEZE_T; }
+}
+// Blasts of beaten enemies (one may set off the next); a few per step at most
+function blasts(g) {
+  for (let n = 0; n < 40 && g.blasts.length; n++) {
+    const B = g.blasts.shift(), dmg = BOOM_DMG * shotDmg(g);
+    g.events.push({ type: 'boom', x: B.x, z: B.z, r: B.r });
+    for (const s of g.squads) {
+      if (!s.active || Math.abs(s.z - B.z) > B.r + 4) continue;
+      for (let j = s.men.length - 1; j >= 0; j--) {
+        const m = s.men[j];
+        if (Math.hypot(s.x + m.ox - B.x, s.z + m.oz - B.z) < B.r) { m.hp -= dmg; m.hit = g.time; if (m.hp <= 0) killMan(g, s, j); }
+      }
+    }
+  }
+  g.blasts.length = 0;
+}
+// The electric gun: a lightning bolt hits the nearest enemy ahead and jumps on to the next ones
+function lightning(g) {
+  const a = g.army, K = g.kit;
+  let s0 = null, m0 = null, best = BOLT_RANGE;
+  for (const s of g.squads) {
+    if (!s.active) continue;
+    for (const m of s.men) { const dz = s.z + m.oz - a.z; if (dz > 0.5 && dz < best && Math.abs(s.x + m.ox - a.x) < 4) { best = dz; s0 = s; m0 = m; } }
+  }
+  if (!m0) return false;
+  const chain = [[s0, m0]], pts = [[a.x, a.z + 0.6]];
+  let px = s0.x + m0.ox, pz = s0.z + m0.oz; pts.push([px, pz]);
+  while (chain.length < BOLT_JUMPS[K.bolt]) {
+    let ns = null, nm = null, nd = BOLT_HOP;
+    for (const s of g.squads) {
+      if (!s.active || Math.abs(s.z - pz) > BOLT_HOP + 3) continue;
+      for (const m of s.men) { if (chain.some(c => c[1] === m)) continue; const d = Math.hypot(s.x + m.ox - px, s.z + m.oz - pz); if (d < nd) { nd = d; ns = s; nm = m; } }
+    }
+    if (!nm) break;
+    chain.push([ns, nm]); px = ns.x + nm.ox; pz = ns.z + nm.oz; pts.push([px, pz]);
+  }
+  g.events.push({ type: 'bolt', pts });
+  const dmg = BOLT_DMG * shotDmg(g);
+  for (const [s, m] of chain) { const j = s.men.indexOf(m); if (j >= 0) { m.hp -= dmg; m.hit = g.time; if (m.hp <= 0) killMan(g, s, j); } }
+  return true;
+}
+// One volley: bullets side by side; sometimes a second volley right behind it and two slanting bullets
+function shoot(g, x, z, vx) {
+  const K = g.kit;
+  g.bullets.push({ x: clamp(x, -ROAD + 0.2, ROAD - 0.2), z, vx, d: 0, pierce: PIERCE[g.weapon] + K.pierce, id: 0,
+    bounce: vx ? BOUNCE[K.bounce] : 0, range: vx ? RANGE * (1 + 0.3 * BOUNCE[K.bounce]) : RANGE,
+    el: K.fire || K.ice || K.poison ? pick(['fire', 'ice', 'poison'].filter(e => K[e])) : null });   // the colour shows one of its powers
+}
+function volleyAt(g, x, z) {
+  const n = FRONT[g.kit.front];
+  for (let k = 0; k < n; k++) shoot(g, x + (k - (n - 1) / 2) * 0.32, z, 0);
+}
 // A shot barrel bursts into flames: enemies close to it burn too
 function explodeBarrel(g, o, br) {
   br.done = true;
@@ -266,29 +435,31 @@ function explodeBarrel(g, o, br) {
   for (const s of g.squads) {
     if (!s.active) continue;
     for (let j = s.men.length - 1; j >= 0; j--) {
-      const m = s.men[j], mx = s.x + m.ox, mz = s.z + m.oz;
-      if (Math.hypot(mx - br.x, mz - o.z) < 1.6 && !m.big) { s.men.splice(j, 1); g.events.push({ type: 'kill', x: mx, z: mz, big: false, kind: s.kind }); }
+      const m = s.men[j];
+      if (Math.hypot(s.x + m.ox - br.x, s.z + m.oz - o.z) < 1.6 && !m.big) killMan(g, s, j);
     }
   }
 }
+// A bullet hits everything in its way during this step (as many enemies as it can pierce), so the result does not
+// depend on how many steps a second the phone makes
+let bulletId = 0;
 function bulletHit(g, b, zPrev) {
   const lo = zPrev - 0.25, hi = b.z + 0.25, dmg = shotDmg(g);
-  for (const s of g.squads) {
-    if (!s.active || s.z < lo - 3 || s.z > hi + 3) continue;
+  if (!b.id) b.id = ++bulletId;
+  let hit = false;
+  for (const s of g.live) {
+    if (s.z < lo - 3 || s.z > hi + 3) continue;
     const w = FOES[s.kind].w;
-    for (let j = 0; j < s.men.length; j++) {
+    for (let j = s.men.length - 1; j >= 0; j--) {
       const m = s.men[j], mx = s.x + m.ox, mz = s.z + m.oz;
-      if (m !== b.last && mz >= lo && mz <= hi && Math.abs(mx - b.x) < (m.big ? w * 2 : w)) {
-        m.hp -= dmg; m.hit = g.time; b.last = m;
-        if (m.hp <= 0) {
-          s.men.splice(j, 1);
-          if (m.big) g.gold += GOLD.brute;
-          g.events.push({ type: 'kill', x: mx, z: mz, big: !!m.big, kind: s.kind });
-        }
-        return --b.pierce <= 0;
+      if (m.hb !== b.id && mz >= lo && mz <= hi && Math.abs(mx - b.x) < (m.big ? w * 2 : w)) {
+        m.hb = b.id; hit = true;
+        hitMan(g, s, j, dmg);
+        if (--b.pierce <= 0) return true;
       }
     }
   }
+  if (hit) return false;
   for (const o of g.obst) {
     if (o.type !== 'barrels' || o.z > hi || o.z + o.len < lo) continue;
     for (const br of o.barrels) {
@@ -329,11 +500,12 @@ function answerFight(g, left) {
   if (!f || !f.p || f.done || g.state !== 'fight') return;
   f.done = true; f.next = g.time + 1.9; f.volleyUntil = g.time + 0.6; g.answered++;
   const ok = left === f.left, t = g.time, M = g.monster;
-  if (ok) { g.correct++; g.gold += GOLD.fight; grow(g, f.r); }
+  if (ok) { g.correct++; g.gold += g.goldPer; grow(g, f.r); }
   else g.mistakes.push({ q: f.p.q, a: f.p.a, w: left === null ? null : f.p.w, sol: f.p.sol, ask: f.p.ask });
   // The round: army volley, then the monster's blow (and a fireball after a wrong answer)
-  g.hits.push({ at: t + 0.6, kind: 'volley' }, { at: t + 0.65, kind: 'growl', fire: !ok }, { at: t + 1.2, kind: 'stomp', n: M.atkK });
-  if (!ok) g.hits.push({ at: t + 1.2, kind: 'blast', n: f.r });
+  // (frost from the ice bullets softens the blow)
+  g.hits.push({ at: t + 0.6, kind: 'volley' }, { at: t + 0.65, kind: 'growl', fire: !ok }, { at: t + 1.2, kind: 'stomp', n: Math.round(M.atkK * (1 - BOSS_ICE[g.kit.ice])) });
+  if (!ok) g.hits.push({ at: t + 1.2, kind: 'blast', n: Math.max(f.r, Math.round(BLAST_SHARE * g.army.n)) });   // a big army feels it too
   g.events.push({ type: 'fightAnswer', ok, timeout: left === null, p: f.p, r: f.r });
 }
 
@@ -346,7 +518,7 @@ function step(g, dt) {
   if (g.state === 'fight' || g.state === 'lost') sp = 0;
   if (g.state === 'won') sp = a.z < g.finishZ + 6 ? g.cfg.speed * 0.7 : 0;
   a.z += sp * dt;
-  if (g.state === 'run' && M && a.z >= M.z - FIGHT_DIST) { a.z = M.z - FIGHT_DIST; startFight(g); }
+  if (g.state === 'run' && M && a.z >= M.z - FIGHT_DIST) { a.z = M.z - FIGHT_DIST; calibrate(g, Infinity); startFight(g); }
 
   // The next problem appears when the enemies and obstacles after the last gate are behind (or at the latest at its point)
   if (g.state === 'run') {
@@ -363,7 +535,7 @@ function step(g, dt) {
       if (gt.done || a.z < gt.z) continue;
       gt.done = true; gt.t = g.time; gt.choseLeft = a.x < 0; gt.ok = gt.choseLeft === gt.left;
       g.answered++;
-      if (gt.ok) { g.correct++; g.gold += GOLD.gate; grow(g, gt.r); ev.push({ type: 'gate', ok: true, gate: gt, n: gt.r }); }
+      if (gt.ok) { g.correct++; g.gold += g.goldPer; grow(g, gt.r); ev.push({ type: 'gate', ok: true, gate: gt, n: gt.r }); }
       else {
         const loss = Math.min(gt.r, a.n - 1);     // a gate never takes the last soldier
         a.n -= loss;
@@ -375,21 +547,31 @@ function step(g, dt) {
 
   // Shooting (in the fight only during the volley after an answer)
   const volley = g.state === 'fight' && g.time < g.fight.volleyUntil;
+  const K = g.kit;
+  g.live = g.squads.filter(q => q.active && q.men.length);      // only these can be hit
   if (a.n > 0 && (g.state === 'run' || volley)) {
-    g.fire += (volley ? Math.min(40, 8 + a.n / 3) : (5 + 1.8 * Math.sqrt(a.n)) * shotRate(g)) * dt;
+    g.fire += (volley ? Math.min(40, 8 + a.n / 3) : (5 + 1.8 * Math.sqrt(a.n)) * shotRate(g) * FRONT_RATE[K.front]) * dt;
     const sq = squeeze(a.n);
     while (g.fire >= 1) {
       g.fire -= 1;
-      const i = Math.floor(Math.random() * Math.min(a.n, CAP));
-      g.bullets.push({ x: clamp(a.x + OX[i] * sq, -ROAD + 0.2, ROAD - 0.2), z: a.z + OZ[i] + 0.3, d: 0, pierce: PIERCE[g.weapon], last: null });
+      const i = Math.floor(Math.random() * Math.min(a.n, CAP)), x = a.x + OX[i] * sq, z = a.z + OZ[i] + 0.3;
+      volleyAt(g, x, z);
+      if (K.multi && Math.random() < MULTI[K.multi]) volleyAt(g, x, z - 0.8);
+      if (K.diag && Math.random() < DIAG[K.diag]) { shoot(g, x, z, -DIAG_DX); shoot(g, x, z, DIAG_DX); }
     }
   }
-  const bv = (30 + sp) * dt;
+  const bv = (30 + sp) * dt, edge = ROAD - 0.15;
   for (let i = g.bullets.length - 1; i >= 0; i--) {
     const b = g.bullets[i], zp = b.z;
     b.z += bv; b.d += bv;
-    if (b.d > RANGE || bulletHit(g, b, zp)) { g.bullets[i] = g.bullets[g.bullets.length - 1]; g.bullets.pop(); }
+    if (b.vx) {                          // a slanting bullet bounces off the edge of the road, or flies off it
+      b.x += b.vx * bv;
+      if (Math.abs(b.x) > edge) { if (b.bounce > 0) { b.bounce--; b.vx = -b.vx; b.x = Math.sign(b.x) * 2 * edge - b.x; b.id = 0; } else b.d = 1e9; }
+    }
+    if (b.d > b.range || bulletHit(g, b, zp)) { g.bullets[i] = g.bullets[g.bullets.length - 1]; g.bullets.pop(); }
   }
+  if (g.blasts.length) blasts(g);
+  if (K.bolt && g.state === 'run') { g.boltT += dt; if (g.boltT >= BOLT_EVERY[K.bolt] && lightning(g)) g.boltT = 0; }
 
   // Zombies and the things at the side of the road
   const R = radius(a.n), RX = (R - 0.3) * squeeze(a.n) + 0.5, RZ = R + 0.2;
@@ -399,15 +581,24 @@ function step(g, dt) {
     const s = g.squads[si], F = FOES[s.kind];
     if (!s.active) { if (running && a.z >= s.wake) { s.active = true; s.born = g.time; ev.push({ type: 'horde', kind: s.kind }); } else continue; }
     if (running) {
-      s.z -= F.speed * dt;
-      const wave = s.kind === 'wasp' ? Math.sin(g.time * 3.2 + s.ph) * 1.6 : s.kind === 'snake' ? Math.sin(g.time * 2.4 + s.ph) * 0.8 : 0;
+      const t = g.time, sx = s.x, step = F.speed * dt;
+      s.z -= step;
+      const wave = s.kind === 'wasp' ? Math.sin(t * 3.2 + s.ph) * 1.6 : s.kind === 'snake' ? Math.sin(t * 2.4 + s.ph) * 0.8 : 0;
       s.x = clamp(s.x + (clamp(a.x - s.x, -1, 1) * 0.9 + wave) * dt, -3.4, 3.4);
       for (let j = s.men.length - 1; j >= 0; j--) {
-        const m = s.men[j], dx = s.x + m.ox - a.x, dz = s.z + m.oz - a.z;
+        const m = s.men[j];
+        // fire and poison keep hurting; a frozen enemy stands still, a cold one walks at half speed
+        const dot = (m.burn > t ? m.bd : 0) + (m.pt > t ? m.ps * m.pd : 0);
+        if (dot) { m.hp -= dot * dt; if (m.hp <= 0) { killMan(g, s, j); continue; } }
+        const hold = m.frz > t ? 1 : m.slow > t ? 0.5 : 0;
+        if (hold) { m.oz += step * hold; m.ox -= (s.x - sx) * hold; }
+        const dx = s.x + m.ox - a.x, dz = s.z + m.oz - a.z;
         // a big one takes several soldiers; on the road the last soldier always survives, so the monster is always reached
         const k = Math.min(a.n - 1, m.big ? Math.min(4, Math.ceil(m.hp)) : F.dmg);
-        if (inside(dx, dz) && a.n > 0) { s.men.splice(j, 1); a.n -= k; ev.push({ type: 'clash', x: a.x + dx, z: a.z + dz, big: !!m.big, n: k, kind: s.kind }); }
-        else if (dz < -RZ - 0.4) { s.men.splice(j, 1); a.n -= Math.max(0, k); ev.push({ type: 'leak', x: a.x + dx, z: a.z + dz, n: Math.max(0, k), kind: s.kind }); }   // got past the army
+        const touch = inside(dx, dz) && a.n > 0, past = dz < -RZ - 0.4;
+        if ((touch || past) && m.frz > t) { s.men.splice(j, 1); ev.push({ type: 'shatter', x: a.x + dx, z: a.z + dz }); }   // a frozen one breaks without harm
+        else if (touch) { s.men.splice(j, 1); a.n -= k; ev.push({ type: 'clash', x: a.x + dx, z: a.z + dz, big: !!m.big, n: k, kind: s.kind }); }
+        else if (past) { s.men.splice(j, 1); a.n -= Math.max(0, k); ev.push({ type: 'leak', x: a.x + dx, z: a.z + dz, n: Math.max(0, k), kind: s.kind }); }   // got past the army
       }
     }
     if (!s.men.length) g.squads.splice(si, 1);
@@ -465,19 +656,35 @@ function step(g, dt) {
   }
 }
 
-if (!HAS_DOM) { globalThis.ArmiaLiczb = { STAGES, stageConfig, createGame, step, answerFight, autoSteer, WEAPONS, ARMORY, GOLD, FOES, firePower }; return; }
+if (!HAS_DOM) {
+  globalThis.ArmiaLiczb = { STAGES, stageConfig, createGame, step, answerFight, autoSteer, WEAPONS, SKILLS, SKILL_KEYS, KIT0, GOLD, FOES, firePower,
+    expectedKit, enemyScale, bossMul, starGold, chestGold, answerGold, canBuy, maxLv, calibrate, setScale: f => { scaleHook = f; }, forget: () => RECENT.clear() };
+  return;
+}
 
 /* ============================================================
    Saved progress (stays on this phone only)
    ============================================================ */
 const KEY = 'armia-liczb-test';   // TEST: a separate save, so testing does not touch the real progress
 const NCLS = Z.KLASY.length;
-const save = { stars: new Array(NCLS * STAGES).fill(0), next: [0, 0], music: true, sfx: true, learn: true, tab: 0, gold: 0, arm: { ...NO_ARM }, skin: 0, skins: [0] };
+// stars and chest: the best result of every game; boost: upgrades from the last chest for the next game
+const save = { stars: new Array(NCLS * STAGES).fill(0), chest: new Array(NCLS * STAGES).fill(0), next: [0, 0], music: true, sfx: true, learn: true, tab: 0,
+  gold: 0, arm: { ...KIT0 }, boost: [], skin: 0, skins: [0], ver: 0 };
 try { Object.assign(save, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { /* storage blocked */ }
 if (!Array.isArray(save.stars) || save.stars.length !== NCLS * STAGES) save.stars = new Array(NCLS * STAGES).fill(0);
+if (!Array.isArray(save.chest) || save.chest.length !== NCLS * STAGES) save.chest = new Array(NCLS * STAGES).fill(0);
 if (!Array.isArray(save.next) || save.next.length !== 2) save.next = [0, 0];
 save.gold = Math.max(0, Math.floor(+save.gold || 0));
-save.arm = Object.fromEntries(Object.keys(NO_ARM).map(k => [k, clamp(Math.floor(+(save.arm || {})[k] || 0), 0, ARMORY[k].prices.length)]));
+// upgrades bought before version 14 stay ("Siła ognia" is now "Szybkie strzelanie")
+const oldArm = save.arm || {};
+if (oldArm.rate === undefined && oldArm.power !== undefined) oldArm.rate = oldArm.power;
+save.arm = Object.fromEntries(SKILL_KEYS.map(k => [k, clamp(Math.floor(+oldArm[k] || 0), 0, maxLv(k))]));
+save.boost = Array.isArray(save.boost) ? save.boost.filter(b => b && SKILLS[b.k] && b.n > 0).slice(0, 3) : [];
+// from version 14 stars pay much better: the stars won before get their gold once
+if (!(save.ver >= 14)) {
+  save.gold += save.stars.reduce((t, n, i) => t + starGold(Math.floor(i / STAGES), n | 0), 0);
+  save.ver = 14;
+}
 if (!Array.isArray(save.skins)) save.skins = [0];
 if (!save.skins.includes(save.skin)) save.skin = 0;
 // music is no longer chosen by the player: every game draws one of the styles (an old "off" setting is kept)
@@ -486,7 +693,19 @@ delete save.musicStyle;
 save.music = save.music !== false;
 const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) { /* storage blocked */ } };
 const starsOf = (c, s) => save.stars[c * STAGES + s];
-const unlocked = (c, s) => s === 0 || starsOf(c, s - 1) > 0 || starsOf(c, s) > 0;
+const gamesDone = c => save.stars.slice(c * STAGES, (c + 1) * STAGES).filter(x => x > 0).length;
+// A level opens when every game of the level before it is passed (levels already played before version 14 stay open);
+// in a level the games open one after another. "Gra na próbę" can be played in every level.
+const levelOpen = c => c === 0 || gamesDone(c - 1) === STAGES || gamesDone(c) > 0;
+const unlocked = (c, s) => levelOpen(c) && (s === 0 || starsOf(c, s - 1) > 0 || starsOf(c, s) > 0);
+// the game after this one, or the first one still to pass
+function nextGame(c, s) {
+  if (s + 1 < STAGES && unlocked(c, s + 1)) return [c, s + 1];
+  for (let cc = 0; cc < NCLS; cc++) for (let ss = 0; ss < STAGES; ss++) if (unlocked(cc, ss) && !starsOf(cc, ss) && cc >= c) return [cc, ss];
+  return [c, s];
+}
+// the bought upgrades together with the ones from the last chest
+const playKit = () => { const k = { ...save.arm }; for (const b of save.boost) k[b.k] = Math.min(maxLv(b.k), k[b.k] + b.n); return k; };
 
 /* ============================================================
    Sound: music and effects are generated, no sound files
@@ -730,6 +949,19 @@ const Snd = (() => {
       [84, 88, 91, 96].forEach(m => tone('square', mtof(m), t + 0.4, 0.45, 0.05, sfxBus, 0, 4000));
     }),
     splash: fx('splash', 0.3, t => { hiss(t, 0.6, 0.35, sfxBus, 'lowpass', 1600); hiss(t + 0.05, 0.4, 0.12, sfxBus, 'highpass', 4000); }),
+    // the electric gun: a crackle with a falling buzz
+    zap: fx('zap', 0.12, t => { hiss(t, 0.12, 0.2, sfxBus, 'highpass', 5000); tone('square', 1800, t, 0.12, 0.05, sfxBus, 300, 5000); }),
+    // a small blast of a beaten enemy
+    pof: fx('pof', 0.09, t => { hiss(t, 0.22, 0.2, sfxBus, 'lowpass', 900); tone('sine', 140, t, 0.16, 0.18, sfxBus, 50); }),
+    // ice breaking
+    ice: fx('ice', 0.07, t => { tone('triangle', rand(2400, 3200), t, 0.08, 0.06, sfxBus, 1600); hiss(t, 0.09, 0.08, sfxBus, 'highpass', 6000); }),
+    // the chest: a tick for every answer, a shake and the lid opening with a sparkle
+    tick: fx('tick', 0.03, t => tone('square', 1320, t, 0.04, 0.05, sfxBus, 0, 5000)),
+    shake: fx('shake', 0.1, t => { hiss(t, 0.12, 0.18, sfxBus, 'bandpass', 700, 1.5); tone('sine', 180, t, 0.1, 0.2, sfxBus, 110); }),
+    open: fx('open', 0, t => {
+      hiss(t, 0.3, 0.2, sfxBus, 'bandpass', 1400, 0.8);
+      [79, 84, 88, 91, 96, 100].forEach((m, i) => tone('triangle', mtof(m), t + 0.12 + i * 0.055, 0.3, 0.1, sfxBus));
+    }),
     // Booing crowd, "uuuuu": several low voices through the formants of the vowel "u", sliding down
     boo: fx('boo', 1, t => {
       const dur = 2.1, out = ctx.createGain(), mix = ctx.createGain();
@@ -1849,14 +2081,39 @@ const pool = []; let pn = 0; const order = [];
 function item(kind, d) { let o = pool[pn]; if (!o) o = pool[pn] = {}; pn++; o.k = kind; o.d = d; return o; }
 const byDepth = (p, q) => q.d - p.d;
 
-// spr: the enemy's pictures (none for soldiers); fly: height above the road (the shadow stays on the road)
-function addSoldier(team, x, z, frame, sc, spr, fly) {
+// spr: the enemy's pictures (none for soldiers); fly: height above the road (the shadow stays on the road); m: the enemy (fire, ice, poison on it)
+function addSoldier(team, x, z, frame, sc, spr, fly, m) {
   if (!proj(x, 0, z, P0)) return;
   if (P0.y > view.h + 80 || P0.y < -80 || P0.x < -60 || P0.x > view.w + 60) return;
-  const o = item(0, P0.d); o.team = team; o.x = P0.x; o.y = P0.y; o.s = P0.s * sc; o.f = frame; o.spr = spr || null;
+  const o = item(0, P0.d); o.team = team; o.x = P0.x; o.y = P0.y; o.s = P0.s * sc; o.f = frame; o.spr = spr || null; o.m = m || null;
   const rx = 0.34 * P0.s * sc, ry = 0.14 * P0.s * sc;
   ctx.moveTo(P0.x + rx, P0.y); ctx.ellipse(P0.x, P0.y, rx, ry, 0, 0, Math.PI * 2);
   if (fly && proj(x, fly, z, P1)) o.y = P1.y;
+}
+
+// What the upgrades do to an enemy: a block of ice, a bluish cold, flames over the head, green poison bubbles
+function drawStatus(m, x, y, w, h, t) {
+  if (m.frz > t) {
+    ctx.beginPath(); rr(ctx, x - w * 0.56, y - h * 1.03, w * 1.12, h * 1.06, Math.max(2, w * 0.18));
+    ctx.fillStyle = 'rgba(170,225,255,0.55)'; ctx.fill(); ctx.lineWidth = Math.max(1, h * 0.04); ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x - w * 0.36, y - h * 0.85); ctx.lineTo(x - w * 0.12, y - h * 0.95); ctx.stroke();
+  } else if (m.slow > t) {           // cold: a small snowflake dot over the head
+    ctx.fillStyle = '#bfe6ff'; ctx.strokeStyle = '#2a78b8'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(x + w * 0.3, y - h * 0.95, Math.max(2, w * 0.12), 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  }
+  if (m.burn > t) {
+    const f = 0.8 + 0.25 * Math.sin(t * 22 + m.ph * 3), fx = x + Math.sin(t * 9 + m.ph) * w * 0.06, fy = y - h * 0.92, r = Math.max(2, w * 0.22) * f;
+    ctx.fillStyle = '#ff6a1f'; ctx.beginPath(); ctx.moveTo(fx, fy - r * 2.2); ctx.quadraticCurveTo(fx + r * 1.2, fy - r * 0.4, fx, fy + r * 0.5); ctx.quadraticCurveTo(fx - r * 1.2, fy - r * 0.4, fx, fy - r * 2.2); ctx.fill();
+    ctx.fillStyle = '#ffd84a'; ctx.beginPath(); ctx.moveTo(fx, fy - r * 1.3); ctx.quadraticCurveTo(fx + r * 0.6, fy - r * 0.1, fx, fy + r * 0.3); ctx.quadraticCurveTo(fx - r * 0.6, fy - r * 0.1, fx, fy - r * 1.3); ctx.fill();
+  }
+  if (m.pt > t && m.ps) {
+    ctx.fillStyle = '#7be35a'; ctx.strokeStyle = '#1f5a12'; ctx.lineWidth = 1;
+    for (let i = 0; i < Math.min(3, m.ps); i++) {
+      const k = (t * 0.9 + i / 3 + m.ph) % 1, bx = x + (i - 1) * w * 0.28, by = y - h * (0.7 + 0.5 * k), r = Math.max(1.5, w * 0.09) * (1 - 0.4 * k);
+      ctx.globalAlpha = 1 - k; ctx.beginPath(); ctx.arc(bx, by, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
 }
 
 function drawEntities(g) {
@@ -1873,7 +2130,7 @@ function drawEntities(g) {
     if (!s.active) continue;                         // enemies jump out a moment after the gate
     const F = FOES[s.kind], pop = clamp((t - s.born) / 0.45, 0, 1), k = pop < 1 ? Math.max(0.05, backOut(pop)) : 1;
     const fly = F.fly ? 1.3 + 0.25 * Math.sin(t * 8 + s.ph) : 0;
-    for (const m of s.men) addSoldier(1, s.x + m.ox, s.z + m.oz, ((t * (F.fly ? 14 : 6) + m.ph) | 0) & 3, (m.big ? 1.75 : F.sc) * k, FOE_SPR[s.kind][m.big ? 1 : 0], fly);
+    for (const m of s.men) addSoldier(1, s.x + m.ox, s.z + m.oz, m.frz > t ? 0 : ((t * (F.fly ? 14 : 6) + m.ph) | 0) & 3, (m.big ? 1.75 : F.sc) * k, FOE_SPR[s.kind][m.big ? 1 : 0], fly, m);
   }
   ctx.fillStyle = 'rgba(10,30,50,0.22)'; ctx.fill();
 
@@ -1898,6 +2155,7 @@ function drawEntities(g) {
     if (o.k === 0) {
       const h = 0.95 * o.s, w = h * SW / SH;
       ctx.drawImage(o.spr ? o.spr[o.f] : armySprite(save.skin, o.f), o.x - w / 2, o.y - h, w, h);
+      if (o.m) drawStatus(o.m, o.x, o.y, w, h, g.time);
     } else if (o.k === 2) drawGate(o.r, g);
     else if (o.k === 3) (o.r.kind === 'cage' ? drawCage : drawCrate)(o.r, g);
     else if (o.k === 4) drawTower(o.z);
@@ -1963,14 +2221,44 @@ const SHOT_FX = [
   ['rgba(255,50,40,0.65)', 'rgba(255,225,200,1)', 0.42, 1.2],
   ['rgba(40,220,255,0.65)', 'rgba(220,255,255,1)', 0.3, 2.2],
 ];
+// bullets with fire, ice or poison take their colour
+const EL_FX = { fire: ['rgba(255,90,20,0.7)', 'rgba(255,240,170,1)'], ice: ['rgba(120,200,255,0.7)', 'rgba(240,252,255,1)'], poison: ['rgba(90,220,60,0.7)', 'rgba(225,255,200,1)'] };
+const bolts = [], PREV = { x: 0, y: 0 }, SHOT_BATCH = {};
 function drawEffects(g, dt) {
   ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
-  const [glow, core, thick, len] = SHOT_FX[g.weapon], fat = g.giant ? 1.35 : 1;
+  const [glow0, core0, thick, len] = SHOT_FX[g.weapon], fat = g.giant ? 1.35 : 1;
+  // bullets of one colour and about one thickness are drawn together (many bullets with the upgrades)
+  for (const k in SHOT_BATCH) SHOT_BATCH[k].length = 0;
   for (const b of g.bullets) {
-    if (!proj(b.x, 0.55 * fat, b.z, P0) || !proj(b.x, 0.55 * fat, b.z - len, P1)) continue;
-    ctx.strokeStyle = glow; ctx.lineWidth = Math.max(3, thick * fat * P0.s);
-    ctx.beginPath(); ctx.moveTo(P1.x, P1.y); ctx.lineTo(P0.x, P0.y); ctx.stroke();
-    ctx.strokeStyle = core; ctx.lineWidth = Math.max(1.2, thick * 0.4 * fat * P0.s); ctx.stroke();
+    if (!proj(b.x, 0.55 * fat, b.z, P0) || !proj(b.x - (b.vx || 0) * len, 0.55 * fat, b.z - len, P1)) continue;
+    const w = Math.max(3, thick * fat * P0.s), key = (b.el || 'n') + Math.min(5, Math.round(w / 4));
+    (SHOT_BATCH[key] || (SHOT_BATCH[key] = [])).push(P1.x, P1.y, P0.x, P0.y);
+  }
+  for (const key in SHOT_BATCH) {
+    const L = SHOT_BATCH[key];
+    if (!L.length) continue;
+    const E = EL_FX[key.slice(0, -1)], w = Math.max(3, +key.slice(-1) * 4);
+    ctx.beginPath();
+    for (let i = 0; i < L.length; i += 4) { ctx.moveTo(L[i], L[i + 1]); ctx.lineTo(L[i + 2], L[i + 3]); }
+    ctx.strokeStyle = E ? E[0] : glow0; ctx.lineWidth = w; ctx.stroke();
+    ctx.strokeStyle = E ? E[1] : core0; ctx.lineWidth = Math.max(1.2, w * 0.4); ctx.stroke();
+  }
+  // lightning of the electric gun: a jagged line through the enemies it hit
+  for (let i = bolts.length - 1; i >= 0; i--) {
+    const B = bolts[i]; B.t += dt;
+    if (B.t > 0.24) { bolts.splice(i, 1); continue; }
+    ctx.globalAlpha = 1 - B.t / 0.24; ctx.beginPath();
+    let first = true;
+    for (let k = 0; k < B.pts.length; k++) {
+      const [x, z] = B.pts[k];
+      if (!proj(x, 0.8, z, P0)) continue;
+      if (first) { ctx.moveTo(P0.x, P0.y); first = false; PREV.x = P0.x; PREV.y = P0.y; continue; }
+      for (let q = 1; q <= 3; q++) { const f = q / 4, j = (Math.random() - 0.5) * 18; ctx.lineTo(PREV.x + (P0.x - PREV.x) * f + j, PREV.y + (P0.y - PREV.y) * f + j * 0.6); }
+      ctx.lineTo(P0.x, P0.y); PREV.x = P0.x; PREV.y = P0.y;
+    }
+    ctx.strokeStyle = 'rgba(110,190,255,0.85)'; ctx.lineWidth = 7; ctx.stroke();
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2.2; ctx.stroke();
+    ctx.globalAlpha = 1;
   }
   ctx.globalCompositeOperation = 'source-over';
   // shock waves from the monster's stomp
@@ -2069,7 +2357,7 @@ function render(g, dt) {
    Screens, HUD and controls
    ============================================================ */
 const $ = id => document.getElementById(id);
-const screens = { menu: $('scrMenu'), levels: $('scrLevels'), intro: $('scrIntro'), pause: $('scrPause'), result: $('scrResult'), lesson: $('scrLesson'), armory: $('scrArmory') };
+const screens = { menu: $('scrMenu'), levels: $('scrLevels'), intro: $('scrIntro'), pause: $('scrPause'), result: $('scrResult'), lesson: $('scrLesson'), armory: $('scrArmory'), chest: $('scrChest') };
 const hud = $('hud'), probCard = $('probCard'), probText = $('probText'), probSub = $('probSub'), probTime = $('probTime'), probReward = $('probReward');
 const fight = $('fightPanel'), fqText = $('fqText'), fqSub = $('fqSub'), fqTime = $('fqTime'), ansL = $('ansL'), ansR = $('ansR');
 const ICON = {
@@ -2078,7 +2366,7 @@ const ICON = {
 };
 
 let game = createGame(save.next[0], save.next[1], true);
-let mode = 'menu';            // menu | levels | intro | play | pause | lesson | result | armory
+let mode = 'menu';            // menu | levels | intro | play | pause | lesson | chest | result | armory
 let pending = null;           // the stage shown on the intro card, started by "Start"
 const ui = { shownGate: null, until: 0, lessonQ: null, music: null };
 const stageLabel = (c, s) => `Level ${c + 1} · gra ${s + 1}`;
@@ -2086,33 +2374,43 @@ const solved = p => p.sol || (p.q.includes('?') ? p.q.replace('?', p.a) : /^x [<
 
 function show(name) { for (const k in screens) screens[k].hidden = k !== name; }
 function goMenu() {
+  if (!unlocked(save.next[0], save.next[1])) save.next = nextGame(0, 0);
   mode = 'menu'; game = createGame(save.next[0], save.next[1], true); hud.hidden = true; fight.hidden = true; view.hudBottom = 0; layout();
-  ui.lessonQ = null; lesson = null; $('stink').hidden = true;
+  ui.lessonQ = null; lesson = null; chest = null; $('stink').hidden = true;
   $('btnPlay').textContent = `Graj · ${stageLabel(save.next[0], save.next[1])}`;
   $('btnArmory').textContent = `Zbrojownia · ${group(save.gold)} złota`;
   $('menuVersion').textContent = `Wersja ${WERSJA} · TEST`;
   updateSoundBtns(); show('menu'); playMusic('menu', save.next[0]); Snd.duck(false);
 }
-function openIntro(c, s) {
-  mode = 'intro'; pending = createGame(c, s, false, save.arm);
+// trial: "gra na próbę" of level c (the player's upgrades and the chest's do not count there)
+function openIntro(c, s, trial) {
+  mode = 'intro'; pending = createGame(c, s, false, trial ? null : playKit(), trial, true);
   const info = pending.cfg.info, M = MONSTERS[c];
-  $('inWorld').textContent = `${stageLabel(c, s)} z ${STAGES} · ${WORLDS[pending.world].name}`;
-  $('inTitle').textContent = info.name;
-  $('inTopic').textContent = info.final ? 'Sprawdzian z całego levelu' : info.review ? 'Powtórka: wszystkie dotychczasowe tematy tego levelu' : `Stopień trudności ${info.tier} z 4`;
+  $('inWorld').textContent = trial ? `Level ${c + 1} · gra na próbę · ${WORLDS[pending.world].name}` : `${stageLabel(c, s)} z ${STAGES} · ${WORLDS[pending.world].name}`;
+  $('inTitle').textContent = trial ? `Zajrzyj do levelu ${c + 1}` : info.name;
+  $('inTopic').textContent = trial ? 'Po trochu ze wszystkich tematów tego levelu'
+    : info.final ? 'Sprawdzian z całego levelu' : info.review ? 'Powtórka: wszystkie dotychczasowe tematy tego levelu' : `Stopień trudności ${info.tier} z 4`;
   $('inExample').innerHTML = richHTML(pending.gen().q);
   $('inMonster').textContent = M.name;
-  $('inHp').textContent = group(pending.monster.max);
-  $('inHint').textContent = c === 0 && s === 0
-    ? 'Przesuwaj palcem w lewo i w prawo. Wbiegnij w bramkę z dobrym wynikiem.'
+  showHp();
+  $('inHint').textContent = trial
+    ? 'Ulepszenia są ustawione jak u gracza w połowie tego levelu. Ta gra nie daje złota ani gwiazdek.'
+    : c === 0 && s === 0 ? 'Przesuwaj palcem w lewo i w prawo. Wbiegnij w bramkę z dobrym wynikiem.'
     : `${pending.cfg.gates} bramek. Każda daje tylu żołnierzy, ile pokazuje zielona liczba.`;
+  const boost = !trial && save.boost.length;
+  $('inBoost').hidden = !boost;
+  if (boost) $('inBoost').innerHTML = `<small>Ze skrzyni na tę grę</small>${save.boost.map(b => `<span>${skillIcon(b.k)}${esc(SKILLS[b.k].name)} +${b.n}</span>`).join('')}`;
   show('intro');
 }
+// the monster's strength is worked out while the card is shown
+const showHp = () => { $('inHp').textContent = pending && !pending.calib ? group(pending.monster.max) : '…'; };
 function startStage(g) {
   game = g; mode = 'play'; pending = null;
+  if (!g.trial && save.boost.length) { save.boost = []; persist(); }   // the chest's upgrades were for this one game
   ui.shownGate = null; ui.until = 0; ui.lessonQ = null; lesson = null; $('stink').hidden = true;
-  parts.length = 0; floats.length = 0; confetti.length = 0; rings.length = 0; balls.length = 0; hitTexts.length = 0;
+  parts.length = 0; floats.length = 0; confetti.length = 0; rings.length = 0; balls.length = 0; hitTexts.length = 0; bolts.length = 0;
   show(null); hud.hidden = false; fight.hidden = true; probCard.hidden = false; view.k = 0;
-  $('hudLevel').textContent = stageLabel(g.cls, g.s);
+  $('hudLevel').textContent = g.trial ? `Level ${g.cls + 1} · na próbę` : stageLabel(g.cls, g.s);
   updGold(g);
   updateProblem(g, true);
   view.hudBottom = probCard.getBoundingClientRect().bottom;
@@ -2122,7 +2420,7 @@ function startStage(g) {
   drawMusicStyle(); playMusic('run', g.cls); Snd.duck(false);
   countGame(g);
 }
-const restart = g => startStage(createGame(g.cls, g.s, false, save.arm));
+const restart = g => startStage(createGame(g.cls, g.s, false, g.trial ? null : playKit(), g.trial, true));
 // The counter also notes every game started, by level (nothing about the player; does nothing when the counter is not on the page)
 function countGame(g) { try { if (window.goatcounter && window.goatcounter.count) window.goatcounter.count({ path: `gra/level-${g.cls + 1}`, title: `Gra: level ${g.cls + 1}`, event: true }); } catch (e) { /* counter blocked */ } }
 function pauseGame() { if (mode !== 'play') return; mode = 'pause'; show('pause'); Snd.duck(true); }
@@ -2190,7 +2488,7 @@ function pickAnswer(left) {
 function onGate(g, e) {
   const p = e.gate.p;
   if (e.ok) {
-    setCard('Dobrze!', `+${e.n} żołnierzy · +${GOLD.gate} złota`, 'good', 0); Snd.good(); Snd.coin();
+    setCard('Dobrze!', `+${e.n} żołnierzy` + (g.goldPer ? ` · +${g.goldPer} złota` : ''), 'good', 0); Snd.good(); Snd.coin();
     floatText('+' + e.n, '#4be08a'); fx.flash = 0.6; fx.flashColor = '40,210,110';
   } else {
     if (save.learn) setCard('Źle!', `Twoja odpowiedź: ${p.w}. Zaraz podpowiedź.`, 'bad', 0); else setCard(solved(p), `Twoja odpowiedź: ${p.w}`, 'bad', 0);
@@ -2211,7 +2509,7 @@ function handleEvents(g) {
     switch (e.type) {
       case 'gate': onGate(g, e); break;
       case 'kill':
-        if (e.big) { burst(e.x, e.z, FOE_FX[e.kind] || ZGREEN, 22, 1.2); floatText('+' + GOLD.brute + ' złota', '#ffd23f'); Snd.thud(); updGold(g); }
+        if (e.big) { burst(e.x, e.z, FOE_FX[e.kind] || ZGREEN, 22, 1.2); if (g.goldPer) floatText('+' + GOLD.brute + ' złota', '#ffd23f'); Snd.thud(); updGold(g); }
         else { burst(e.x, e.z, FOE_FX[e.kind] || ZGREEN, 5); Snd.pop(); }
         break;
       case 'clash':
@@ -2229,6 +2527,11 @@ function handleEvents(g) {
         fx.shake = 0.35; fx.flash = 0.6; fx.flashColor = '235,60,50';
         break;
       case 'barrel': burst(e.x, e.z, ['#ffb02e', '#ff5a2a', '#fff2a8', '#7a1f14'], 24, 0.8); Snd.boom(); break;
+      case 'boom':                                    // a beaten enemy blew up
+        rings.push({ x: e.x, z: e.z, t: 0, size: e.r * 1.6, c: 'rgba(255,150,40,0.95)' }); burst(e.x, e.z, ['#ffb02e', '#ff5a2a', '#fff2a8'], 7, 0.6); Snd.pof();
+        break;
+      case 'bolt': bolts.push({ pts: e.pts, t: 0 }); Snd.zap(); break;
+      case 'shatter': burst(e.x, e.z, ['#dff4ff', '#a9dcff', '#ffffff'], 9, 0.7); Snd.ice(); break;
       case 'problem': updateProblem(g, true); Snd.tap(); break;
       case 'horde': Snd.groan(); break;
       case 'spark': if (Math.random() < 0.5) burst(e.x, e.z, ['#fff2a8', '#ffb02e', MONSTERS[g.cls].light], 2, rand(1.5, 4.5)); Snd.shot(); break;
@@ -2259,7 +2562,7 @@ function handleEvents(g) {
         ansL.disabled = ansR.disabled = true;
         if (e.ok || !save.learn) (g.fight.left ? ansL : ansR).classList.add('right');
         updGold(g);
-        if (e.ok) { setFight('Dobrze!', `Posiłki: +${e.r} · +${GOLD.fight} złota`, 'good'); Snd.reinforce(); floatText('+' + e.r, '#4be08a'); fx.flash = 0.5; fx.flashColor = '40,210,110'; }
+        if (e.ok) { setFight('Dobrze!', `Posiłki: +${e.r}` + (g.goldPer ? ` · +${g.goldPer} złota` : ''), 'good'); Snd.reinforce(); floatText('+' + e.r, '#4be08a'); fx.flash = 0.5; fx.flashColor = '40,210,110'; }
         else {
           setFight(save.learn ? 'Źle!' : solved(e.p), e.timeout ? 'Za późno! Potwór atakuje' : `Twoja odpowiedź: ${e.p.w}`, 'bad');
           Snd.bad(); Snd.roar();
@@ -2376,8 +2679,8 @@ function lessonPick(left) {
   const btn = left === null ? null : left ? le.L : le.R;
   if (left === L.left) {
     L.pos++; setBar(L.pos); btn.classList.add('right'); Snd.good(); Snd.coin();
-    game.gold += GOLD.practice; updGold(game);     // practice after a mistake earns gold too
-    const gold = `<small>+${GOLD.practice} złota</small>`;
+    game.gold += game.goldPer; updGold(game);     // practice after a mistake earns gold too
+    const gold = game.goldPer ? `<small>+${game.goldPer} złota</small>` : '';
     if (L.pos < GOAL) { setMsg('Dobrze!' + gold, 'good'); later(0.9, nextTask); }
     else { setMsg('Super! Grasz dalej.' + gold, 'good'); Snd.reinforce(); later(1.4, closeLesson); }
   } else {
@@ -2414,15 +2717,178 @@ function lessonLost() {
 function shakeCard() { if (!REDUCED) { le.card.classList.remove('shake'); void le.card.offsetWidth; le.card.classList.add('shake'); } }
 
 /* ============================================================
+   The chest after the monster: 5 problems against one bar that runs all the time.
+   Every right answer is a point, finishing before the lightning mark one more:
+   6 points diamond, 5 gold, 3–4 silver, less wood. Inside: gold (the best chest of every game counts, like stars)
+   and upgrades for the next game only, so they can be tried before buying.
+   ============================================================ */
+const CHESTS = [null,
+  { name: 'Drewniana', body: '#b8743a', dark: '#6b3f1a', band: '#e2b25a' },
+  { name: 'Srebrna', body: '#c3ccd8', dark: '#66717f', band: '#f4f7fa' },
+  { name: 'Złota', body: '#f4c534', dark: '#a37405', band: '#fff1ad' },
+  { name: 'Diamentowa', body: '#5fd4f2', dark: '#1d6f96', band: '#e6fbff' },
+];
+const CHEST_N = 5, CHEST_FAST = 0.35, CHEST_TIME = 0.6;   // problems; share of the bar left for the speed point; seconds per problem × thinking time
+const CHEST_BOOST = [null, [1], [1, 1], [2, 1], [2, 2]];  // the chest's upgrades: how many levels each
+const chestTier = (ok, fast) => { const p = ok + (fast ? 1 : 0); return p >= 6 ? 4 : p >= 5 ? 3 : p >= 3 ? 2 : 1; };
+function chestSVG(t) {
+  const C = CHESTS[t], gem = t === 4 ? `<path d="M60 56l6 6-6 7-6-7z" fill="#ffffff" stroke="${C.dark}" stroke-width="1.5"/>` : '';
+  return `<svg viewBox="0 0 120 104" aria-hidden="true"><ellipse class="chest-glow" cx="60" cy="50" rx="44" ry="20" fill="#fff4b0"/>
+    <g class="chest-lid"><path d="M14 50V38Q14 20 60 20Q106 20 106 38V50Z" fill="${C.body}" stroke="${C.dark}" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M26 50V27M94 50V27" stroke="${C.band}" stroke-width="8"/><path d="M14 50V38Q14 20 60 20Q106 20 106 38V50Z" fill="none" stroke="${C.dark}" stroke-width="3" stroke-linejoin="round"/></g>
+    <rect x="14" y="50" width="92" height="44" rx="6" fill="${C.body}" stroke="${C.dark}" stroke-width="3"/>
+    <path d="M26 52V92M94 52V92" stroke="${C.band}" stroke-width="8"/><rect x="14" y="50" width="92" height="44" rx="6" fill="none" stroke="${C.dark}" stroke-width="3"/>
+    <rect x="51" y="46" width="18" height="22" rx="4" fill="${C.band}" stroke="${C.dark}" stroke-width="2.5"/>${gem || `<circle cx="60" cy="56" r="3" fill="${C.dark}"/>`}</svg>`;
+}
+let chest = null;
+const ch = { card: $('chCard'), eyebrow: $('chEyebrow'), title: $('chTitle'), box: $('chChest'), info: $('chInfo'), tiers: $('chTiers'), quiz: $('chQuiz'),
+  dots: $('chDots'), time: $('chTime'), q: $('chQ'), L: $('chL'), R: $('chR'), loot: $('chLoot'), go: $('chGo') };
+function openChest(g) {
+  recordGame(g);
+  mode = 'chest'; fight.hidden = true; hud.hidden = true; $('stink').hidden = true;
+  chest = { g, phase: 'ready', n: 0, ok: 0, T: CHEST_N * g.cfg.think * CHEST_TIME, t: 0, cur: null, left: true, busy: false, tier: 1 };
+  ch.eyebrow.textContent = `${MONSTERS[g.cls].name} ${MONSTERS[g.cls].fem ? 'pokonana' : 'pokonany'}!`;
+  ch.title.textContent = 'Skrzynia!';
+  ch.info.innerHTML = `${CHEST_N} zadań na czas. Pasek leci cały czas. Każda dobra odpowiedź poprawia skrzynię, a skończ przed znakiem <b>⚡</b>, to będzie jeszcze lepsza.`;
+  ch.tiers.innerHTML = [1, 2, 3, 4].map(t => `<span>${chestSVG(t)}<small>${CHESTS[t].name}</small></span>`).join('');
+  ch.tiers.hidden = false; ch.quiz.hidden = true; ch.loot.hidden = true; ch.info.hidden = false;
+  setChestBox(1, false);
+  ch.go.textContent = 'Otwieram!'; ch.go.hidden = false;
+  show('chest'); ch.card.scrollTop = 0;
+}
+function setChestBox(t, pop) {
+  chest.tier = t;
+  ch.box.className = 'chest-wrap t' + t;
+  ch.box.innerHTML = chestSVG(t) + `<span class="chest-name">${CHESTS[t].name}</span>`;
+  if (pop && !REDUCED) { void ch.box.offsetWidth; ch.box.classList.add('pop'); }
+}
+function chestStart() {
+  if (!chest || chest.phase !== 'ready') return;
+  chest.phase = 'quiz'; chest.t = 0;
+  ch.tiers.hidden = true; ch.info.hidden = true; ch.go.hidden = true; ch.quiz.hidden = false;
+  ch.dots.innerHTML = Array.from({ length: CHEST_N }, () => '<i></i>').join('');
+  chestNext();
+}
+function chestNext() {
+  const C = chest, p = C.cur = freshProblem(C.g);
+  C.left = Math.random() < 0.5; C.busy = false;
+  ch.q.innerHTML = richHTML(p.q);
+  const len = plain(p.q).length;
+  ch.q.classList.toggle('long', len > 13 && len <= 22); ch.q.classList.toggle('xlong', len > 22);
+  ch.L.innerHTML = richHTML(C.left ? p.a : p.w); ch.R.innerHTML = richHTML(C.left ? p.w : p.a);
+  ch.L.className = ch.R.className = 'ans'; ch.L.disabled = ch.R.disabled = false;
+}
+// the bar runs on during the answers too
+function chestTick(dt) {
+  const C = chest;
+  if (!C || C.phase !== 'quiz') return;
+  C.t += dt;
+  ch.time.style.transform = `scaleX(${clamp(1 - C.t / C.T, 0, 1)})`;
+  const fast = C.t <= C.T * (1 - CHEST_FAST);
+  ch.time.parentNode.classList.toggle('late', !fast);
+  const t = chestTier(C.ok, fast && C.n === CHEST_N);
+  if (C.n < CHEST_N && chestTier(C.ok, false) !== C.tier) setChestBox(chestTier(C.ok, false), true);
+  else if (C.n === CHEST_N && t !== C.tier) setChestBox(t, true);
+  if (C.t >= C.T) chestDone();
+}
+function chestPick(left) {
+  const C = chest;
+  if (!C || C.phase !== 'quiz' || C.busy) return;
+  Snd.unlock();
+  C.busy = true; ch.L.disabled = ch.R.disabled = true;
+  const ok = left === C.left, dot = ch.dots.children[C.n];
+  C.n++;
+  if (ok) { C.ok++; dot.className = 'good'; (left ? ch.L : ch.R).classList.add('right'); Snd.tick(); Snd.coin(); }
+  else { dot.className = 'bad'; (left ? ch.L : ch.R).classList.add('picked'); (C.left ? ch.L : ch.R).classList.add('right'); Snd.bad(); }
+  const done = C.n >= CHEST_N, fast = C.t <= C.T * (1 - CHEST_FAST);
+  if (done) { C.phase = 'wait'; C.fast = fast; }
+  setTimeout(() => {
+    if (chest !== C || mode !== 'chest') return;
+    if (done) chestDone(); else if (C.phase === 'quiz') chestNext();
+  }, ok ? 350 : 900);
+}
+// What is inside: gold for a better chest than ever in this game, and upgrades for the next game
+function chestLoot(g, tier) {
+  const i = g.cls * STAGES + g.s, best = save.chest[i];
+  const gold = Math.max(0, chestGold(g.cls, tier) - chestGold(g.cls, best));
+  save.chest[i] = Math.max(best, tier);
+  const boosts = [];
+  let extra = 0;
+  for (const n of CHEST_BOOST[tier]) {
+    const opts = SKILL_KEYS.filter(k => SKILLS[k].from <= g.cls + 1 && save.arm[k] < maxLv(k) && !boosts.some(b => b.k === k)
+      && (!SKILLS[k].needs || save.arm[SKILLS[k].needs] > 0 || boosts.some(b => b.k === SKILLS[k].needs)));
+    if (!opts.length) { extra += Math.round(20 * lvlMul(g.cls) / 5) * 5; continue; }   // everything bought: gold instead
+    let sum = 0; const w = opts.map(k => (sum += save.arm[k] ? 1 : 3));                 // upgrades not bought yet come up more often
+    const r = Math.random() * sum, k = opts[w.findIndex(x => x > r)];
+    boosts.push({ k, n: Math.min(n, maxLv(k) - save.arm[k]) });
+  }
+  return { tier, gold: gold + extra, boosts, first: best === 0, better: tier > best };
+}
+function chestDone() {
+  const C = chest;
+  if (!C || C.phase === 'open') return;
+  const fast = C.phase === 'wait' ? C.fast : false;
+  C.phase = 'open';
+  const g = C.g, tier = chestTier(C.ok, fast && C.n === CHEST_N), L = g.chest = chestLoot(g, tier);
+  g.pay.chest = L.gold;
+  save.gold += L.gold; save.boost = L.boosts; persist();
+  ch.quiz.hidden = true;
+  ch.title.textContent = `Skrzynia ${CHESTS[tier].name.toLowerCase()}!`;
+  ch.eyebrow.textContent = `Dobre odpowiedzi: ${C.ok} z ${CHEST_N}` + (fast && C.n === CHEST_N ? ' · szybko ⚡' : C.n < CHEST_N ? ' · zabrakło czasu' : '');
+  setChestBox(tier, false);
+  const shake = i => setTimeout(() => { if (chest !== C) return; ch.box.classList.remove('shake'); void ch.box.offsetWidth; ch.box.classList.add('shake'); Snd.shake(); }, i * 380);
+  if (!REDUCED) for (let i = 0; i < 3; i++) shake(i);
+  setTimeout(() => {
+    if (chest !== C) return;
+    ch.box.classList.remove('shake'); ch.box.classList.add('open'); Snd.open(); confettiBurst();
+    const gold = L.gold ? `<div class="loot-gold">${COIN}+${group(L.gold)} złota</div>` : `<p class="hint">Złoto za taką skrzynię w tej grze już było. Lepsza skrzynia da więcej.</p>`;
+    const items = L.boosts.map(b => `<div class="loot-item">${skillIcon(b.k)}<span><b>${esc(SKILLS[b.k].name)} +${b.n}</b><small>na następną grę</small></span></div>`).join('');
+    ch.loot.innerHTML = gold + items + (L.boosts.length ? '<p class="hint">Ulepszenia ze skrzyni działają w następnej grze. Na zawsze kupisz je w Zbrojowni.</p>' : '');
+    ch.loot.hidden = false; ch.go.textContent = 'Dalej'; ch.go.hidden = false;
+  }, REDUCED ? 100 : 1250);
+}
+function chestGo() {
+  if (!chest) return;
+  if (chest.phase === 'ready') chestStart();
+  else if (chest.phase === 'open' && !ch.loot.hidden) { const g = chest.g; chest = null; showResult(g); }
+}
+
+/* ============================================================
    Armoury: permanent upgrades and army colours, bought with gold earned by playing
    ============================================================ */
 const COIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#ffc531" stroke="#8a5a00" stroke-width="2"/><circle cx="12" cy="12" r="5.5" fill="none" stroke="#d99300" stroke-width="2"/></svg>';
 let armoryBack = 'menu';
-const armoryNow = {
-  weapon: L => `Teraz: ${WEAPONS[L].name}.` + (L < ARMORY.weapon.prices.length ? ` Następna: ${WEAPONS[L + 1].name}.` : ' Każda skrzynia w grze da jeszcze lepszą.'),
-  army: L => `Na start: ${START + ARMORY.army.per * L} żołnierzy` + (L < ARMORY.army.prices.length ? `, potem ${START + ARMORY.army.per * (L + 1)}.` : '.'),
-  power: L => (L ? `Szybsze strzelanie: +${Math.round(100 * ARMORY.power.per * L)}%` : 'Każdy poziom: strzelanie szybsze o 10%') + (L && L < ARMORY.power.prices.length ? `, potem +${Math.round(100 * ARMORY.power.per * (L + 1))}%.` : '.'),
+// Pictures of the upgrades: bullets drawn for the ones about barrels and shots, emoji for the rest
+const streak = (x1, y1, x2, y2) => `<path d="M${x1} ${y1}L${x2} ${y2}" stroke="#ff8a1a" stroke-width="3.4" stroke-linecap="round"/><path d="M${x1} ${y1}L${x2} ${y2}" stroke="#fff3b0" stroke-width="1.3" stroke-linecap="round"/>`;
+const svgIc = body => `<svg viewBox="0 0 24 24" aria-hidden="true">${body}</svg>`;
+const SKILL_IC = {
+  rate: '⏩', weapon: '🔫', fire: '🔥', ice: '❄️', poison: '☠️', bolt: '⚡', boom: '💥',
+  front: svgIc(streak(8, 21, 8, 4) + streak(16, 21, 16, 4)),
+  multi: svgIc(streak(12, 22, 12, 15) + streak(12, 11, 12, 3)),
+  pierce: svgIc(`<circle cx="12" cy="15" r="3.6" fill="#6fbf4a" stroke="#2c5a1a" stroke-width="1.4"/><circle cx="12" cy="7" r="3.6" fill="#6fbf4a" stroke="#2c5a1a" stroke-width="1.4"/>` + streak(12, 22, 12, 2)),
+  diag: svgIc(streak(12, 21, 12, 4) + streak(11, 20, 4, 6) + streak(13, 20, 20, 6)),
+  bounce: svgIc(`<path d="M3 3v18M21 3v18" stroke="#8a93a3" stroke-width="2.2" stroke-linecap="round"/><path d="M11 22L19 15L5 8L12 2" fill="none" stroke="#ff8a1a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M11 22L19 15L5 8L12 2" fill="none" stroke="#fff3b0" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>`),
 };
+const skillIcon = k => `<span class="sk-ic" aria-hidden="true">${k === 'army' ? `<img alt="" src="${armySprite(save.skin, 0).toDataURL()}">` : SKILL_IC[k]}</span>`;
+const pct = x => Math.round(100 * x) + '%';
+// What the upgrade does now (L) and what the next level adds
+const SKILL_TXT = {
+  army: L => `Na start: ${START + ARMY_PER * L} żołnierzy` + (L < maxLv('army') ? `, potem ${START + ARMY_PER * (L + 1)}.` : '.'),
+  rate: L => (L ? `Strzelanie szybsze o ${pct(RATE_PER * L)}` : `Każdy poziom: strzelanie szybsze o ${pct(RATE_PER)}`) + (L && L < maxLv('rate') ? `, potem o ${pct(RATE_PER * (L + 1))}.` : '.'),
+  weapon: L => `Teraz: ${WEAPONS[L].name}.` + (L < maxLv('weapon') ? ` Następna: ${WEAPONS[L + 1].name}.` : ' Skrzynie w grze dają jeszcze lepszą.'),
+  front: L => L ? `${FRONT[L]} pociski obok siebie naraz.` + (L < maxLv('front') ? ' Potem 3.' : '') : 'Dwa pociski obok siebie naraz, potem trzy.',
+  pierce: L => `Każdy pocisk trafia o ${L || 1} ${(L || 1) === 1 ? 'wroga' : 'wrogów'} więcej` + (L && L < maxLv('pierce') ? `, potem o ${L + 1}.` : L ? '.' : ', potem jeszcze więcej.'),
+  multi: L => `Druga seria tuż za pierwszą: ${pct(MULTI[L || 1])} strzałów` + (L && L < maxLv('multi') ? `, potem ${pct(MULTI[L + 1])}.` : '.'),
+  fire: L => `Trafiony wróg płonie i traci życie przez chwilę. Potwór dostaje o ${pct(BOSS_FIRE[L || 1])} więcej.` + (L && L < maxLv('fire') ? ' Następny poziom: mocniejszy ogień.' : ''),
+  ice: L => `Trafiony wróg zwalnia, ${pct(FREEZE[L || 1])} zamarza. Zamrożony rozbija się o armię bez strat. Potwór uderza o ${pct(BOSS_ICE[L || 1])} słabiej.`,
+  diag: L => `Dwa pociski pod kątem do przodu w ${pct(DIAG[L || 1])} strzałów. Trafiają wrogów z boku.` + (L && L < maxLv('diag') ? ` Potem ${pct(DIAG[L + 1])}.` : ''),
+  bounce: L => `Pociski z bocznych luf odbijają się od brzegu drogi: ${BOUNCE[L || 1]} ${(L || 1) === 1 ? 'raz' : 'razy'}.` + (L && L < maxLv('bounce') ? ' Potem 2 razy.' : ''),
+  poison: L => `Trucizna zabiera życie przez 6 sekund. Kolejne trafienia ją wzmacniają, do ${POISON[L || 1]} razy. Potwór dostaje o ${pct(BOSS_POISON[L || 1])} więcej.`,
+  bolt: L => `Co ${String(BOLT_EVERY[L || 1]).replace('.', ',')} s piorun skacze po ${BOLT_JUMPS[L || 1]} wrogach.` + (L && L < maxLv('bolt') ? ` Potem co ${String(BOLT_EVERY[L + 1]).replace('.', ',')} s po ${BOLT_JUMPS[L + 1]}.` : ''),
+  boom: L => `Pokonany wróg wybucha (${pct(BOOM[L || 1])}) i rani sąsiadów. Duzi wybuchają zawsze.` + (L && L < maxLv('boom') ? ` Potem ${pct(BOOM[L + 1])}.` : ''),
+};
+// the highest level open to the player (upgrades open with it)
+const topLevel = () => { let c = 0; while (c + 1 < NCLS && levelOpen(c + 1)) c++; return c; };
 function openArmory(from) {
   armoryBack = from; mode = 'armory'; buildArmory(); show('armory');
   screens.armory.querySelector('.card').scrollTop = 0;
@@ -2430,16 +2896,21 @@ function openArmory(from) {
 function buildArmory() {
   $('arGold').textContent = group(save.gold);
   const list = $('arList'); list.innerHTML = '';
-  for (const key of Object.keys(ARMORY)) {
-    const A = ARMORY[key], L = save.arm[key], max = L >= A.prices.length, price = max ? 0 : A.prices[L];
-    const row = document.createElement('div'); row.className = 'ar-item';
-    row.innerHTML = `<h3>${esc(A.name)}</h3><div class="pips">${A.prices.map((_, i) => `<i class="${i < L ? 'on' : ''}"></i>`).join('')}</div><p>${esc(armoryNow[key](L))}</p>`;
+  const top = topLevel();
+  for (const key of SKILL_KEYS) {
+    const A = SKILLS[key], L = save.arm[key], max = L >= maxLv(key), price = max ? 0 : A.prices[L];
+    const closed = A.from > top + 1, needs = !closed && A.needs && !save.arm[A.needs];
+    const boost = save.boost.find(b => b.k === key);
+    const row = document.createElement('div'); row.className = 'ar-item' + (closed ? ' closed' : '');
+    row.innerHTML = `${skillIcon(key)}<div class="ar-txt"><h3>${esc(A.name)}</h3><div class="pips">${A.prices.map((_, i) => `<i class="${i < L ? 'on' : ''}"></i>`).join('')}</div>`
+      + `<p>${esc(SKILL_TXT[key](L))}</p>` + (boost ? `<p class="ar-boost">Ze skrzyni: +${boost.n} na następną grę</p>` : '') + '</div>';
     const b = document.createElement('button'); b.className = 'buy';
-    b.innerHTML = max ? 'Gotowe' : `${COIN}${group(price)}`;
-    b.disabled = max || save.gold < price;
-    b.setAttribute('aria-label', max ? `${A.name}: najwyższy poziom` : `Kup: ${A.name} za ${price} złota`);
+    b.innerHTML = max ? 'Gotowe' : closed ? `Od levelu ${A.from}` : needs ? 'Najpierw boczne lufy' : `${COIN}${group(price)}`;
+    if (closed || needs) b.classList.add('note');
+    b.disabled = max || closed || needs || save.gold < price;
+    b.setAttribute('aria-label', max ? `${A.name}: najwyższy poziom` : closed ? `${A.name}: od levelu ${A.from}` : `Kup: ${A.name} za ${price} złota`);
     b.addEventListener('click', () => {
-      if (save.gold < price || save.arm[key] >= A.prices.length) return;
+      if (save.gold < price || !canBuy(save.arm, key, top)) return;
       save.gold -= price; save.arm[key]++; persist(); Snd.unlock(); Snd.coin(); Snd.power(); buildArmory();
     });
     row.appendChild(b); list.appendChild(row);
@@ -2468,26 +2939,39 @@ function stinkShow(text) {
   el.querySelector('.stink-text').innerHTML = text || 'Śmierdzi Ci<br>spod pachy!!!';
   el.hidden = false; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
 }
-function showResult(g) {
-  mode = 'result'; fight.hidden = true; $('stink').hidden = true;
-  const won = g.state === 'won', c = g.cls, s = g.s;
+// The end of a game is written down at once (stars, gold for new stars and answers, the next game), before the chest
+function recordGame(g) {
+  if (g.recorded) return;
+  g.recorded = true;
+  const won = g.state === 'won', c = g.cls, s = g.s, i = c * STAGES + s;
   const ratio = g.answered ? g.correct / g.answered : 0;
-  const stars = won ? (ratio === 1 ? 3 : ratio >= 0.75 ? 2 : 1) : 0;
-  if (won) {
-    save.stars[c * STAGES + s] = Math.max(starsOf(c, s), stars);
-    save.next = s + 1 < STAGES ? [c, s + 1] : (c + 1 < NCLS ? [c + 1, 0] : [c, s]);
-  } else save.next = [c, s];
-  const gain = g.gold + (won ? stars * GOLD.star : 0);   // gold earned in the game is kept even after a loss
-  save.gold += gain;
+  g.stars = won ? (ratio === 1 ? 3 : ratio >= 0.75 ? 2 : 1) : 0;
+  g.pay = { stars: 0, answers: 0, chest: 0 };
+  if (g.trial) return;                                         // the keyhole game gives nothing and changes nothing
+  const before = save.stars[i];
+  g.pay.stars = Math.max(0, starGold(c, g.stars) - starGold(c, before));   // only new stars pay
+  g.pay.answers = g.gold;                                      // gold earned in the game is kept even after a loss
+  if (won) { save.stars[i] = Math.max(before, g.stars); save.next = nextGame(c, s); }
+  else save.next = [c, s];
+  save.gold += g.pay.stars + g.pay.answers;
   persist();
-  $('reGold').textContent = `+${group(gain)} · masz ${group(save.gold)}`;
-  $('reLevel').textContent = `${stageLabel(c, s)} · ${g.cfg.info.name}`;
+}
+function showResult(g) {
+  recordGame(g);
+  mode = 'result'; fight.hidden = true; $('stink').hidden = true;
+  const won = g.state === 'won', c = g.cls, s = g.s, stars = g.stars, P = g.pay;
+  const gain = P.stars + P.answers + P.chest;
+  $('reGold').textContent = g.trial ? '0 · gra na próbę' : `+${group(gain)} · masz ${group(save.gold)}`;
+  const why = [P.stars && `gwiazdki +${group(P.stars)}`, P.chest && `skrzynia +${group(P.chest)}`, P.answers && `odpowiedzi +${group(P.answers)}`].filter(Boolean);
+  $('reGoldWhy').textContent = g.trial ? '' : why.join(' · ') + (won && !P.stars && stars ? (why.length ? ' · ' : '') + 'za te gwiazdki złoto już było' : '');
+  $('reLevel').textContent = g.trial ? `Level ${c + 1} · gra na próbę` : `${stageLabel(c, s)} · ${g.cfg.info.name}`;
   $('reTitle').textContent = won ? 'Wygrana!' : g.lostBy === 'lesson' ? 'Chyba śmierdzi Ci spod pachy!' : 'Śmierdzi Ci spod pachy!!!';
   $('reStars').innerHTML = [0, 1, 2].map(i => ICON.star(i < stars)).join('');
   [...$('reStars').children].forEach((el, i) => el.classList.toggle('on', i < stars));
   $('reStars').hidden = !won;
-  $('reNote').textContent = won
-    ? (stars === 3 ? 'Wszystkie odpowiedzi dobre. Brawo!' : 'Bez pomyłek będą 3 gwiazdki.')
+  $('reNote').textContent = g.trial
+    ? (levelOpen(c) ? `To była gra na próbę. Level ${c + 1} jest już otwarty: zagraj w niego naprawdę.` : `To była gra na próbę. Level ${c + 1} otworzy się, gdy przejdziesz wszystkie ${STAGES} gier levelu ${c}.`)
+    : won ? (stars === 3 ? 'Wszystkie odpowiedzi dobre. Brawo!' : 'Bez pomyłek będą 3 gwiazdki i więcej złota.')
     : (g.fight ? 'W walce każda dobra odpowiedź to posiłki. Spróbuj jeszcze raz.' : 'Dobre odpowiedzi dają więcej żołnierzy. Spróbuj jeszcze raz.');
   $('reCorrect').textContent = `${g.correct} z ${g.answered}`;
   $('reArmy').textContent = String(g.army.n);
@@ -2499,10 +2983,11 @@ function showResult(g) {
     list.appendChild(li);
   }
   $('reReview').hidden = g.mistakes.length === 0;
-  const lastOne = c === NCLS - 1 && s === STAGES - 1;
-  $('btnNext').hidden = !won;
-  $('btnNext').textContent = lastOne ? 'Cała gra ukończona!' : s === STAGES - 1 ? `Level ${c + 2}` : 'Następna gra';
-  $('btnNext').disabled = lastOne;
+  const nx = save.next, same = nx[0] === c && nx[1] === s;     // the same game again: everything is passed
+  $('btnNext').hidden = !won || g.trial;
+  $('btnNext').textContent = same ? 'Cała gra ukończona!' : nx[0] > c ? `Level ${nx[0] + 1}` : 'Następna gra';
+  $('btnNext').disabled = same;
+  $('btnResultArmory').hidden = !!g.trial;
   show('result');
 }
 function showResultAgain() {
@@ -2515,8 +3000,8 @@ function buildLevelList() {
   tabs.innerHTML = '';
   Z.KLASY.forEach((K, c) => {
     const b = document.createElement('button');
-    b.className = 'tab' + (c === save.tab ? ' on' : ''); b.textContent = String(c + 1);
-    b.setAttribute('aria-label', `Level ${c + 1}`); b.setAttribute('aria-pressed', String(c === save.tab));
+    b.className = 'tab' + (c === save.tab ? ' on' : '') + (levelOpen(c) ? '' : ' closed'); b.textContent = String(c + 1);
+    b.setAttribute('aria-label', `Level ${c + 1}` + (levelOpen(c) ? '' : ', zamknięty')); b.setAttribute('aria-pressed', String(c === save.tab));
     b.addEventListener('click', () => { Snd.unlock(); Snd.tap(); save.tab = c; persist(); buildLevelList(); });
     tabs.appendChild(b);
   });
@@ -2525,6 +3010,12 @@ function buildLevelList() {
   $('lvClass').textContent = `Level ${c + 1}`;
   $('lvAbout').textContent = `${c + 1}. klasa · ${K.opis} · ukończone: ${done} z ${STAGES}`;
   box.innerHTML = '';
+  // a closed level says what opens it; every level has "gra na próbę"
+  const top = document.createElement('div'); top.className = 'lv-top';
+  top.innerHTML = (levelOpen(c) ? '' : `<p class="lv-lock">${ICON.lock}<span>Level ${c + 1} otworzy się, gdy przejdziesz wszystkie ${STAGES} gier levelu ${c}. Masz ${gamesDone(c - 1)} z ${STAGES}.</span></p>`)
+    + `<button class="btn btn-light lv-trial" id="btnTrial">Zagraj na próbę</button><p class="lv-trial-why">Zajrzyj przez dziurkę od klucza: po trochu ze wszystkich tematów, ulepszenia ustawione jak w połowie levelu. Nie daje złota ani gwiazdek.</p>`;
+  box.appendChild(top);
+  top.querySelector('#btnTrial').addEventListener('click', () => { Snd.unlock(); Snd.tap(); openIntro(c, TRIAL_S, true); });
   K.tematy.forEach((tm, b) => {
     const sec = document.createElement('section'); sec.className = 'topic-row';
     sec.innerHTML = `<h3>${esc(tm.nazwa)}</h3><div class="grid5"></div>`;
@@ -2576,6 +3067,9 @@ tap('btnResultMenu', goMenu);
 tap('btnArmory', () => openArmory('menu'));
 tap('btnResultArmory', () => openArmory('result'));
 tap('btnArmoryBack', closeArmory);
+ch.L.addEventListener('click', () => chestPick(true));
+ch.R.addEventListener('click', () => chestPick(false));
+tap('chGo', chestGo);
 le.L.addEventListener('click', () => lessonPick(true));
 le.R.addEventListener('click', () => lessonPick(false));
 tap('leNext', lessonNext);
@@ -2741,6 +3235,7 @@ window.addEventListener('keydown', e => {
   if (!$('scrInstall').hidden) { if (e.key === 'Escape') closeInstall(); return; }
   if (!$('scrShare').hidden) { if (e.key === 'Escape') closeShare(); return; }
   if (mode === 'lesson') { if ((L || R) && !e.repeat) lessonPick(L); return; }
+  if (mode === 'chest') { if ((L || R) && !e.repeat) chestPick(L); return; }
   if (L) keys.left = true; else if (R) keys.right = true;
   else if (e.key === 'Escape' || e.key === 'p') { if (mode === 'play') pauseGame(); else if (mode === 'pause') resumeGame(); }
 });
@@ -2755,6 +3250,13 @@ window.addEventListener('resize', () => {
 });
 
 let last = performance.now();
+// the monster's test runs, a few milliseconds in every frame; true when ready
+function calibFor(g, ms) {
+  if (!g || !g.calib) return false;
+  const t0 = performance.now();
+  while (g.calib && performance.now() - t0 < ms) calibrate(g, 20);
+  return !g.calib;
+}
 function frame(now) {
   const dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now;
   if (mode === 'play') {
@@ -2765,13 +3267,16 @@ function frame(now) {
     updateProblem(game, false);
     if (game.state === 'fight' && game.fight.p && !game.fight.done) fqTime.style.transform = `scaleX(${clamp((game.fight.deadline - game.time) / game.cfg.think, 0, 1)})`;
     $('hudProg').style.transform = `scaleX(${clamp(game.army.z / (game.monster.z - FIGHT_DIST), 0, 1)})`;
-    if (game.state !== 'run' && game.state !== 'fight' && game.time > game.endAt) showResult(game);
+    if (game.state !== 'run' && game.state !== 'fight' && game.time > game.endAt) { if (game.state === 'won' && !game.trial) openChest(game); else showResult(game); }
     else if (ui.lessonQ && game.time >= ui.lessonQ.at) {
       const q = ui.lessonQ; ui.lessonQ = null;
       if (game.state === 'run' || game.state === 'fight') openLesson(q.p, q.your);
     }
-  } else if (mode === 'lesson') lessonTick(dt);
+    calibFor(game, 3);
+  } else if (mode === 'lesson') { lessonTick(dt); calibFor(game, 6); }
+  else if (mode === 'chest') { chestTick(dt); step(game, dt); handleEvents(game); }
   else if (mode !== 'pause') {
+    if (mode === 'intro' && pending && pending.calib && calibFor(pending, 8)) showHp();
     step(game, dt);
     handleEvents(game);
   }

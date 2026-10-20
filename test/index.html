@@ -132,6 +132,14 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
 .stats { display: grid; gap: 6px; }
 .stat { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-weight: 800; font-size: 16px; padding: 9px 14px; background: #fff; border-radius: 14px; text-align: left; }
 .stat b { font-family: var(--display); font-weight: 400; font-size: 21px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.gold-why { margin: -2px 0 0; font-weight: 800; font-size: 13px; color: #9a6a00; }
+.gold-why:empty { display: none; }
+.boost-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; padding: 10px; border-radius: 16px; background: #f1e8ff; }
+.boost-list small { width: 100%; font-weight: 900; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: #6a3fb0; }
+.boost-list > span { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 4px; border-radius: 99px; background: #fff; font-weight: 800; font-size: 13px; }
+.boost-list .sk-ic { width: 28px; height: 28px; border-radius: 9px; font-size: 16px; }
+.boost-list .sk-ic svg { width: 22px; height: 22px; }
+.boost-list .sk-ic img { width: 16px; height: 24px; }
 .review { text-align: left; background: #fff; border-radius: 14px; padding: 12px 14px; display: grid; gap: 8px; }
 .review h3 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 18px; }
 .review ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
@@ -155,6 +163,13 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
   font-family: var(--display); font-size: 21px; color: var(--ink);
 }
 .tab.on { background: var(--blue); color: #fff; box-shadow: 0 3px 0 #1c4fb4; }
+.tab.closed:not(.on) { background: #efe6d4; color: #a99e88; }
+.lv-top { display: grid; gap: 8px; }
+.lv-lock { margin: 0; display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: center; padding: 10px 12px; border-radius: 14px; background: #fff3d6;
+  font-weight: 800; font-size: 14px; line-height: 1.3; text-align: left; }
+.lv-lock svg { width: 22px; height: 22px; color: #a37405; }
+.lv-trial { font-size: 19px; }
+.lv-trial-why { margin: -2px 0 0; font-weight: 700; font-size: 13px; line-height: 1.3; color: var(--muted); text-align: center; text-wrap: balance; }
 .tabs-label { font-weight: 900; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 .panel-body { overflow-y: auto; touch-action: pan-y; -webkit-overflow-scrolling: touch; padding: 14px 18px 22px; display: grid; gap: 14px; }
 .topic-row { display: grid; gap: 7px; }
@@ -301,19 +316,26 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
 .gold-chip svg { width: 26px; height: 26px; }
 .armory .hint { text-align: left; }
 .ar-list { display: grid; gap: 10px; }
-.ar-item { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; background: #fff; border-radius: 16px; padding: 12px 14px; }
-.ar-item h3 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 19px; line-height: 1.15; }
-.ar-item p { margin: 0; font-weight: 800; font-size: 14px; line-height: 1.3; color: var(--muted); }
+.ar-item { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 10px; align-items: center; background: #fff; border-radius: 16px; padding: 10px 12px; }
+.ar-item.closed { opacity: 0.62; }
+.ar-txt { display: grid; gap: 4px; min-width: 0; }
+.ar-item h3 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 18px; line-height: 1.15; }
+.ar-item p { margin: 0; font-weight: 800; font-size: 13px; line-height: 1.3; color: var(--muted); }
+.ar-item p.ar-boost { color: #8a4fd6; }
+.sk-ic { width: 40px; height: 40px; border-radius: 12px; background: #f3ecdd; display: grid; place-items: center; font-size: 23px; line-height: 1; }
+.sk-ic svg { width: 30px; height: 30px; }
+.sk-ic img { width: 22px; height: 33px; }
 .pips { display: flex; gap: 4px; }
 .pips i { width: 16px; height: 8px; border-radius: 4px; background: var(--paper-edge); }
 .pips i.on { background: var(--gold-deep); }
 .buy {
-  grid-column: 2; grid-row: 1 / span 3; min-width: 92px; min-height: 50px; padding: 0 12px; border-radius: 14px;
+  min-width: 84px; min-height: 48px; padding: 0 10px; border-radius: 14px;
   background: var(--gold); color: var(--ink); box-shadow: 0 4px 0 var(--gold-deep);
   display: flex; align-items: center; justify-content: center; gap: 6px; font-family: var(--display); font-size: 18px;
 }
 .buy svg { width: 18px; height: 18px; }
 .buy:disabled { background: #efe6d4; color: #a99e88; box-shadow: none; cursor: default; }
+.buy.note { font-family: var(--body); font-weight: 900; font-size: 12px; line-height: 1.2; max-width: 92px; }
 .buy:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--gold-deep); }
 .ar-sub { margin: 4px 0 0; font-family: var(--display); font-weight: 400; font-size: 20px; }
 .ar-skins { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
@@ -355,6 +377,45 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
 .inst .tap { animation: tapPulse 1.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
 @keyframes tapPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(1.12); } }
 
+/* ---------- the chest after the monster ---------- */
+.chest-card { gap: 12px; }
+.chest-wrap { position: relative; display: grid; justify-items: center; gap: 2px; }
+.chest-wrap svg { width: 150px; height: 130px; overflow: visible; }
+.chest-name { font-family: var(--display); font-size: 20px; }
+.chest-wrap.t1 .chest-name { color: #8a5222; } .chest-wrap.t2 .chest-name { color: #5d6875; }
+.chest-wrap.t3 .chest-name { color: #a37405; } .chest-wrap.t4 .chest-name { color: #1d7fa8; }
+.chest-wrap.pop svg { animation: chestPop 0.4s cubic-bezier(.2, 1.6, .4, 1); }
+.chest-wrap.shake svg { animation: chestShake 0.34s ease-in-out; }
+.chest-lid { transition: transform 0.45s cubic-bezier(.2, 1.4, .4, 1); transform-box: view-box; transform-origin: 100px 50px; }
+.chest-glow { opacity: 0; transition: opacity 0.4s; }
+.chest-wrap.open .chest-lid { transform: translate(-4px, -16px) rotate(-14deg); }
+.chest-wrap.open .chest-glow { opacity: 0.95; }
+@keyframes chestPop { from { transform: scale(0.7); } }
+@keyframes chestShake { 25% { transform: rotate(-7deg); } 50% { transform: rotate(6deg) translateY(-3px); } 75% { transform: rotate(-4deg); } }
+.chest-tiers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.chest-tiers span { display: grid; justify-items: center; gap: 0; }
+.chest-tiers svg { width: 58px; height: 50px; }
+.chest-tiers small { font-weight: 800; font-size: 11px; color: var(--muted); }
+.chest-quiz { display: grid; gap: 12px; }
+.chest-dots { display: flex; justify-content: center; gap: 8px; }
+.chest-dots i { width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: inset 0 0 0 2px #cfd9e6; }
+.chest-dots i.good { background: var(--good); box-shadow: none; }
+.chest-dots i.bad { background: var(--red); box-shadow: none; }
+.chest-time { position: relative; height: 14px; border-radius: 8px; overflow: visible; margin-top: 4px; }
+.chest-time i { border-radius: 8px; background: var(--gold-deep); }
+.chest-time.late i { background: var(--blue); }
+.chest-time b { position: absolute; top: 50%; left: 35%; transform: translate(-50%, -50%); width: 26px; height: 26px; border-radius: 50%; background: #fff;
+  box-shadow: 0 0 0 2px var(--gold-deep); display: grid; place-items: center; font-size: 15px; font-weight: 400; line-height: 1; }
+.chest-time.late b { filter: grayscale(1); opacity: 0.5; }
+.chest-quiz .ans { min-height: 68px; font-size: clamp(24px, 8vw, 34px); }
+.chest-loot { display: grid; gap: 8px; }
+.loot-gold { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-family: var(--display); font-size: 30px; color: #9a6a00; }
+.loot-gold svg { width: 30px; height: 30px; }
+.loot-item { display: grid; grid-template-columns: 40px 1fr; gap: 10px; align-items: center; padding: 8px 12px; border-radius: 14px; background: #f1e8ff; text-align: left; }
+.loot-item b { display: block; font-family: var(--display); font-weight: 400; font-size: 18px; }
+.loot-item small { font-weight: 800; font-size: 13px; color: #6a3fb0; }
+.chest-loot .hint { margin: 0; }
+
 /* ---------- lost: the stinky joke ---------- */
 #stink {
   position: fixed; inset: 0; z-index: 14; pointer-events: none; overflow: hidden;
@@ -380,6 +441,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
   .logo, .logo-gate { transform: none; }
   .card.shake { animation: none; }
   .inst .tap { animation: none; }
+  .chest-wrap.pop svg, .chest-wrap.shake svg { animation: none; }
   #stink.go .stink-text, #stink.go .puff { animation: none; }
   .puff { display: none; }
 }
@@ -441,7 +503,9 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
       <li>Potem nadchodzą wrogowie: zombie, mrówki, osy, węże i klauny. Każdy, kto cię minie, też zabiera żołnierzy. Omijaj płonące autobusy i TIR-y, młoty i płonące beczki.</li>
       <li>Dopiero po wrogach pojawia się następne zadanie, z czasem na spokojne liczenie.</li>
       <li>Na końcu drogi walczysz z potworem. Stukaj w dobre odpowiedzi, żeby dostać posiłki.</li>
-      <li>Za dobre odpowiedzi dostajesz złoto. W Zbrojowni kupisz za nie lepszą broń i większą armię.</li>
+      <li>Po potworze otwierasz skrzynię: 5 zadań na czas. Im szybciej i bez błędów, tym lepsza skrzynia: złoto i ulepszenia na następną grę.</li>
+      <li>Za gwiazdki dostajesz złoto. W Zbrojowni kupisz za nie ulepszenia: więcej luf, ogniste, mrożące i zatrute pociski, piorun i inne.</li>
+      <li>Następny level otwiera się, gdy przejdziesz wszystkie 40 gier poprzedniego. Do każdego levelu możesz zajrzeć w grze na próbę.</li>
       <li>Po pomyłce gra da podpowiedź (bez gotowego wyniku) i ćwiczenie bez pośpiechu: 3 dobre odpowiedzi i grasz dalej, 3 złe kończą grę.</li>
     </ol>
     <div class="row2">
@@ -482,6 +546,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
     <div class="example"><small>Przykład</small><strong id="inExample">2 + 3 = ?</strong></div>
     <p class="enemy">Na końcu drogi: <span class="chip-red" id="inMonster">Glutek</span> <span><span id="inHp">500</span> punktów życia</span></p>
     <p class="hint" id="inHint">Przesuń palcem w stronę bramki z dobrym wynikiem.</p>
+    <div class="boost-list" id="inBoost" hidden></div>
     <button class="btn btn-gold" id="btnStart">Start</button>
     <button class="btn btn-ghost" id="btnIntroBack">Wróć do menu</button>
   </div>
@@ -539,8 +604,10 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
 <div class="screen" id="scrArmory" hidden>
   <div class="card armory" role="dialog" aria-labelledby="arTitle">
     <div class="ar-head"><h2 id="arTitle">Zbrojownia</h2><div class="gold-chip" aria-label="Twoje złoto"><svg class="coin" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#ffc531" stroke="#8a5a00" stroke-width="2"/><circle cx="12" cy="12" r="5.5" fill="none" stroke="#d99300" stroke-width="2"/></svg><b id="arGold">0</b></div></div>
-    <p class="hint">Złoto dostajesz za dobre odpowiedzi (+5), za zadania po błędzie (+3), za duże zombie (+2)
-      i za każdą gwiazdkę (+10). Kupione rzeczy zostają na zawsze.</p>
+    <p class="hint">Złoto jest głównie za gwiazdki: na levelu 1 za 1 gwiazdkę 40, za 2 gwiazdki 75, za 3 gwiazdki 100
+      (wyższe levele dają więcej). Liczy się najlepszy wynik gry, więc powtórka daje złoto za nowe gwiazdki.
+      Złoto jest też w skrzyni po potworze i trochę za każdą dobrą odpowiedź. Kupione ulepszenia zostają na zawsze,
+      a nowe otwierają się na kolejnych levelach.</p>
     <div class="ar-list" id="arList"></div>
     <h3 class="ar-sub">Kolor armii</h3>
     <div class="ar-skins" id="arSkins"></div>
@@ -576,6 +643,27 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
   </div>
 </div>
 
+<div class="screen" id="scrChest" hidden>
+  <div class="card chest-card" id="chCard" role="dialog" aria-labelledby="chTitle">
+    <div class="eyebrow" id="chEyebrow">Potwór pokonany!</div>
+    <h2 id="chTitle">Skrzynia!</h2>
+    <div class="chest-wrap t1" id="chChest"></div>
+    <p class="hint" id="chInfo"></p>
+    <div class="chest-tiers" id="chTiers"></div>
+    <div class="chest-quiz" id="chQuiz" hidden>
+      <div class="chest-dots" id="chDots" aria-label="Odpowiedzi"></div>
+      <div class="timebar chest-time"><i id="chTime"></i><b aria-hidden="true">⚡</b></div>
+      <div class="le-q" id="chQ" aria-live="polite"></div>
+      <div class="fight-btns">
+        <button class="ans" id="chL" aria-label="Lewa odpowiedź">…</button>
+        <button class="ans" id="chR" aria-label="Prawa odpowiedź">…</button>
+      </div>
+    </div>
+    <div class="chest-loot" id="chLoot" aria-live="polite" hidden></div>
+    <button class="btn btn-gold" id="chGo">Otwieram!</button>
+  </div>
+</div>
+
 <div class="screen" id="scrResult" hidden>
   <div class="card" role="dialog" aria-labelledby="reTitle">
     <div class="eyebrow" id="reLevel">Level 1 · gra 1</div>
@@ -587,6 +675,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
       <div class="stat"><span>Twoja armia na końcu</span><b id="reArmy">40</b></div>
       <div class="stat"><span>Złoto</span><b id="reGold">+0</b></div>
     </div>
+    <p class="gold-why" id="reGoldWhy"></p>
     <div class="review" id="reReview" hidden>
       <h3>Do powtórki</h3>
       <ul id="reList"></ul>
