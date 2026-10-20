@@ -4,7 +4,7 @@
 'use strict';
 const HAS_DOM = typeof document !== 'undefined';
 const Z = globalThis.Zadania;
-const WERSJA = 13;         // numer wersji gry; opis zmian w ZMIANY.md
+const WERSJA = 14;         // numer wersji gry; opis zmian w ZMIANY.md
 
 /* ============================================================
    Helpers
@@ -45,13 +45,13 @@ function stageConfig(cls, s) {
     first: speed * (think + 1.0), spacing: speed * (lead + zone + think),
     gates: 5 + d + (s >= 35 ? 1 : 0),
     rLo: 5 + 2 * d, rHi: 15 + 3 * d,            // soldiers won or lost at one gate
-    squadsPer: s >= 20 ? 2 : 1, enemyMul: (s === 0 ? 1.6 : 2.3) * (0.3 + 0.5 * f),   // enemies per span = enemyMul × average gate reward
+    squadsPer: s < 5 ? 1 : s < 15 ? 2 : 3, enemyMul: (s === 0 ? 2.4 : 4.6) * (0.3 + 0.5 * f),   // enemies per span = enemyMul × average gate reward
     foes: FOE_ORDER.slice(0, clamp(2 + Math.floor(s / 6) + Math.floor(cls / 3), 2, FOE_ORDER.length)),
     brutes: s >= 8,                             // big enemies with many lives, from game 9
     bridges: s >= 3 ? 1 : 0,                    // broken bridge to repair by shooting, from game 4
-    obstacles: s < 1 ? [] : s < 3 ? ['hole'] : s < 6 ? ['hole', 'barrels'] : ['hole', 'barrels', 'hammer'],
+    obstacles: s < 1 ? [] : s < 3 ? ['bus'] : s < 6 ? ['bus', 'barrels', 'truck'] : ['bus', 'truck', 'barrels', 'hammer'],
     obstPer: s >= 20 ? 1.4 : s >= 1 ? 1 : 0,    // obstacles per span (1.4 = sometimes two)
-    hurt: 3 + d,                                // soldiers lost in a hole, under the hammer or in the fire
+    hurt: 3 + d,                                // soldiers lost under the hammer or in the fire (2 more at a burning bus or lorry)
   };
 }
 // Enemies walking against the army; every kind is hard in another way, a big one may lead the horde
@@ -64,7 +64,8 @@ const FOES = {
 };
 const FOE_ORDER = ['zombie', 'ant', 'wasp', 'snake', 'clown'];
 const BIG_HP = { zombie: 1, ant: 0.8, wasp: 0.9, snake: 1.15, clown: 1.3 };
-const HOLE_W = 1.9, HOLE_L = 2.4, HAMMER_W = 1.25, HAMMER_P = 2.0, BARREL_W = 0.5;
+// a burning bus or lorry blocks one half of the road; the hammer falls on one half; barrels stand on one half
+const CAR_X0 = 0.55, CAR_X1 = 3.35, CAR = { bus: { len: 5.2, h: 3.0 }, truck: { len: 7.6, h: 3.6 } }, HAMMER_W = 1.25, HAMMER_P = 2.0, BARREL_W = 0.5;
 
 /* ============================================================
    Weapons, power-ups and the armoury (bought with gold earned by playing; never with money, never by chance)
@@ -188,7 +189,7 @@ function createGame(cls, s, attract, arm) {
     for (let i = 0; i < nObst && to > from; i++) {
       const type = pick(cfg.obstacles), oz = nObst > 1 ? from + (to - from) * (i + 0.5) / nObst : rand(from, to), os = Math.random() < 0.5 ? -1 : 1;
       const o = { type, side: os, z: oz, span: k, hit: false };
-      if (type === 'hole') Object.assign(o, { x: os * (HOLE_W + 0.15), len: HOLE_L });
+      if (CAR[type]) Object.assign(o, { x: os * (CAR_X0 + CAR_X1) / 2, len: CAR[type].len });
       else if (type === 'hammer') Object.assign(o, { x: os * 1.7, len: 1.2, off: rand(0, HAMMER_P), lastHit: -1 });
       else Object.assign(o, { x: os * 1.9, len: 0.8, barrels: [os * 1.2, os * 2.5].map(bx => ({ x: bx, hp: 2 + d, max: 2 + d, hit: -1, done: false })) });
       g.obst.push(o);
@@ -227,7 +228,7 @@ function perfectRun(g, arm) {
 }
 
 // How a careful player steers: the right gate when its problem is close, otherwise shoot the reward,
-// face the enemies and keep out of holes, hammers and fire
+// face the enemies and keep away from burning cars, hammers and fire
 function autoSteer(g) {
   const a = g.army, gt = g.gates.find(x => !x.done);
   if (gt && gt.shown && gt.z - a.z < g.cfg.speed * 2.2) return gt.left ? -1.9 : 1.9;
@@ -408,16 +409,16 @@ function step(g, dt) {
     }
     if (!s.men.length) g.squads.splice(si, 1);
   }
-  // Obstacles: a hole in the road, a hammer falling from above, burning barrels
+  // Obstacles: a burning bus or lorry, a hammer falling from above, burning barrels
   if (running) {
     for (const o of g.obst) {
       if (o.hit || a.z < o.z - RZ * 0.7 || a.z > o.z + o.len + RZ * 0.5) continue;
       let hurt = false;
-      if (o.type === 'hole') hurt = Math.abs(a.x - o.x) < HOLE_W + RX * 0.55 - 0.3;
+      if (CAR[o.type]) hurt = Math.abs(a.x - o.x) < (CAR_X1 - CAR_X0) / 2 + RX * 0.55 - 0.3;
       else if (o.type === 'hammer') { const ph = (g.time + o.off) % HAMMER_P; hurt = ph < 0.32 && ph > 0.06 && Math.abs(a.x - o.x) < HAMMER_W + RX * 0.55 - 0.2; }
       else for (const br of o.barrels) if (!br.done && Math.abs(a.x - br.x) < BARREL_W + RX * 0.6 - 0.2) { hurt = true; br.done = true; ev.push({ type: 'barrel', x: br.x, z: o.z }); }
       if (hurt) {
-        const k = Math.min(g.cfg.hurt, a.n - 1);
+        const k = Math.min(g.cfg.hurt + (CAR[o.type] ? 2 : 0), a.n - 1);
         if (o.type !== 'barrels') o.hit = true;
         a.n -= k; ev.push({ type: 'trap', kind: o.type, x: o.type === 'barrels' ? a.x : o.x, z: o.z, n: k });
       }
@@ -1474,7 +1475,6 @@ function drawBackdrop(g) {
     }
   }
   for (const p of g.props) if (p.kind === 'bridge') drawBridge(p, g);
-  for (const o of g.obst) if (o.type === 'hole') drawHole(o, g);
   if (Wd.rail !== 'bridge') { drawRails(Wd, g, zn); return; }
   for (const sx of [-4.5, 4.5]) {
     ctx.strokeStyle = '#c4372c'; ctx.lineCap = 'butt';
@@ -1615,15 +1615,88 @@ function drawBridge(p, g) {
   }
   for (const ex of [x0, x1]) ground(ex - 0.05, ex + 0.05, Math.max(z0, view.camZ + 1), z1, 0.035, '#6b4424');
 }
-/* ---------- obstacles: a hole in the road, a hammer falling from above, burning barrels ---------- */
-function drawHole(o, g) {
-  const z1 = o.z + o.len, near = view.camZ + 1;
-  if (z1 < near || o.z > view.camZ + 160) return;
-  const [h0, h1] = WORLDS[g.world].hole, x0 = o.x - HOLE_W, x1 = o.x + HOLE_W;
-  ground(x0 - 0.16, x1 + 0.16, Math.max(o.z - 0.16, near), z1 + 0.16, 0.011, '#4a3f36');
-  ground(x0, x1, Math.max(o.z, near), z1, 0.012, h0);
-  ground(x0 + 0.25, x1 - 0.25, Math.max(o.z + 0.2, near), z1 - 0.2, 0.014, h1);
-  if (o.z - 0.75 > near) for (let i = 0; i < 6; i++) { const xa = x0 + (x1 - x0) * i / 6; ground(xa, xa + (x1 - x0) / 12, o.z - 0.75, o.z - 0.4, 0.02, '#ffc531'); }
+/* ---------- obstacles: a burning bus or lorry, a hammer falling from above, burning barrels ---------- */
+// A burning bus or lorry standing on one half of the road: steer to the other half
+const sideFace = (x, z0, z1, y0, y1, fill, lw) => { if (proj(x, y0, z0, P0) && proj(x, y0, z1, P1) && proj(x, y1, z1, P2) && proj(x, y1, z0, P3)) { poly4(fill, '#15233b', lw); return true; } return false; };
+const topFace = (x0, x1, z0, z1, y, fill, lw) => { if (proj(x0, y, z0, P0) && proj(x1, y, z0, P1) && proj(x1, y, z1, P2) && proj(x0, y, z1, P3)) poly4(fill, '#15233b', lw); };
+function fireAt(x, y, z, size, t, k) {
+  if (!proj(x, y, z, P4)) return;
+  const w = size * P4.s, cx = P4.x, base = P4.y;
+  const flame = (dx, hgt, col, ph) => {
+    ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(cx + dx - w * 0.32, base);
+    ctx.quadraticCurveTo(cx + dx - w * 0.36, base - hgt * 0.55, cx + dx + Math.sin(t * 11 + ph) * w * 0.12, base - hgt);
+    ctx.quadraticCurveTo(cx + dx + w * 0.36, base - hgt * 0.55, cx + dx + w * 0.32, base); ctx.closePath(); ctx.fill();
+  };
+  flame(-w * 0.25, w * (1.3 + 0.3 * Math.sin(t * 8 + k)), '#ff5a1a', k);
+  flame(w * 0.25, w * (1.15 + 0.3 * Math.sin(t * 9.5 + k * 2)), '#ff5a1a', k + 1);
+  flame(0, w * (1.55 + 0.25 * Math.sin(t * 12 + k * 3)), '#ffa726', k + 2);
+  flame(0, w * 0.8, '#fff1a8', k + 3);
+}
+function smokeAt(x, y, z, t, k) {
+  for (let i = 0; i < 6; i++) {
+    const ph = (t * 0.4 + i / 6 + k * 0.13) % 1;
+    if (!proj(x + Math.sin(ph * 5 + k + i) * 0.7, y + ph * 5.5, z + ph * 2, P4)) continue;
+    ctx.globalAlpha = 0.55 * (1 - ph); ctx.fillStyle = i % 2 ? '#2f3238' : '#4b4f57';
+    ctx.beginPath(); ctx.arc(P4.x, P4.y, (0.45 + ph * 1.2) * P4.s, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+function signText(text, x, y, z, size, fill, stroke) { if (proj(x, y, z, P4)) outlined(text, P4.x, P4.y, clamp(size * P4.s, 8, 40), fill, stroke); }
+function drawCar(o, g) {
+  const sd = o.side, x0 = sd > 0 ? CAR_X0 : -CAR_X1, x1 = sd > 0 ? CAR_X1 : -CAR_X0, z0 = o.z, t = g.time, lw = 1.2;
+  const seen = view.camX < x0 ? x0 : view.camX > x1 ? x1 : null;     // the long side facing the middle of the road
+  const xc = (x0 + x1) / 2, glow = `rgb(255,${150 + 40 * Math.sin(t * 7) | 0},60)`, len = CAR[o.type].len;
+  // the fire lights up the road around it
+  if (proj(xc, 0.02, z0 + len / 2, P4)) {
+    const r = (len * 0.75) * P4.s, grd = ctx.createRadialGradient(P4.x, P4.y, 0, P4.x, P4.y, r);
+    grd.addColorStop(0, `rgba(255,140,40,${0.45 + 0.1 * Math.sin(t * 6)})`); grd.addColorStop(1, 'rgba(255,120,30,0)');
+    ctx.fillStyle = grd; ctx.beginPath(); ctx.ellipse(P4.x, P4.y, r, r * 0.45, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  const wheels = zs => { if (seen === null) return; for (const wz of zs) if (proj(seen, 0.42, wz, P4)) { ctx.fillStyle = '#1b1d22'; ctx.beginPath(); ctx.ellipse(P4.x, P4.y, 0.24 * P4.s, 0.44 * P4.s, 0, 0, Math.PI * 2); ctx.fill(); } };
+  const windows = (za, zb, y0, y1, n) => { if (seen === null) return; for (let i = 0; i < n; i++) { const wa = za + (zb - za) * (i + 0.12) / n, wb = za + (zb - za) * (i + 0.88) / n; sideFace(seen, wa, wb, y0, y1, glow, 1); } };
+  const front = (y1, body, dark) => {                                    // wheels, mirrors, lights and bumper of a front
+    for (const wx of [x0 + 0.25, x1 - 0.75]) wallZ(wx, wx + 0.5, 0, 0.42, z0 + 0.5, '#1b1d22', null, 0);
+    for (const mx of [x0 - 0.22, x1 + 0.02]) wallZ(mx, mx + 0.2, y1 - 1.1, y1 - 0.55, z0 + 0.1, dark, '#15233b', 1);
+    wallZ(x0, x1, 0.3, y1, z0, body, '#15233b', lw);
+    wallZ(x0, x1, 0.3, 0.55, z0, '#1b1d22', null, 0);
+    for (const hx of [x0 + 0.3, x1 - 0.55]) wallZ(hx, hx + 0.25, 0.65, 0.88, z0, '#ffe08a', '#15233b', 1);
+  };
+  if (o.type === 'bus') {
+    const z1 = z0 + len, h = CAR.bus.h;
+    if (seen !== null) sideFace(seen, z0, z1, 0.3, h, '#b8352a', lw);
+    windows(z0 + 0.4, z1 - 0.2, 1.4, 2.4, 5);
+    wheels([z0 + 1.0, z1 - 1.0]);
+    topFace(x0, x1, z0, z1, h, '#4a1a14', lw);
+    front(h, '#d63a2f', '#7a1f14');
+    wallZ(x0 + 0.2, xc - 0.04, 1.3, 2.45, z0, glow, '#15233b', 1.2);         // two panes of the windscreen, fire behind them
+    wallZ(xc + 0.04, x1 - 0.2, 1.3, 2.45, z0, glow, '#15233b', 1.2);
+    wallZ(x0 + 0.35, x1 - 0.35, 2.55, 2.88, z0, '#1b1d22', null, 0);           // the destination sign
+    signText('AUTOBUS', xc, 2.72, z0, 0.32, '#ffb02e', '#1b1d22');
+    wallZ(x0 + 0.3, x1 - 0.3, 0.95, 1.1, z0, '#ffffff', null, 0);              // white stripe
+    for (let i = 0; i < 3; i++) fireAt(xc + (i - 1) * 0.6, h, z0 + 0.8 + i * 1.6, 0.8, t, i);
+    fireAt(xc - 0.4, 2.2, z0 + 0.05, 0.45, t, 5);                             // flames out of the windscreen
+    smokeAt(xc, h + 1.2, z0 + 2.2, t, 0);
+  } else {
+    const zc = z0 + 2.3, z1 = z0 + len, h = CAR.truck.h, hc = 2.7;
+    if (seen !== null) sideFace(seen, zc + 0.15, z1, 0.5, h, '#d9dee5', lw);   // the trailer, further away
+    if (seen !== null) { sideFace(seen, zc + 1.2, z1 - 0.8, 1.5, 2.5, '#2f5fb8', 1); }
+    wheels([zc + 1.3, z1 - 1.5, z1 - 0.7]);
+    topFace(x0, x1, zc + 0.15, z1, h, '#8f979f', lw);
+    wallZ(x0, x1, 0.5, h, zc + 0.15, '#c3cad2', '#15233b', lw);
+    wallZ(xc - 0.75, xc + 0.75, hc + 0.2, h - 0.15, zc + 0.15, '#2f5fb8', '#15233b', 1);   // the blue TIR plate, seen above the cab
+    signText('TIR', xc, (hc + h) / 2 + 0.02, zc + 0.15, 0.55, '#ffffff', '#1d3f80');
+    if (seen !== null) sideFace(seen, z0, zc, 0.3, hc, '#2f5fb8', lw);       // the cab in front
+    windows(z0 + 0.3, zc - 0.5, 1.5, 2.3, 1);
+    wheels([z0 + 0.9]);
+    topFace(x0, x1, z0, zc, hc, '#1d3f80', lw);
+    front(hc, '#3b6fd0', '#1d3f80');
+    wallZ(x0 + 0.2, x1 - 0.2, 1.45, 2.4, z0, glow, '#15233b', 1.2);
+    wallZ(x0 + 0.45, x1 - 0.45, 0.6, 1.25, z0, '#1b1d22', null, 0);           // grille
+    for (let i = 1; i < 4; i++) wallZ(x0 + 0.5, x1 - 0.5, 0.6 + i * 0.16, 0.65 + i * 0.16, z0, '#6b7480', null, 0);
+    for (let i = 0; i < 4; i++) fireAt(xc + (i % 2 ? 0.55 : -0.55), h, zc + 0.9 + i * 1.2, 0.85, t, i);
+    fireAt(xc, hc, z0 + 0.9, 0.6, t, 7);
+    smokeAt(xc, h + 1.2, zc + 2.5, t, 1);
+  }
 }
 // height of the hammer's head: it falls fast, stays down a moment, rises slowly and waits
 function hammerY(o, t) {
@@ -1804,8 +1877,9 @@ function drawEntities(g) {
   for (const gt of g.gates) if (gt.z > view.camZ + 1 && gt.z < view.camZ + 170 && proj(0, 0, gt.z, P0)) { const o = item(2, P0.d); o.r = gt; }
   for (const p of g.props) if (!p.done && p.kind !== 'bridge' && proj(p.x, 0, p.z, P0)) { const o = item(3, P0.d); o.r = p; }
   for (const ob of g.obst) {
-    if (ob.type === 'hole' || ob.z + ob.len < view.camZ + 1 || ob.z > view.camZ + 160) continue;
-    if (ob.type === 'hammer') { if (proj(ob.x, 0, ob.z, P0)) { const o = item(8, P0.d); o.r = ob; } }
+    if (ob.z + ob.len < view.camZ + 1 || ob.z > view.camZ + 160) continue;
+    if (CAR[ob.type]) { if (proj(ob.x, 0, Math.max(ob.z, view.camZ + 1), P0)) { const o = item(10, P0.d); o.r = ob; } }
+    else if (ob.type === 'hammer') { if (proj(ob.x, 0, ob.z, P0)) { const o = item(8, P0.d); o.r = ob; } }
     else for (const br of ob.barrels) if (!br.done && proj(br.x, 0, ob.z, P0)) { const o = item(9, P0.d); o.r = ob; o.b = br; }
   }
   const M = g.monster;
@@ -1829,6 +1903,7 @@ function drawEntities(g) {
     else if (o.k === 5) drawMonster(g.monster, g, o);
     else if (o.k === 8) drawHammer(o.r, g);
     else if (o.k === 9) drawBarrel(o.b, o.r, g);
+    else if (o.k === 10) drawCar(o.r, g);
   }
 }
 
@@ -2141,7 +2216,7 @@ function handleEvents(g) {
         if (e.n > 0) { floatText(MINUS + e.n, '#ff6a5e'); burst(a.x, a.z - radius(a.n) * 0.5, SKINS[save.skin].c, 4); Snd.thud(); fx.flash = 0.35; fx.flashColor = '235,60,50'; }
         break;
       case 'trap':
-        if (e.kind === 'hole') { burst(a.x, a.z, SKINS[save.skin].c, 12, 0.2); burst(e.x, e.z + 1, WORLDS[g.world].splash, 16, 0.2); Snd.splash(); }
+        if (CAR[e.kind]) { burst(a.x, a.z, ['#ffb02e', '#ff5a2a', '#fff2a8', '#4b4f57'], 22, 1.2); burst(a.x, a.z, SKINS[save.skin].c, 10, 0.6); Snd.boom(); }
         else if (e.kind === 'hammer') { rings.push({ x: a.x, z: a.z, t: 0, size: 4, c: 'rgba(255,255,255,0.9)' }); burst(a.x, a.z, SKINS[save.skin].c, 12, 0.5); Snd.stomp(); }
         else { burst(a.x, a.z, ['#ffb02e', '#ff5a2a', '#fff2a8'], 16, 0.8); Snd.boom(); }
         if (e.n > 0) floatText(MINUS + e.n, '#ff6a5e');
