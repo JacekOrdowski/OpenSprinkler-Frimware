@@ -2199,7 +2199,8 @@ ansR.addEventListener('click', () => pickAnswer(false));
    ============================================================ */
 const UA = navigator.userAgent || '';
 const IS_IOS = /iPhone|iPad|iPod/.test(UA) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-const IS_ANDROID = /Android/i.test(UA);
+// big Android tablets open pages in Chrome's "computer" mode and do not say Android, but they have a touch screen
+const IS_ANDROID = /Android/i.test(UA) || (/X11; Linux x86_64/.test(UA) && !/CrOS/.test(UA) && navigator.maxTouchPoints > 1);
 // browsers inside other apps (Messenger, Facebook, Instagram, TikTok…) cannot put a page on the home screen
 const IN_APP = /FBAN|FBAV|FB_IAB|FBIOS|Instagram|Messenger|Line\/|TikTok|musical_ly|Snapchat|GSA\/|; wv\)/.test(UA);
 const isStandalone = () => navigator.standalone === true ||
@@ -2221,6 +2222,8 @@ const rowL = (x, y, w, label, icon, hi) => `${hi ? `<rect x="${x}" y="${y}" widt
 const bookIcon = (x, y) => `<path d="M${x - 7} ${y - 5}q3.5-2 7 0q3.5-2 7 0v11q-3.5-2-7 0q-3.5-2-7 0zM${x} ${y - 5}v11" fill="none" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/>`;
 const shareIcon = (x, y) => `<g fill="none" stroke="${BLUEI}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M${x} ${y + 2}v-12M${x - 4} ${y - 6}l4-4 4 4M${x - 6} ${y - 2}h-2v10h16v-10h-2"/></g>`;
 const plusIcon = (x, y) => `<g fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round"><rect x="${x - 7}" y="${y - 7}" width="14" height="14" rx="3"/><path d="M${x} ${y - 4}v8M${x - 4} ${y}h8"/></g>`;
+const installIcon = (x, y) => `<g fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M${x - 5} ${y - 8}h-5v12h20v-12h-5M${x - 4} ${y + 9}h8M${x} ${y + 4}v5M${x} ${y - 10}v9M${x - 3.5} ${y - 4.5}l3.5 3.5 3.5-3.5"/></g>`;
+const starIcon = (x, y) => `<path d="M${x} ${y - 8}l2.4 5 5.4.6-4 3.7 1.1 5.3-4.9-2.7-4.9 2.7 1.1-5.3-4-3.7 5.4-.6z" fill="none" stroke="${INK}" stroke-width="1.8" stroke-linejoin="round"/>`;
 const gameIcon = (x, y, s) => `<rect x="${x}" y="${y}" width="${s}" height="${s}" rx="${s * 0.24}" fill="#ffc531" stroke="${INK}" stroke-width="2"/><text class="disp" x="${x + s / 2}" y="${y + s * 0.62}" text-anchor="middle" font-size="${s * 0.34}" fill="${INK}">7·8</text>`;
 const INSTALL = {
   ios: [
@@ -2247,15 +2250,16 @@ const INSTALL = {
         <text x="28" y="112" font-size="11" fill="${INK}">Otwórz jako aplikację www</text><rect x="196" y="99" width="36" height="20" rx="10" fill="#34c759"/><circle cx="222" cy="109" r="8" fill="#fff"/>`)],
   ],
   android: [
-    ['W przeglądarce Chrome stuknij <b>⋮</b> (trzy kropki) w prawym górnym rogu.',
-      pic(`<rect x="10" y="10" width="240" height="40" rx="10" fill="#fff"/><rect x="22" y="18" width="160" height="24" rx="12" fill="#eef2f7"/><text x="34" y="34" font-size="11" fill="${INK}">jacekordowski.github.io</text>
-        <rect x="194" y="21" width="18" height="18" rx="4" fill="none" stroke="${INK}" stroke-width="2"/><text x="203" y="34" text-anchor="middle" font-size="10" fill="${INK}">1</text>
-        ${dots(232, 30, true)}${ring(232, 30, 16)}<rect x="10" y="58" width="240" height="72" rx="10" fill="#fff"/><text class="disp" x="130" y="100" text-anchor="middle" font-size="20" fill="${INK}">Śmierdzipacha</text>`)],
-    ['Stuknij <b>Dodaj do ekranu głównego</b>. W niektórych telefonach ten napis to <b>Zainstaluj aplikację</b>.',
-      pic(`<rect x="70" y="8" width="176" height="124" rx="12" fill="#fff"/>${row(14, 'Nowa karta', '')}${row(38, 'Historia', '')}${row(62, 'Pobrane pliki', '')}${row(88, 'Dodaj do ekranu głównego', '', true)}${row(112, 'Ustawienia', '')}`)],
-    ['Stuknij <b>Zainstaluj</b> (albo <b>Dodaj</b>). Jeśli telefon zapyta, gdzie położyć ikonę, wybierz <b>Dodaj automatycznie</b>.',
-      pic(`<rect x="34" y="14" width="192" height="112" rx="16" fill="#fff"/><text x="52" y="40" font-size="13" fill="${INK}">Zainstalować aplikację?</text>${gameIcon(52, 52, 32)}<text x="94" y="73" font-size="12" fill="${INK}">Śmierdzipacha</text>
-        <text x="120" y="112" text-anchor="middle" font-size="12" fill="${BLUEI}">Anuluj</text><rect x="152" y="94" width="62" height="26" rx="13" fill="${BLUEI}"/><text x="183" y="112" text-anchor="middle" font-size="12" fill="#fff">Zainstaluj</text>${box(148, 90, 70, 34)}`)],
+    ['W przeglądarce Chrome stuknij ikonę <b>Zainstaluj</b> na pasku adresu: ekran ze strzałką w dół, obok gwiazdki.',
+      pic(`<rect x="10" y="12" width="240" height="42" rx="21" fill="#fff"/><text x="26" y="37" font-size="11" fill="${INK}">github.io/Yaceq-Placeq/</text>
+        ${installIcon(196, 33)}${ring(196, 33, 17)}${starIcon(230, 33)}
+        <rect x="10" y="62" width="240" height="68" rx="10" fill="#fff"/><text class="disp" x="130" y="102" text-anchor="middle" font-size="20" fill="${INK}">Śmierdzipacha</text>`)],
+    ['Nie widzisz tej ikony? Stuknij <b>⋮</b> (trzy kropki) w prawym górnym rogu i wybierz <b>Zainstaluj aplikację</b>. W niektórych telefonach ten napis to <b>Dodaj do ekranu głównego</b>.',
+      pic(`<rect x="70" y="8" width="176" height="124" rx="12" fill="#fff"/>${row(14, 'Nowa karta', '')}${row(38, 'Historia', '')}${row(62, 'Pobrane pliki', '')}${row(88, 'Zainstaluj aplikację', '', true)}${row(112, 'Ustawienia', '')}`)],
+    ['W okienku <b>Zainstaluj aplikację</b> stuknij <b>Zainstaluj</b>. Jeśli telefon zapyta, gdzie położyć ikonę, wybierz <b>Dodaj automatycznie</b>.',
+      pic(`<rect x="20" y="12" width="220" height="116" rx="18" fill="#fff"/><text x="38" y="38" font-size="13" fill="${INK}">Zainstaluj aplikację</text>${gameIcon(38, 52, 30)}
+        <text x="78" y="64" font-size="12" fill="${INK}">Śmierdzipacha</text><text x="78" y="78" font-size="9" fill="${GREY}">jacekordowski.github.io</text>
+        <text x="138" y="114" text-anchor="middle" font-size="12" fill="${BLUEI}">Anuluj</text><text x="196" y="114" text-anchor="middle" font-size="12" fill="${BLUEI}">Zainstaluj</text>${box(166, 98, 60, 24)}`)],
   ],
   done: ['Gotowe! Uruchamiaj grę tą ikoną. Otworzy się na cały ekran, jak zwykła aplikacja.',
     pic(`<rect x="10" y="8" width="240" height="124" rx="12" fill="#5b6fd6"/>${[0, 1, 2, 3].map(i => [0, 1].map(j => (i === 1 && j === 0) ? '' : `<rect x="${34 + i * 52}" y="${20 + j * 58}" width="36" height="36" rx="9" fill="rgba(255,255,255,0.35)"/>`).join('')).join('')}
