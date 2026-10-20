@@ -2117,8 +2117,11 @@ function startStage(g) {
   layout();
   view.camX = 0;
   drawMusicStyle(); playMusic('run', g.cls); Snd.duck(false);
+  countGame(g);
 }
 const restart = g => startStage(createGame(g.cls, g.s, false, save.arm));
+// The counter also notes every game started, by level (nothing about the player; does nothing when the counter is not on the page)
+function countGame(g) { try { if (window.goatcounter && window.goatcounter.count) window.goatcounter.count({ path: `gra/level-${g.cls + 1}`, title: `Gra: level ${g.cls + 1}`, event: true }); } catch (e) { /* counter blocked */ } }
 function pauseGame() { if (mode !== 'play') return; mode = 'pause'; show('pause'); Snd.duck(true); }
 function resumeGame() { if (mode !== 'pause') return; mode = 'play'; show(null); last = performance.now(); Snd.resume(); Snd.duck(false); }
 
