@@ -4,7 +4,7 @@
 'use strict';
 const HAS_DOM = typeof document !== 'undefined';
 const Z = globalThis.Zadania;
-const WERSJA = 11;         // numer wersji gry; opis zmian w ZMIANY.md
+const WERSJA = 12;         // numer wersji gry; opis zmian w ZMIANY.md
 
 /* ============================================================
    Helpers
@@ -374,7 +374,7 @@ if (!HAS_DOM) { globalThis.ArmiaLiczb = { STAGES, stageConfig, createGame, step,
    ============================================================ */
 const KEY = 'armia-liczb-v2';
 const NCLS = Z.KLASY.length;
-const save = { stars: new Array(NCLS * STAGES).fill(0), next: [0, 0], music: true, sfx: true, learn: true, tab: 0, gold: 0, arm: { ...NO_ARM }, skin: 0, skins: [0], musicStyle: 'auto' };
+const save = { stars: new Array(NCLS * STAGES).fill(0), next: [0, 0], music: true, sfx: true, learn: true, tab: 0, gold: 0, arm: { ...NO_ARM }, skin: 0, skins: [0] };
 try { Object.assign(save, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { /* storage blocked */ }
 if (!Array.isArray(save.stars) || save.stars.length !== NCLS * STAGES) save.stars = new Array(NCLS * STAGES).fill(0);
 if (!Array.isArray(save.next) || save.next.length !== 2) save.next = [0, 0];
@@ -382,10 +382,10 @@ save.gold = Math.max(0, Math.floor(+save.gold || 0));
 save.arm = Object.fromEntries(Object.keys(NO_ARM).map(k => [k, clamp(Math.floor(+(save.arm || {})[k] || 0), 0, ARMORY[k].prices.length)]));
 if (!Array.isArray(save.skins)) save.skins = [0];
 if (!save.skins.includes(save.skin)) save.skin = 0;
-const MUSIC_STYLES = { auto: 'Auto', wesola: 'Wesoła', przygoda: 'Przygoda', chill: 'Chill', elektro: 'Elektro', retro: 'Retro', off: 'wył.' };
-if (!(save.musicStyle in MUSIC_STYLES)) save.musicStyle = 'auto';
-if (save.music === false) save.musicStyle = 'off';
-save.music = save.musicStyle !== 'off';
+// music is no longer chosen by the player: every game draws one of the styles (an old "off" setting is kept)
+if (save.musicStyle === 'off') save.music = false;
+delete save.musicStyle;
+save.music = save.music !== false;
 const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) { /* storage blocked */ } };
 const starsOf = (c, s) => save.stars[c * STAGES + s];
 const unlocked = (c, s) => s === 0 || starsOf(c, s - 1) > 0 || starsOf(c, s) > 0;
@@ -530,8 +530,10 @@ const Snd = (() => {
 
   /* ---------- recorded music: loops in muzyka/, made by narzedzia/muzyka.py with real instrument sounds ---------- */
   // where the loop starts and ends in every file (printed by narzedzia/muzyka.py)
-  const MUSIC_LOOPS = { 'wesola-bieg': [0.5, 33.603424], 'wesola-walka': [0.5, 29.590884], 'przygoda-bieg': [0.5, 36.055578], 'przygoda-walka': [0.5, 27.928549],
-    'chill-bieg': [0.5, 46.214308], 'chill-walka': [0.5, 41.351066], 'elektro-bieg': [0.5, 33.042404], 'elektro-walka': [0.5, 29.156712] };
+  const MUSIC_LOOPS = { 'wesola-bieg': [0.5, 33.603424], 'wesola-walka': [0.5, 29.590884],
+    'chill-bieg': [0.5, 46.214308], 'chill-walka': [0.5, 41.351066], 'elektro-bieg': [0.5, 33.042404], 'elektro-walka': [0.5, 29.156712],
+    'turbo-bieg': [0.5, 30.5], 'turbo-walka': [0.5, 27.928549], 'neon-bieg': [0.5, 28.735261], 'neon-walka': [0.5, 26.1],
+    'skok-bieg': [0.5, 27.928549], 'skok-walka': [0.5, 26.1] };
   const buffers = {}, loading = {}, failed = {};
   let cur = null, want = null;
   function loadLoop(file) {
@@ -559,7 +561,7 @@ const Snd = (() => {
     gn.gain.cancelScheduledValues(t); gn.gain.setValueAtTime(Math.max(0.0001, gn.gain.value), t); gn.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
     src.stop(t + 0.65); cur = null;
   }
-  // name: menu, run or fight; style: wesola, przygoda, chill, elektro, retro (the old tunes made in code) or null (off)
+  // name: menu, run or fight; style: wesola, chill, elektro, turbo, neon, skok, retro (the old tunes made in code) or null (off)
   function play(name, style, retry) {
     want = { name, style };
     if (!style) { track = null; stopLoop(); return; }
@@ -852,7 +854,7 @@ const backOut = t => { const c = 1.9; t -= 1; return 1 + t * t * ((c + 1) * t + 
 const MONSTERS = [
   { name: 'Glutek', body: '#5cc443', dark: '#2c7a26', light: '#b9f59a', eyes: 1, horns: 0, size: 0.82 },
   { name: 'Artur Pająkojad', body: '#2f3539', dark: '#23282b', light: '#f3a99a', horn: '#e8dfc3', chalk: true, size: 0.86 },   // drawn in chalk by the owner for his son
-  { name: 'Ropuchor', body: '#f08a2e', dark: '#9c4c17', light: '#ffd29a', eyes: 2, horns: 0, spots: true, size: 0.9 },
+  { name: 'Hedwigonna', body: '#fbfbf7', dark: '#16181d', light: '#f2a44b', owl: true, fem: true, size: 0.9 },   // made with a 3D pen by the owner's child
   { name: 'Głazor', body: '#8e98a5', dark: '#4f5966', light: '#cfd6de', eyes: 2, horns: 0, cracks: true, size: 0.94 },
   { name: 'Płomyk', body: '#e2452f', dark: '#871d12', light: '#ffb07a', eyes: 2, horns: 2, flames: true, size: 0.96 },
   { name: 'Lodowiec', body: '#79cfee', dark: '#2a7fa6', light: '#e8f9ff', eyes: 2, horns: 1, spikes: true, size: 0.98 },
@@ -933,6 +935,83 @@ function drawPajakojad(T, t, u, X, Y, lunge, breathe, flash, alpha) {
   if (flash) { ctx.globalAlpha = 0.25 * alpha; head(); ctx.fillStyle = '#ffffff'; ctx.fill(); }
 }
 
+// Hedwigonna looks like the 3D pen figure: a snowy owl with speckled wings and sleepy orange eyes,
+// holding a letter with a red seal and standing on a blue board
+function drawHedwigonna(T, t, u, X, Y, lunge, breathe, flash, alpha) {
+  const ink = T.dark, lw = Math.max(2, 0.12 * u);
+  const outline = (w = 1) => { ctx.lineWidth = lw * w; ctx.strokeStyle = ink; ctx.stroke(); };
+  const by = 2.25, H = y => by + (y - by) * breathe * (1 + lunge * 0.05) + lunge * 0.25;
+  // blue board, black feet and legs
+  ctx.beginPath(); rr(ctx, X(-2.9), Y(0.42), 5.8 * u, 0.42 * u, 0.2 * u); ctx.fillStyle = '#2d8fe0'; ctx.fill(); outline(0.8);
+  for (const sd of [-1, 1]) {
+    ctx.beginPath(); ctx.moveTo(X(sd * 1.25), Y(0.42)); ctx.lineTo(X(sd * 3.15), Y(0.42)); ctx.quadraticCurveTo(X(sd * 2.7), Y(0.95), X(sd * 1.5), Y(1.0)); ctx.closePath();
+    ctx.fillStyle = ink; ctx.fill(); outline(0.6);
+    ctx.beginPath(); ctx.moveTo(X(sd * 1.7), Y(0.7)); ctx.lineTo(X(sd * 1.75), Y(H(2.5))); ctx.lineWidth = 0.6 * u; ctx.strokeStyle = ink; ctx.stroke();
+  }
+  // the letter with a red seal swings a little under the talons
+  const ly = 0.78 + Math.sin(t * 3) * 0.05;
+  ctx.beginPath(); rr(ctx, X(-1.15), Y(ly + 1.3), 2.3 * u, 1.3 * u, 0.12 * u); ctx.fillStyle = '#ffffff'; ctx.fill(); outline(0.8);
+  ctx.beginPath(); ctx.moveTo(X(-1.05), Y(ly + 1.22)); ctx.lineTo(X(0), Y(ly + 0.6)); ctx.lineTo(X(1.05), Y(ly + 1.22)); outline(0.6);
+  ctx.beginPath(); ctx.arc(X(0), Y(ly + 0.62), 0.27 * u, 0, Math.PI * 2); ctx.fillStyle = '#e2382c'; ctx.fill(); outline(0.5);
+  // speckled wings hang at the sides and rise when she attacks
+  const DOTS = [[0.35, -0.6, 0.12], [0.75, -1.0, 0.1], [0.4, -1.4, 0.13], [0.95, -1.7, 0.11], [0.55, -2.0, 0.12], [1.0, -2.3, 0.1], [0.3, -2.4, 0.1]];
+  for (const sd of [-1, 1]) {
+    const ang = (Math.sin(t * 2.2 + sd) * 0.05 + lunge * 0.85) * -sd;
+    ctx.save(); ctx.translate(X(sd * 2.0), Y(H(5.3))); ctx.rotate(ang);
+    const P = (x, y) => [sd * x * u, -y * u];
+    const wing = () => {
+      ctx.beginPath(); ctx.moveTo(...P(0, 0.1)); ctx.quadraticCurveTo(...P(1.05, -0.1), ...P(1.25, -1.5)); ctx.quadraticCurveTo(...P(1.35, -2.9), ...P(0.85, -3.3));
+      ctx.quadraticCurveTo(...P(0.3, -3.35), ...P(0.05, -2.6)); ctx.closePath();
+    };
+    wing(); ctx.fillStyle = T.body; ctx.fill();
+    ctx.save(); ctx.clip();
+    ctx.fillStyle = ink; ctx.fillRect(-2 * u, 2.45 * u, 4 * u, 2 * u);
+    for (const [x, y, r] of DOTS) { ctx.beginPath(); ctx.arc(...P(x, y), r * u, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = T.body; for (const [x, y] of [[0.5, -2.7], [0.95, -2.85], [0.7, -3.1]]) { ctx.beginPath(); ctx.arc(...P(x, y), 0.09 * u, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
+    wing(); outline();
+    ctx.restore();
+  }
+  // body
+  const body = () => {
+    ctx.beginPath(); ctx.moveTo(X(-2.0), Y(H(by)));
+    ctx.bezierCurveTo(X(-2.35), Y(H(3.85)), X(-2.45), Y(H(5.2)), X(-2.2), Y(H(6.0)));
+    ctx.bezierCurveTo(X(-1.9), Y(H(7.3)), X(1.9), Y(H(7.3)), X(2.2), Y(H(6.0)));
+    ctx.bezierCurveTo(X(2.45), Y(H(5.2)), X(2.35), Y(H(3.85)), X(2.0), Y(H(by))); ctx.closePath();
+  };
+  body(); ctx.fillStyle = T.body; ctx.fill(); outline();
+  // a few soft strokes like the plastic of the 3D pen, and the dark streak on the chest
+  ctx.strokeStyle = '#d8dade'; ctx.lineWidth = Math.max(1, lw * 0.45);
+  for (const [x, y, r, a] of [[-1.2, 3.3, 0.5, 0.4], [1.1, 3.6, 0.55, 2.2], [-0.4, 4.2, 0.6, 1.2], [0.9, 4.6, 0.45, 3.4], [-1.4, 4.9, 0.4, 5.0], [0.2, 6.6, 0.5, 0.2]]) {
+    ctx.beginPath(); ctx.arc(X(x), Y(H(y)), r * u, a, a + 2.2); ctx.stroke();
+  }
+  ctx.beginPath(); ctx.moveTo(X(0.05), Y(H(4.0))); ctx.quadraticCurveTo(X(-0.12), Y(H(3.4)), X(0.02), Y(H(2.9))); ctx.lineWidth = lw * 1.1; ctx.strokeStyle = ink; ctx.stroke();
+  // talons hold the letter
+  ctx.beginPath(); rr(ctx, X(-1.75), Y(H(2.45)), 3.5 * u, (H(2.45) - 1.95) * u, 0.2 * u); ctx.fillStyle = ink; ctx.fill();
+  ctx.fillStyle = T.light; for (const x of [-1.05, -0.38, 0.38, 1.05]) { ctx.beginPath(); ctx.ellipse(X(x), Y(2.15), 0.18 * u, 0.22 * u, 0, 0, Math.PI * 2); ctx.fill(); }
+  // sleepy orange eyes under heavy lids; the lids lift when she attacks
+  const ey = H(5.6), lid = (t % 4.3) < 0.12 ? 1 : 0.34 - lunge * 0.3;
+  for (const sd of [-1, 1]) {
+    const ex = sd * 0.95, rx = 0.7, ry = 0.55;
+    ctx.beginPath(); ctx.ellipse(X(ex), Y(ey), (rx + 0.1) * u, (ry + 0.1) * u, 0, 0, Math.PI * 2); ctx.fillStyle = ink; ctx.fill();
+    ctx.save(); ctx.beginPath(); ctx.ellipse(X(ex), Y(ey), rx * u, ry * u, 0, 0, Math.PI * 2); ctx.clip();
+    ctx.fillStyle = T.light; ctx.fillRect(X(ex - rx), Y(ey + ry), 2 * rx * u, 2 * ry * u);
+    ctx.beginPath(); ctx.arc(X(ex - sd * 0.08), Y(ey - 0.02), 0.36 * u, 0, Math.PI * 2); ctx.fillStyle = ink; ctx.fill();
+    ctx.beginPath(); ctx.arc(X(ex - sd * 0.2), Y(ey + 0.15), 0.09 * u, 0, Math.PI * 2); ctx.fillStyle = '#ffffff'; ctx.fill();
+    const li = ey + ry - 2 * ry * lid, lo = li + 0.18;     // the lid line is lower on the inner side: a stern look
+    ctx.beginPath(); ctx.moveTo(X(ex - sd * (rx + 0.2)), Y(lo)); ctx.lineTo(X(ex + sd * (rx + 0.2)), Y(li - 0.1)); ctx.lineTo(X(ex + sd * (rx + 0.2)), Y(ey + ry + 0.2)); ctx.lineTo(X(ex - sd * (rx + 0.2)), Y(ey + ry + 0.2)); ctx.closePath();
+    ctx.fillStyle = T.body; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(X(ex - sd * (rx + 0.2)), Y(lo)); ctx.lineTo(X(ex + sd * (rx + 0.2)), Y(li - 0.1)); outline(0.9);
+    ctx.restore();
+    ctx.beginPath(); ctx.ellipse(X(ex), Y(ey), (rx + 0.05) * u, (ry + 0.05) * u, 0, 0, Math.PI * 2); outline(0.8);
+    // the dark line of the face under each eye
+    ctx.beginPath(); ctx.moveTo(X(sd * 0.3), Y(ey - 0.85)); ctx.quadraticCurveTo(X(sd * 1.15), Y(ey - 1.1), X(sd * 2.0), Y(ey - 0.55)); outline();
+  }
+  // small dark beak
+  ctx.beginPath(); ctx.moveTo(X(-0.14), Y(ey - 0.35)); ctx.lineTo(X(0.14), Y(ey - 0.35)); ctx.lineTo(X(0.03), Y(ey - 1.0 - lunge * 0.15)); ctx.closePath(); ctx.fillStyle = ink; ctx.fill();
+  if (flash) { ctx.globalAlpha = 0.22 * alpha; body(); ctx.fillStyle = '#ffcf8a'; ctx.fill(); }
+}
+
 function drawMonster(M, g, o) {
   const T = MONSTERS[M.kind], t = g.time, u = o.s * T.size;
   const atk = clamp(1 - (t - M.anim) / 0.7, 0, 1), lunge = Math.sin(atk * Math.PI);
@@ -948,6 +1027,7 @@ function drawMonster(M, g, o) {
   // shadow
   ctx.fillStyle = 'rgba(10,30,50,0.28)'; ctx.beginPath(); ctx.ellipse(o.x, o.y, 3.4 * u, 0.8 * u, 0, 0, Math.PI * 2); ctx.fill();
   if (T.chalk) { drawPajakojad(T, t, u, X, Y, lunge, breathe, t - M.hit < 0.06 && !M.dead, alpha); ctx.restore(); return; }
+  if (T.owl) { drawHedwigonna(T, t, u, X, Y, lunge, breathe, t - M.hit < 0.06 && !M.dead, alpha); ctx.restore(); return; }
   const cy = 3.2 + lunge * 0.35, rx = 3.0 * (1 + lunge * 0.05), ry = 2.9 * breathe * (1 + lunge * 0.06);
   // wings
   if (T.wings) {
@@ -1703,7 +1783,7 @@ function startStage(g) {
   view.topY = $('hudTop').getBoundingClientRect().bottom + 56;
   layout();
   view.camX = 0;
-  playMusic('run', g.cls); Snd.duck(false);
+  drawMusicStyle(); playMusic('run', g.cls); Snd.duck(false);
 }
 const restart = g => startStage(createGame(g.cls, g.s, false, save.arm));
 function pauseGame() { if (mode !== 'play') return; mode = 'pause'; show('pause'); Snd.duck(true); }
@@ -1846,12 +1926,12 @@ function handleEvents(g) {
       case 'won':
         Snd.stop(); Snd.win(); confettiBurst();
         if (M) for (let i = 0; i < 4; i++) burst(M.x + rand(-2, 2), M.z, [MONSTERS[g.cls].body, MONSTERS[g.cls].light, '#ffffff'], 16, rand(1, 6));
-        if (g.fight) { setFight('Wygrana!', `${MONSTERS[g.cls].name} pokonany`, 'good'); ansL.disabled = ansR.disabled = true; }
+        if (g.fight) { setFight('Wygrana!', `${MONSTERS[g.cls].name} ${MONSTERS[g.cls].fem ? 'pokonana' : 'pokonany'}`, 'good'); ansL.disabled = ansR.disabled = true; }
         else setCard('Wygrana!', 'Potwór pokonany', 'good', 0);
         break;
       case 'lost':
         Snd.stop(); Snd.boo(); stinkShow();          // "buuuu" and the joke the children asked for
-        if (g.fight) { setFight('Przegrana', `${MONSTERS[g.cls].name} był silniejszy`, 'bad'); ansL.disabled = ansR.disabled = true; }
+        if (g.fight) { setFight('Przegrana', `${MONSTERS[g.cls].name} ${MONSTERS[g.cls].fem ? 'była silniejsza' : 'był silniejszy'}`, 'bad'); ansL.disabled = ansR.disabled = true; }
         else setCard('Przegrana', 'Wrogowie mieli przewagę', 'bad', 0);
         break;
     }
@@ -2066,30 +2146,20 @@ function buildLevelList() {
     box.appendChild(sec);
   });
 }
-// Music style: Auto picks by age (cheerful for levels 1–3, adventure for 4–6, electro for 7–8); the player may pick any
-const styleFor = cls => { const m = save.musicStyle; return m === 'off' ? null : m !== 'auto' ? m : cls < 3 ? 'wesola' : cls < 6 ? 'przygoda' : 'elektro'; };
-function playMusic(track, cls) { ui.music = { track, cls }; Snd.play(track, styleFor(cls)); }
+// Music: every game draws a style at random, never the same twice in a row; the fight keeps the style of its game
+const MUSIC_POOL = ['elektro', 'retro', 'wesola', 'chill', 'turbo', 'neon', 'skok'];
+let musicStyle = MUSIC_POOL[Math.floor(Math.random() * MUSIC_POOL.length)];
+function drawMusicStyle() { const rest = MUSIC_POOL.filter(m => m !== musicStyle); musicStyle = rest[Math.floor(Math.random() * rest.length)]; }
+function playMusic(track, cls) { ui.music = { track, cls }; Snd.play(track, save.music ? musicStyle : null); }
 function updateSoundBtns() {
-  for (const [key, label] of [['sfx', 'Dźwięki'], ['learn', 'Nauka po błędzie']]) {
+  for (const [key, label] of [['music', 'Muzyka'], ['sfx', 'Dźwięki'], ['learn', 'Nauka po błędzie']]) {
     for (const b of document.querySelectorAll(`[data-toggle="${key}"]`)) { b.textContent = `${label}: ${save[key] ? 'wł.' : 'wył.'}`; b.setAttribute('aria-pressed', String(save[key])); }
-  }
-  for (const b of document.querySelectorAll('[data-toggle="music"]')) {
-    b.textContent = `Muzyka: ${MUSIC_STYLES[save.musicStyle]}`;
-    b.setAttribute('aria-label', `Muzyka: ${MUSIC_STYLES[save.musicStyle]}. Stuknij, żeby zmienić styl.`);
   }
 }
 function toggle(key) {
-  if (key === 'music') {      // the music button goes through the styles
-    const keys = Object.keys(MUSIC_STYLES);
-    save.musicStyle = keys[(keys.indexOf(save.musicStyle) + 1) % keys.length];
-    save.music = save.musicStyle !== 'off';
-    persist(); updateSoundBtns();
-    Snd.unlock(); Snd.setMusic(save.music);
-    if (ui.music) playMusic(ui.music.track, ui.music.cls);
-    return;
-  }
   save[key] = !save[key]; persist(); updateSoundBtns();
   if (save[key] && key !== 'learn') Snd.unlock();
+  if (key === 'music') { Snd.setMusic(save.music); if (ui.music) playMusic(ui.music.track, ui.music.cls); }
 }
 
 const tap = (id, fn) => $(id).addEventListener('click', () => { Snd.unlock(); Snd.tap(); fn(); });
@@ -2121,7 +2191,8 @@ ansR.addEventListener('click', () => pickAnswer(false));
    ============================================================ */
 const UA = navigator.userAgent || '';
 const IS_IOS = /iPhone|iPad|iPod/.test(UA) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-const IS_ANDROID = /Android/i.test(UA);
+// big Android tablets open pages in Chrome's "computer" mode and do not say Android, but they have a touch screen
+const IS_ANDROID = /Android/i.test(UA) || (/X11; Linux x86_64/.test(UA) && !/CrOS/.test(UA) && navigator.maxTouchPoints > 1);
 // browsers inside other apps (Messenger, Facebook, Instagram, TikTok…) cannot put a page on the home screen
 const IN_APP = /FBAN|FBAV|FB_IAB|FBIOS|Instagram|Messenger|Line\/|TikTok|musical_ly|Snapchat|GSA\/|; wv\)/.test(UA);
 const isStandalone = () => navigator.standalone === true ||
@@ -2138,9 +2209,19 @@ const dots = (x, y, vertical) => `<g fill="${INK}">${[-7, 0, 7].map(d => `<circl
 const ring = (x, y, r) => `<circle class="tap" cx="${x}" cy="${y}" r="${r}" fill="none" stroke="${TAP}" stroke-width="4"/>`;
 const box = (x, y, w, h) => `<rect class="tap" x="${x}" y="${y}" width="${w}" height="${h}" rx="9" fill="none" stroke="${TAP}" stroke-width="3.5"/>`;
 const row = (y, label, icon, hi) => `${hi ? `<rect x="74" y="${y}" width="168" height="26" rx="8" fill="#fff3d6"/>` : ''}<text x="86" y="${y + 17}" font-size="12" fill="${INK}">${label}</text>${icon || ''}${hi ? box(72, y - 2, 172, 30) : ''}`;
+// a menu row with its icon on the left, as in Safari on iOS 26
+const rowL = (x, y, w, label, icon, hi) => `${hi ? `<rect x="${x}" y="${y}" width="${w}" height="26" rx="8" fill="#fff3d6"/>` : ''}${icon || ''}<text x="${x + 32}" y="${y + 17}" font-size="12" fill="${INK}">${label}</text>${hi ? box(x - 2, y - 2, w + 4, 30) : ''}`;
+const bookIcon = (x, y) => `<path d="M${x - 7} ${y - 5}q3.5-2 7 0q3.5-2 7 0v11q-3.5-2-7 0q-3.5-2-7 0zM${x} ${y - 5}v11" fill="none" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/>`;
 const shareIcon = (x, y) => `<g fill="none" stroke="${BLUEI}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M${x} ${y + 2}v-12M${x - 4} ${y - 6}l4-4 4 4M${x - 6} ${y - 2}h-2v10h16v-10h-2"/></g>`;
 const plusIcon = (x, y) => `<g fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round"><rect x="${x - 7}" y="${y - 7}" width="14" height="14" rx="3"/><path d="M${x} ${y - 4}v8M${x - 4} ${y}h8"/></g>`;
+const installIcon = (x, y) => `<g fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M${x - 5} ${y - 8}h-5v12h20v-12h-5M${x - 4} ${y + 9}h8M${x} ${y + 4}v5M${x} ${y - 10}v9M${x - 3.5} ${y - 4.5}l3.5 3.5 3.5-3.5"/></g>`;
+const starIcon = (x, y) => `<path d="M${x} ${y - 8}l2.4 5 5.4.6-4 3.7 1.1 5.3-4.9-2.7-4.9 2.7 1.1-5.3-4-3.7 5.4-.6z" fill="none" stroke="${INK}" stroke-width="1.8" stroke-linejoin="round"/>`;
 const gameIcon = (x, y, s) => `<rect x="${x}" y="${y}" width="${s}" height="${s}" rx="${s * 0.24}" fill="#ffc531" stroke="${INK}" stroke-width="2"/><text class="disp" x="${x + s / 2}" y="${y + s * 0.62}" text-anchor="middle" font-size="${s * 0.34}" fill="${INK}">7·8</text>`;
+// QR code with the game's address (made with segno, checked by reading it back), for tablets without SMS or messengers
+const GAME_URL = 'jacekordowski.github.io/Yaceq-Placeq';
+const QR = { n: 33, d: 'M0 0h7v1h-7zM11 0h1v1h-1zM13 0h4v1h-4zM18 0h1v1h-1zM20 0h3v1h-3zM26 0h7v1h-7zM0 1h1v1h-1zM6 1h1v1h-1zM8 1h1v1h-1zM10 1h1v1h-1zM12 1h1v1h-1zM14 1h1v1h-1zM16 1h2v1h-2zM19 1h1v1h-1zM26 1h1v1h-1zM32 1h1v1h-1zM0 2h1v1h-1zM2 2h3v1h-3zM6 2h1v1h-1zM10 2h2v1h-2zM13 2h1v1h-1zM16 2h1v1h-1zM19 2h1v1h-1zM21 2h1v1h-1zM23 2h2v1h-2zM26 2h1v1h-1zM28 2h3v1h-3zM32 2h1v1h-1zM0 3h1v1h-1zM2 3h3v1h-3zM6 3h1v1h-1zM8 3h2v1h-2zM11 3h1v1h-1zM14 3h2v1h-2zM18 3h6v1h-6zM26 3h1v1h-1zM28 3h3v1h-3zM32 3h1v1h-1zM0 4h1v1h-1zM2 4h3v1h-3zM6 4h1v1h-1zM8 4h1v1h-1zM10 4h3v1h-3zM14 4h1v1h-1zM16 4h1v1h-1zM18 4h3v1h-3zM26 4h1v1h-1zM28 4h3v1h-3zM32 4h1v1h-1zM0 5h1v1h-1zM6 5h1v1h-1zM10 5h1v1h-1zM12 5h1v1h-1zM14 5h2v1h-2zM20 5h2v1h-2zM23 5h1v1h-1zM26 5h1v1h-1zM32 5h1v1h-1zM0 6h7v1h-7zM8 6h1v1h-1zM10 6h1v1h-1zM12 6h1v1h-1zM14 6h1v1h-1zM16 6h1v1h-1zM18 6h1v1h-1zM20 6h1v1h-1zM22 6h1v1h-1zM24 6h1v1h-1zM26 6h7v1h-7zM8 7h1v1h-1zM10 7h3v1h-3zM14 7h1v1h-1zM18 7h3v1h-3zM22 7h1v1h-1zM1 8h1v1h-1zM3 8h4v1h-4zM8 8h2v1h-2zM12 8h2v1h-2zM17 8h1v1h-1zM19 8h1v1h-1zM24 8h3v1h-3zM28 8h2v1h-2zM31 8h1v1h-1zM0 9h5v1h-5zM8 9h2v1h-2zM11 9h1v1h-1zM13 9h2v1h-2zM16 9h1v1h-1zM18 9h2v1h-2zM21 9h1v1h-1zM23 9h1v1h-1zM28 9h3v1h-3zM1 10h1v1h-1zM3 10h1v1h-1zM5 10h3v1h-3zM9 10h1v1h-1zM11 10h2v1h-2zM16 10h3v1h-3zM21 10h3v1h-3zM25 10h1v1h-1zM28 10h5v1h-5zM2 11h1v1h-1zM7 11h1v1h-1zM10 11h1v1h-1zM12 11h2v1h-2zM16 11h4v1h-4zM23 11h1v1h-1zM25 11h3v1h-3zM30 11h1v1h-1zM3 12h4v1h-4zM8 12h1v1h-1zM11 12h1v1h-1zM14 12h1v1h-1zM16 12h3v1h-3zM21 12h1v1h-1zM23 12h5v1h-5zM32 12h1v1h-1zM3 13h1v1h-1zM10 13h2v1h-2zM14 13h3v1h-3zM18 13h1v1h-1zM22 13h2v1h-2zM25 13h1v1h-1zM27 13h1v1h-1zM0 14h1v1h-1zM2 14h2v1h-2zM5 14h3v1h-3zM11 14h2v1h-2zM15 14h2v1h-2zM19 14h2v1h-2zM22 14h1v1h-1zM26 14h1v1h-1zM28 14h1v1h-1zM30 14h1v1h-1zM1 15h1v1h-1zM9 15h1v1h-1zM16 15h2v1h-2zM22 15h4v1h-4zM29 15h2v1h-2zM32 15h1v1h-1zM0 16h7v1h-7zM12 16h4v1h-4zM17 16h2v1h-2zM20 16h1v1h-1zM22 16h7v1h-7zM0 17h3v1h-3zM5 17h1v1h-1zM7 17h2v1h-2zM10 17h1v1h-1zM14 17h2v1h-2zM17 17h4v1h-4zM22 17h1v1h-1zM26 17h1v1h-1zM28 17h1v1h-1zM30 17h3v1h-3zM2 18h1v1h-1zM4 18h1v1h-1zM6 18h4v1h-4zM12 18h3v1h-3zM16 18h1v1h-1zM18 18h2v1h-2zM21 18h3v1h-3zM27 18h1v1h-1zM29 18h2v1h-2zM32 18h1v1h-1zM0 19h1v1h-1zM2 19h1v1h-1zM4 19h1v1h-1zM7 19h6v1h-6zM14 19h1v1h-1zM17 19h1v1h-1zM20 19h1v1h-1zM23 19h2v1h-2zM28 19h3v1h-3zM32 19h1v1h-1zM3 20h5v1h-5zM9 20h2v1h-2zM13 20h1v1h-1zM17 20h1v1h-1zM19 20h1v1h-1zM24 20h1v1h-1zM27 20h1v1h-1zM29 20h1v1h-1zM31 20h2v1h-2zM0 21h1v1h-1zM2 21h1v1h-1zM4 21h1v1h-1zM8 21h5v1h-5zM15 21h3v1h-3zM19 21h1v1h-1zM22 21h2v1h-2zM25 21h6v1h-6zM0 22h1v1h-1zM4 22h3v1h-3zM8 22h1v1h-1zM11 22h1v1h-1zM14 22h1v1h-1zM17 22h1v1h-1zM21 22h3v1h-3zM27 22h2v1h-2zM30 22h3v1h-3zM0 23h1v1h-1zM4 23h2v1h-2zM8 23h1v1h-1zM13 23h2v1h-2zM16 23h1v1h-1zM19 23h1v1h-1zM22 23h3v1h-3zM26 23h2v1h-2zM30 23h2v1h-2zM0 24h3v1h-3zM5 24h4v1h-4zM10 24h2v1h-2zM14 24h2v1h-2zM19 24h1v1h-1zM23 24h7v1h-7zM8 25h1v1h-1zM10 25h2v1h-2zM13 25h2v1h-2zM18 25h1v1h-1zM21 25h1v1h-1zM24 25h1v1h-1zM28 25h1v1h-1zM30 25h2v1h-2zM0 26h7v1h-7zM11 26h1v1h-1zM13 26h2v1h-2zM16 26h1v1h-1zM19 26h3v1h-3zM23 26h2v1h-2zM26 26h1v1h-1zM28 26h1v1h-1zM30 26h1v1h-1zM0 27h1v1h-1zM6 27h1v1h-1zM8 27h1v1h-1zM10 27h1v1h-1zM13 27h1v1h-1zM15 27h1v1h-1zM19 27h1v1h-1zM22 27h3v1h-3zM28 27h4v1h-4zM0 28h1v1h-1zM2 28h3v1h-3zM6 28h1v1h-1zM8 28h1v1h-1zM11 28h1v1h-1zM15 28h1v1h-1zM17 28h1v1h-1zM20 28h1v1h-1zM22 28h7v1h-7zM31 28h2v1h-2zM0 29h1v1h-1zM2 29h3v1h-3zM6 29h1v1h-1zM8 29h1v1h-1zM11 29h1v1h-1zM13 29h2v1h-2zM16 29h2v1h-2zM19 29h4v1h-4zM24 29h2v1h-2zM27 29h1v1h-1zM29 29h2v1h-2zM32 29h1v1h-1zM0 30h1v1h-1zM2 30h3v1h-3zM6 30h1v1h-1zM10 30h2v1h-2zM13 30h2v1h-2zM19 30h1v1h-1zM23 30h3v1h-3zM27 30h3v1h-3zM31 30h2v1h-2zM0 31h1v1h-1zM6 31h1v1h-1zM8 31h1v1h-1zM10 31h2v1h-2zM15 31h3v1h-3zM19 31h2v1h-2zM22 31h1v1h-1zM25 31h1v1h-1zM27 31h2v1h-2zM30 31h3v1h-3zM0 32h7v1h-7zM13 32h1v1h-1zM15 32h2v1h-2zM18 32h3v1h-3zM23 32h2v1h-2zM27 32h2v1h-2z' };
+const qrPic = () => `<svg class="qr" viewBox="-4 -4 ${QR.n + 8} ${QR.n + 8}" shape-rendering="crispEdges" role="img" aria-label="Kod QR z adresem gry"><rect x="-4" y="-4" width="${QR.n + 8}" height="${QR.n + 8}" fill="#fff"/><path d="${QR.d}" fill="${INK}"/></svg>
+  <div class="qr-url">Aparat nie widzi kodu? Wpisz w przeglądarce:<br><b>${GAME_URL}</b></div>`;
 const INSTALL = {
   ios: [
     ['Stuknij <b>⋯</b> (trzy kropki) obok adresu strony na dole ekranu. Jeśli od razu widzisz ikonę <b>Udostępnij</b> (kwadrat ze strzałką w górę), stuknij ją i przejdź do kroku 3.',
@@ -2148,28 +2229,39 @@ const INSTALL = {
         <circle cx="34" cy="111" r="16" fill="#fff"/><path d="M38 103l-8 8 8 8" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>
         <rect x="58" y="95" width="188" height="32" rx="16" fill="#fff" stroke="#cdd6e2"/><text x="72" y="115" font-size="11" fill="${INK}">jacekordowski.github.io</text>
         <circle cx="226" cy="111" r="12" fill="#e8eef6"/>${dots(226, 111)}${ring(226, 111, 18)}`)],
-    ['Stuknij <b>Udostępnij</b>.',
-      pic(`<rect x="70" y="12" width="176" height="116" rx="14" fill="#fff"/>${row(20, 'Nowa karta', plusIcon(228, 33))}${row(48, 'Dodaj zakładkę', '')}${row(76, 'Udostępnij', shareIcon(228, 93), true)}${row(104, 'Znajdź na stronie', '')}`)],
-    ['Przewiń listę w dół i stuknij <b>Dodaj do ekranu początkowego</b>.',
-      pic(`<rect x="14" y="12" width="232" height="116" rx="14" fill="#fff"/>${[40, 80, 120, 160, 200].map(x => `<circle cx="${x + 10}" cy="34" r="13" fill="#dfe6ef"/>`).join('')}
-        <g transform="translate(-56 0)">${row(56, 'Kopiuj', '')}${row(84, 'Dodaj do ekranu początkowego', plusIcon(290, 97), true)}</g>
-        <text x="30" y="128" font-size="11" fill="${GREY}">Dodaj do ulubionych…</text>`)],
-    ['Zostaw włączone <b>Otwórz jako aplikację internetową</b> i stuknij <b>Dodaj</b> w prawym górnym rogu.',
-      pic(`<rect x="14" y="12" width="232" height="116" rx="14" fill="#fff"/><text x="28" y="34" font-size="12" fill="${BLUEI}">Anuluj</text><text x="130" y="34" text-anchor="middle" font-size="12" fill="${INK}">Dodaj do ekranu</text>
-        <text x="230" y="34" text-anchor="end" font-size="13" fill="${BLUEI}">Dodaj</text>${box(194, 18, 46, 24)}
-        ${gameIcon(28, 50, 38)}<rect x="76" y="56" width="156" height="26" rx="8" fill="#eef2f7"/><text x="86" y="73" font-size="12" fill="${INK}">Śmierdzipacha</text>
-        <text x="28" y="104" font-size="11" fill="${INK}">Otwórz jako aplikację</text><text x="28" y="119" font-size="11" fill="${INK}">internetową</text><rect x="196" y="98" width="36" height="20" rx="10" fill="#34c759"/><circle cx="222" cy="108" r="8" fill="#fff"/>`)],
+    ['Stuknij <b>Udostępnij</b>. Jest na samej górze menu.',
+      pic(`<rect x="64" y="10" width="182" height="120" rx="16" fill="#fff"/>${rowL(72, 18, 166, 'Udostępnij', shareIcon(88, 32), true)}
+        ${rowL(72, 48, 166, 'Dodaj do Zakładki', `<path d="M83 53h10v14l-5-4-5 4z" fill="none" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/>`)}
+        ${rowL(72, 74, 166, 'Dodaj zakładkę do…', bookIcon(88, 87))}${rowL(72, 100, 166, 'Nowa karta', `<path d="M88 107v12M82 113h12" stroke="${INK}" stroke-width="1.8" stroke-linecap="round"/>`)}`)],
+    ['Stuknij <b>Do ekranu głównego</b>. Jeśli nie widzisz tego napisu, stuknij najpierw <b>Pokaż więcej</b> (kółko ze strzałką) albo przewiń listę w dół.',
+      pic(`<rect x="10" y="6" width="240" height="128" rx="14" fill="#fff"/>${gameIcon(20, 12, 22)}<text x="50" y="22" font-size="11" fill="${INK}">Śmierdzipacha</text><text x="50" y="33" font-size="8" fill="${GREY}">jacekordowski.github.io</text>
+        ${[['Kopiuj', 46], ['Zakładki', 96], ['Czytelnia', 146], ['Pokaż więcej', 206]].map(([t, x]) => `<circle cx="${x}" cy="54" r="11" fill="#e3e8ef"/><text x="${x}" y="77" text-anchor="middle" font-size="8" fill="${INK}">${t}</text>`).join('')}
+        <path d="M201 52l5 5 5-5" fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="206" cy="54" r="15" fill="none" stroke="${TAP}" stroke-width="2.5" stroke-dasharray="4 3"/>
+        <text x="50" y="96" font-size="11" fill="${GREY}">Znajdź na stronie</text>
+        ${rowL(18, 104, 224, 'Do ekranu głównego', plusIcon(34, 117), true)}`)],
+    ['Zostaw włączone <b>Otwórz jako aplikację www</b> i stuknij niebieski przycisk <b>Dodaj</b> w prawym górnym rogu.',
+      pic(`<rect x="14" y="10" width="232" height="120" rx="14" fill="#fff"/><circle cx="34" cy="30" r="11" fill="#e3e8ef"/><path d="M30 26l8 8M38 26l-8 8" stroke="${INK}" stroke-width="2" stroke-linecap="round"/>
+        <text x="114" y="34" text-anchor="middle" font-size="11" fill="${INK}">Do ekranu głównego</text>
+        <rect x="190" y="18" width="48" height="24" rx="12" fill="${BLUEI}"/><text x="214" y="34" text-anchor="middle" font-size="12" fill="#fff">Dodaj</text>${box(186, 14, 56, 32)}
+        ${gameIcon(28, 52, 34)}<text x="74" y="66" font-size="12" fill="${INK}">Śmierdzipacha</text><text x="74" y="80" font-size="8" fill="${GREY}">https://jacekordowski.github.io/…</text>
+        <text x="28" y="112" font-size="11" fill="${INK}">Otwórz jako aplikację www</text><rect x="196" y="99" width="36" height="20" rx="10" fill="#34c759"/><circle cx="222" cy="109" r="8" fill="#fff"/>`)],
   ],
   android: [
-    ['W przeglądarce Chrome stuknij <b>⋮</b> (trzy kropki) w prawym górnym rogu.',
-      pic(`<rect x="10" y="10" width="240" height="40" rx="10" fill="#fff"/><rect x="22" y="18" width="160" height="24" rx="12" fill="#eef2f7"/><text x="34" y="34" font-size="11" fill="${INK}">jacekordowski.github.io</text>
-        <rect x="194" y="21" width="18" height="18" rx="4" fill="none" stroke="${INK}" stroke-width="2"/><text x="203" y="34" text-anchor="middle" font-size="10" fill="${INK}">1</text>
-        ${dots(232, 30, true)}${ring(232, 30, 16)}<rect x="10" y="58" width="240" height="72" rx="10" fill="#fff"/><text class="disp" x="130" y="100" text-anchor="middle" font-size="20" fill="${INK}">Śmierdzipacha</text>`)],
-    ['Stuknij <b>Dodaj do ekranu głównego</b>. W niektórych telefonach ten napis to <b>Zainstaluj aplikację</b>.',
-      pic(`<rect x="70" y="8" width="176" height="124" rx="12" fill="#fff"/>${row(14, 'Nowa karta', '')}${row(38, 'Historia', '')}${row(62, 'Pobrane pliki', '')}${row(88, 'Dodaj do ekranu głównego', '', true)}${row(112, 'Ustawienia', '')}`)],
-    ['Stuknij <b>Zainstaluj</b> (albo <b>Dodaj</b>). Jeśli telefon zapyta, gdzie położyć ikonę, wybierz <b>Dodaj automatycznie</b>.',
-      pic(`<rect x="34" y="14" width="192" height="112" rx="16" fill="#fff"/><text x="52" y="40" font-size="13" fill="${INK}">Zainstalować aplikację?</text>${gameIcon(52, 52, 32)}<text x="94" y="73" font-size="12" fill="${INK}">Śmierdzipacha</text>
-        <text x="120" y="112" text-anchor="middle" font-size="12" fill="${BLUEI}">Anuluj</text><rect x="152" y="94" width="62" height="26" rx="13" fill="${BLUEI}"/><text x="183" y="112" text-anchor="middle" font-size="12" fill="#fff">Zainstaluj</text>${box(148, 90, 70, 34)}`)],
+    ['W przeglądarce Chrome stuknij ikonę <b>Zainstaluj</b> na pasku adresu: ekran ze strzałką w dół, obok gwiazdki.',
+      pic(`<rect x="10" y="12" width="240" height="42" rx="21" fill="#fff"/><text x="26" y="37" font-size="11" fill="${INK}">github.io/Yaceq-Placeq/</text>
+        ${installIcon(196, 33)}${ring(196, 33, 17)}${starIcon(230, 33)}
+        <rect x="10" y="62" width="240" height="68" rx="10" fill="#fff"/><text class="disp" x="130" y="102" text-anchor="middle" font-size="20" fill="${INK}">Śmierdzipacha</text>`)],
+    ['Nie widzisz tej ikony? Stuknij <b>⋮</b> (trzy kropki) w prawym górnym rogu i wybierz <b>Zainstaluj aplikację</b>. W niektórych telefonach ten napis to <b>Dodaj do ekranu głównego</b>.',
+      pic(`<rect x="70" y="8" width="176" height="124" rx="12" fill="#fff"/>${row(14, 'Nowa karta', '')}${row(38, 'Historia', '')}${row(62, 'Pobrane pliki', '')}${row(88, 'Zainstaluj aplikację', '', true)}${row(112, 'Ustawienia', '')}`)],
+    ['W okienku <b>Zainstaluj aplikację</b> stuknij <b>Zainstaluj</b>. Jeśli telefon zapyta, gdzie położyć ikonę, wybierz <b>Dodaj automatycznie</b>.',
+      pic(`<rect x="20" y="12" width="220" height="116" rx="18" fill="#fff"/><text x="38" y="38" font-size="13" fill="${INK}">Zainstaluj aplikację</text>${gameIcon(38, 52, 30)}
+        <text x="78" y="64" font-size="12" fill="${INK}">Śmierdzipacha</text><text x="78" y="78" font-size="9" fill="${GREY}">jacekordowski.github.io</text>
+        <text x="138" y="114" text-anchor="middle" font-size="12" fill="${BLUEI}">Anuluj</text><text x="196" y="114" text-anchor="middle" font-size="12" fill="${BLUEI}">Zainstaluj</text>${box(166, 98, 60, 24)}`)],
+  ],
+  qr: [
+    ['Na drugim telefonie albo tablecie otwórz <b>Aparat</b> i skieruj go na ten kod.', qrPic()],
+    ['Stuknij link, który pojawi się na ekranie. Otworzy się gra.', ''],
+    ['Dodaj grę do ekranu tamtego urządzenia. Instrukcja pokaże się tam sama. Jest też w zakładkach <b>iPhone / iPad</b> i <b>Android</b>.', ''],
   ],
   done: ['Gotowe! Uruchamiaj grę tą ikoną. Otworzy się na cały ekran, jak zwykła aplikacja.',
     pic(`<rect x="10" y="8" width="240" height="124" rx="12" fill="#5b6fd6"/>${[0, 1, 2, 3].map(i => [0, 1].map(j => (i === 1 && j === 0) ? '' : `<rect x="${34 + i * 52}" y="${20 + j * 58}" width="36" height="36" rx="9" fill="rgba(255,255,255,0.35)"/>`).join('')).join('')}
@@ -2182,14 +2274,15 @@ const INSTALL = {
 let instOS = IS_ANDROID ? 'android' : 'ios';
 function renderInstall() {
   const li = ([text, svg]) => `<li><p><span>${text}</span></p>${svg}</li>`;
-  const inApp = IN_APP && canOfferInstall();
-  $('instTitle').textContent = inApp ? 'Otwórz grę w przeglądarce' : 'Dodaj grę do ekranu telefonu';
+  const inApp = IN_APP && canOfferInstall(), qr = instOS === 'qr' && !inApp;
+  $('instTitle').textContent = inApp ? 'Otwórz grę w przeglądarce' : qr ? 'Gra na innym tablecie lub telefonie' : 'Dodaj grę do ekranu telefonu';
   $('instWhy').textContent = inApp ? 'Potem dodasz ją do ekranu telefonu i będzie się otwierać jak aplikacja.'
+    : qr ? 'Wystarczy aparat. Nie trzeba SMS-a, WhatsAppa ani e-maila.'
     : 'Gra otworzy się jak aplikacja: na cały ekran, bez paska przeglądarki, jednym stuknięciem.';
   $('instTabs').hidden = inApp;
   $('instCopy').hidden = !inApp;
   $('instInstall').hidden = !(installEvent && instOS === 'android' && !inApp);
-  $('instSteps').innerHTML = inApp ? li(INSTALL.inApp) : INSTALL[instOS].map(li).join('') + li(INSTALL.done);
+  $('instSteps').innerHTML = inApp ? li(INSTALL.inApp) : INSTALL[instOS].map(li).join('') + (qr ? '' : li(INSTALL.done));
   for (const b of $('instTabs').children) b.setAttribute('aria-selected', String(b.dataset.os === instOS));
 }
 function openInstall() { renderInstall(); $('scrInstall').hidden = false; $('scrInstall').querySelector('.card').scrollTop = 0; }
@@ -2203,6 +2296,23 @@ tap('instInstall', () => {
   installEvent.prompt();
   installEvent.userChoice.then(c => { if (c.outcome === 'accepted') closeInstall(); }).catch(() => {});
   installEvent = null; renderInstall();
+});
+// Share the game: the QR code for another phone or tablet, also when the game already runs from the home screen
+const SHARE_URL = `https://${GAME_URL}/`;
+function openShare() {
+  $('shQr').innerHTML = qrPic();
+  $('shSend').hidden = !navigator.share;
+  $('shCopy').textContent = 'Kopiuj link';
+  $('scrShare').hidden = false; $('scrShare').querySelector('.card').scrollTop = 0;
+}
+function closeShare() { $('scrShare').hidden = true; }
+tap('btnShare', openShare);
+tap('shClose', closeShare);
+tap('shBack', closeShare);
+tap('shSend', () => { navigator.share({ title: 'Śmierdzipacha', text: 'Zagraj w Śmierdzipachę: matematyka w biegu i w walce!', url: SHARE_URL }).catch(() => {}); });
+tap('shCopy', () => {
+  const done = () => { $('shCopy').textContent = 'Skopiowano link'; };
+  try { navigator.clipboard.writeText(SHARE_URL).then(done, () => { prompt('Skopiuj ten link:', SHARE_URL); }); } catch (e) { prompt('Skopiuj ten link:', SHARE_URL); }
 });
 tap('instCopy', () => {
   const done = () => { $('instCopy').textContent = 'Skopiowano. Wklej link w Safari albo Chrome'; };
@@ -2232,6 +2342,7 @@ window.addEventListener('keydown', e => {
   const L = e.key === 'ArrowLeft' || e.key === 'a', R = e.key === 'ArrowRight' || e.key === 'd';
   if (mode === 'play' && game.state === 'fight' && (L || R)) { if (!e.repeat) pickAnswer(L); return; }
   if (!$('scrInstall').hidden) { if (e.key === 'Escape') closeInstall(); return; }
+  if (!$('scrShare').hidden) { if (e.key === 'Escape') closeShare(); return; }
   if (mode === 'lesson') { if ((L || R) && !e.repeat) lessonPick(L); return; }
   if (L) keys.left = true; else if (R) keys.right = true;
   else if (e.key === 'Escape' || e.key === 'p') { if (mode === 'play') pauseGame(); else if (mode === 'pause') resumeGame(); }

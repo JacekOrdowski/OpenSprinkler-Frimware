@@ -323,8 +323,8 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
 .inst h2 { text-align: center; padding: 0 34px; font-size: 30px; }
 .inst .hint { text-align: center; }
 .inst-x { position: absolute; top: 12px; right: 12px; background: #fff; box-shadow: 0 3px 0 var(--paper-edge); }
-.inst-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px; border-radius: 14px; background: #efe6d4; }
-.inst-tabs button { min-height: 42px; border-radius: 11px; font-weight: 900; font-size: 15px; color: var(--muted); }
+.inst-tabs { display: grid; grid-template-columns: 1.25fr 1fr 1fr; gap: 6px; padding: 4px; border-radius: 14px; background: #efe6d4; }
+.inst-tabs button { min-height: 42px; padding: 0 4px; border-radius: 11px; font-weight: 900; font-size: 14px; color: var(--muted); }
 .inst-tabs button[aria-selected="true"] { background: #fff; color: var(--ink); box-shadow: 0 2px 0 var(--paper-edge); }
 .inst-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; counter-reset: st; }
 .inst-steps li { display: grid; gap: 8px; padding: 10px 12px 12px; border-radius: 16px; background: #fff; }
@@ -337,6 +337,10 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
 .inst-steps b { color: var(--blue); }
 .inst-steps svg { display: block; width: 100%; height: auto; }
 .inst-steps svg text { font-family: var(--body); font-weight: 800; }
+.inst-steps svg.qr, .share-qr svg.qr { display: block; width: min(240px, 78%); height: auto; margin: 4px auto 0; border-radius: 12px; box-shadow: 0 0 0 2px #e3e8ef; }
+.share-qr { display: grid; gap: 10px; padding: 12px; border-radius: 16px; background: #fff; }
+.qr-url { display: block; margin: 0; text-align: center; font-size: 13px; font-weight: 700; color: var(--muted); overflow-wrap: anywhere; }
+.qr-url b { color: var(--ink); }
 .inst-steps svg .disp { font-family: var(--display); font-weight: 400; }
 .inst .tap { animation: tapPulse 1.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
 @keyframes tapPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(1.12); } }
@@ -419,6 +423,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
     <button class="btn btn-gold" id="btnPlay">Graj</button>
     <button class="btn btn-light" id="btnLevels">Wybierz level i grę</button>
     <button class="btn btn-light" id="btnArmory">Zbrojownia</button>
+    <button class="btn btn-light" id="btnShare">Udostępnij grę</button>
     <ol class="howto">
       <li>Przesuwaj palcem w lewo i w prawo.</li>
       <li><span>Wbiegnij w bramkę z dobrym wynikiem. Zielona liczba mówi, ilu żołnierzy dostaniesz, na przykład <b>+14</b>. Zła odpowiedź tyle samo zabiera.</span></li>
@@ -428,12 +433,12 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
       <li>Po pomyłce gra pokaże, jak to łatwo policzyć, i da 2 zadania na próbę.</li>
     </ol>
     <div class="row2">
-      <button class="btn btn-ghost" data-toggle="music">Muzyka: Auto</button>
+      <button class="btn btn-ghost" data-toggle="music">Muzyka: wł.</button>
       <button class="btn btn-ghost" data-toggle="sfx" aria-pressed="true">Dźwięki: wł.</button>
     </div>
     <button class="btn btn-ghost" data-toggle="learn" aria-pressed="true">Nauka po błędzie: wł.</button>
     <button class="btn btn-ghost" id="btnInstallHelp" hidden>Jak dodać grę do ekranu telefonu</button>
-    <p class="version" id="menuVersion">Wersja 11</p>
+    <p class="version" id="menuVersion">Wersja 12</p>
   </div>
 </div>
 
@@ -479,10 +484,24 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
       <button class="btn btn-light" id="btnPauseMenu">Menu</button>
     </div>
     <div class="row2">
-      <button class="btn btn-ghost" data-toggle="music">Muzyka: Auto</button>
+      <button class="btn btn-ghost" data-toggle="music">Muzyka: wł.</button>
       <button class="btn btn-ghost" data-toggle="sfx" aria-pressed="true">Dźwięki: wł.</button>
     </div>
     <button class="btn btn-ghost" data-toggle="learn" aria-pressed="true">Nauka po błędzie: wł.</button>
+  </div>
+</div>
+
+<div class="screen install" id="scrShare" hidden>
+  <div class="card inst" role="dialog" aria-modal="true" aria-labelledby="shTitle">
+    <button class="icon-btn inst-x" id="shClose" aria-label="Zamknij">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <h2 id="shTitle">Udostępnij grę</h2>
+    <p class="hint">Na drugim telefonie albo tablecie otwórz Aparat i skieruj go na ten kod. Stuknij link, który się pojawi. Nie trzeba SMS-a, WhatsAppa ani e-maila.</p>
+    <div class="share-qr" id="shQr"></div>
+    <button class="btn btn-gold" id="shSend" hidden>Wyślij link</button>
+    <button class="btn btn-light" id="shCopy">Kopiuj link</button>
+    <button class="btn btn-ghost" id="shBack">Wróć</button>
   </div>
 </div>
 
@@ -497,6 +516,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
     <div class="inst-tabs" id="instTabs" role="tablist" aria-label="Telefon">
       <button role="tab" data-os="ios" aria-selected="true">iPhone / iPad</button>
       <button role="tab" data-os="android" aria-selected="false">Android</button>
+      <button role="tab" data-os="qr" aria-selected="false">Kod QR</button>
     </div>
     <ol class="inst-steps" id="instSteps"></ol>
     <button class="btn btn-gold" id="instCopy" hidden>Kopiuj link do gry</button>
