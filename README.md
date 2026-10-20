@@ -86,7 +86,13 @@ albo wyłącza muzykę. Efekty dźwiękowe tworzy sama gra; można je wyłączy�
 Utwory są w folderze `muzyka/`. Tworzy je program `narzedzia/muzyka.py`: nuty są zapisane w kodzie,
 program gra je instrumentami i zapisuje pętle MP3. Bez internetu gra używa dawnych melodii.
 
-## Jak zagrać na iPhonie
+## Jak zagrać
+
+Gra jest w internecie pod adresem **https://jacekordowski.github.io/OpenSprinkler-Frimware/**
+(GitHub Pages; każda nowa wersja pojawia się tam sama po minucie lub dwóch).
+Działa w każdej przeglądarce, na telefonie i na komputerze, bez konta i bez instalowania.
+
+### Na iPhonie
 
 Gra działa w przeglądarce Safari, bez instalowania ze sklepu.
 Po otwarciu strony gry: przycisk „Udostępnij” → „Dodaj do ekranu początkowego”.
