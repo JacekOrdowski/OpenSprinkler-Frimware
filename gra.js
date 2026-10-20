@@ -4,7 +4,7 @@
 'use strict';
 const HAS_DOM = typeof document !== 'undefined';
 const Z = globalThis.Zadania;
-const WERSJA = 9;          // numer wersji gry; opis zmian w ZMIANY.md
+const WERSJA = 10;         // numer wersji gry; opis zmian w ZMIANY.md
 
 /* ============================================================
    Helpers
@@ -363,7 +363,7 @@ function step(g, dt) {
     if (a.n < 1) a.n = 1;
     g.state = 'won'; g.endAt = g.time + 2.6; ev.push({ type: 'won' });
   } else if ((g.state === 'run' || g.state === 'fight') && a.n <= 0) {
-    a.n = 0; g.state = 'lost'; g.endAt = g.time + 2.0; ev.push({ type: 'lost' });
+    a.n = 0; g.state = 'lost'; g.endAt = g.time + 3.0; ev.push({ type: 'lost' });
   }
 }
 
@@ -611,7 +611,6 @@ const Snd = (() => {
       hiss(t, 1.0, 0.22, sfxBus, 'bandpass', 520, 0.7);
     }),
     win: fx('win', 0, t => { [72, 76, 79, 84, 79, 84, 88].forEach((m, i) => tone('square', mtof(m), t + i * 0.12, i === 6 ? 0.6 : 0.14, 0.12, sfxBus, 0, 3800)); }),
-    lose: fx('lose', 0, t => { [67, 64, 60, 55].forEach((m, i) => tone('triangle', mtof(m), t + i * 0.22, 0.34, 0.17, sfxBus)); }),
     // A zombie horde comes into view: low, wobbly moan
     groan: fx('groan', 1.5, t => {
       const o = tone('sawtooth', rand(85, 110), t, 0.9, 0.07, sfxBus, 62, 520);
@@ -1598,7 +1597,7 @@ const solved = p => p.sol || (p.q.includes('?') ? p.q.replace('?', p.a) : /^x [<
 function show(name) { for (const k in screens) screens[k].hidden = k !== name; }
 function goMenu() {
   mode = 'menu'; game = createGame(save.next[0], save.next[1], true); hud.hidden = true; fight.hidden = true; view.hudBottom = 0; layout();
-  ui.lessonQ = null; lesson = null;
+  ui.lessonQ = null; lesson = null; $('stink').hidden = true;
   $('btnPlay').textContent = `Graj · ${stageLabel(save.next[0], save.next[1])}`;
   $('btnArmory').textContent = `Zbrojownia · ${group(save.gold)} złota`;
   $('menuVersion').textContent = `Wersja ${WERSJA}`;
@@ -1620,7 +1619,7 @@ function openIntro(c, s) {
 }
 function startStage(g) {
   game = g; mode = 'play'; pending = null;
-  ui.shownGate = null; ui.until = 0; ui.lessonQ = null; lesson = null;
+  ui.shownGate = null; ui.until = 0; ui.lessonQ = null; lesson = null; $('stink').hidden = true;
   parts.length = 0; floats.length = 0; confetti.length = 0; rings.length = 0; balls.length = 0; hitTexts.length = 0;
   show(null); hud.hidden = false; fight.hidden = true; probCard.hidden = false; view.k = 0;
   $('hudLevel').textContent = stageLabel(g.cls, g.s);
@@ -1771,13 +1770,13 @@ function handleEvents(g) {
         Snd.boom(); fx.flash = 0.8; fx.flashColor = '235,60,50'; fx.shake = 0.45;
         break;
       case 'won':
-        Snd.stop(); Snd.boo(); setTimeout(() => Snd.win(), 800); confettiBurst();   // the beaten monster moans "uuuu"
+        Snd.stop(); Snd.win(); confettiBurst();
         if (M) for (let i = 0; i < 4; i++) burst(M.x + rand(-2, 2), M.z, [MONSTERS[g.cls].body, MONSTERS[g.cls].light, '#ffffff'], 16, rand(1, 6));
         if (g.fight) { setFight('Wygrana!', `${MONSTERS[g.cls].name} pokonany`, 'good'); ansL.disabled = ansR.disabled = true; }
         else setCard('Wygrana!', 'Potwór pokonany', 'good', 0);
         break;
       case 'lost':
-        Snd.stop(); Snd.lose();
+        Snd.stop(); Snd.boo(); stinkShow();          // "buuuu" and the joke the children asked for
         if (g.fight) { setFight('Przegrana', `${MONSTERS[g.cls].name} był silniejszy`, 'bad'); ansL.disabled = ansR.disabled = true; }
         else setCard('Przegrana', 'Wrogowie mieli przewagę', 'bad', 0);
         break;
@@ -1913,8 +1912,13 @@ function closeArmory() {
   if (armoryBack === 'result') { mode = 'result'; showResultAgain(); } else goMenu();
 }
 
+// Lost: a green stink cloud and a big joke over the scene, until the result card
+function stinkShow() {
+  const el = $('stink');
+  el.hidden = false; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
+}
 function showResult(g) {
-  mode = 'result'; fight.hidden = true;
+  mode = 'result'; fight.hidden = true; $('stink').hidden = true;
   const won = g.state === 'won', c = g.cls, s = g.s;
   const ratio = g.answered ? g.correct / g.answered : 0;
   const stars = won ? (ratio === 1 ? 3 : ratio >= 0.75 ? 2 : 1) : 0;
@@ -1927,7 +1931,7 @@ function showResult(g) {
   persist();
   $('reGold').textContent = `+${group(gain)} · masz ${group(save.gold)}`;
   $('reLevel').textContent = `${stageLabel(c, s)} · ${g.cfg.info.name}`;
-  $('reTitle').textContent = won ? 'Wygrana!' : 'Przegrana';
+  $('reTitle').textContent = won ? 'Wygrana!' : 'Śmierdzi Ci spod pachy!!!';
   $('reStars').innerHTML = [0, 1, 2].map(i => ICON.star(i < stars)).join('');
   [...$('reStars').children].forEach((el, i) => el.classList.toggle('on', i < stars));
   $('reStars').hidden = !won;

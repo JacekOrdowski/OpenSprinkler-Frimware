@@ -341,17 +341,44 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
 .inst .tap { animation: tapPulse 1.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
 @keyframes tapPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(1.12); } }
 
+/* ---------- lost: the stinky joke ---------- */
+#stink {
+  position: fixed; inset: 0; z-index: 14; pointer-events: none; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(ellipse at 50% 55%, rgba(150, 210, 40, 0.55), rgba(90, 140, 20, 0.25) 55%, rgba(60, 90, 10, 0) 80%);
+}
+.stink-text {
+  margin: 0; padding: 0 16px; text-align: center; font-family: var(--display); font-size: clamp(40px, 13vw, 66px); line-height: 1.02;
+  color: #c6f25a; transform: rotate(-7deg);
+  text-shadow: 0 5px 0 #2c4a0c, 3px 3px 0 #2c4a0c, -3px 3px 0 #2c4a0c, 3px -2px 0 #2c4a0c, -3px -2px 0 #2c4a0c, 0 14px 30px rgba(0, 0, 0, 0.45);
+}
+#stink.go { animation: stinkFog 0.5s ease-out both; }
+#stink.go .stink-text { animation: stinkPop 0.6s cubic-bezier(.2, 1.6, .4, 1) both, stinkWobble 1.1s ease-in-out 0.6s infinite; }
+.puff { position: absolute; left: var(--x); bottom: -60px; font-size: 46px; opacity: 0; }
+#stink.go .puff { animation: puffUp 2.4s ease-out var(--d) infinite; }
+@keyframes stinkFog { from { opacity: 0; } }
+@keyframes stinkPop { from { transform: rotate(-7deg) scale(0.2); opacity: 0; } }
+@keyframes stinkWobble { 0%, 100% { transform: rotate(-7deg) scale(1); } 50% { transform: rotate(-3deg) scale(1.06); } }
+@keyframes puffUp { 0% { opacity: 0; transform: translateY(0) scale(0.6); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(-75vh) scale(1.4) rotate(25deg); } }
+
 @media (prefers-reduced-motion: reduce) {
   .problem.pop, .fight.pop .fight-q, .stars svg.on { animation: none; }
   .logo, .logo-gate { transform: none; }
   .card.shake { animation: none; }
   .inst .tap { animation: none; }
+  #stink.go .stink-text, #stink.go .puff { animation: none; }
+  .puff { display: none; }
 }
 </style>
 </head>
 <body>
 <!-- BODY-START -->
 <canvas id="scene" aria-label="Most, po którym biegnie armia"></canvas>
+<div id="stink" hidden aria-live="assertive">
+  <p class="stink-text">Śmierdzi Ci<br>spod pachy!!!</p>
+  <span class="puff" style="--x:14%;--d:0s">💨</span><span class="puff" style="--x:72%;--d:.35s">💨</span>
+  <span class="puff" style="--x:38%;--d:.7s">🤢</span><span class="puff" style="--x:86%;--d:1.05s">💨</span><span class="puff" style="--x:4%;--d:1.4s">💨</span>
+</div>
 
 <div id="hud" hidden>
   <div class="hud-top" id="hudTop">
@@ -406,7 +433,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
     </div>
     <button class="btn btn-ghost" data-toggle="learn" aria-pressed="true">Nauka po błędzie: wł.</button>
     <button class="btn btn-ghost" id="btnInstallHelp" hidden>Jak dodać grę do ekranu telefonu</button>
-    <p class="version" id="menuVersion">Wersja 9</p>
+    <p class="version" id="menuVersion">Wersja 10</p>
   </div>
 </div>
 

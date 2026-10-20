@@ -7,6 +7,25 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 
 ---
 
+## Wersja 10 (20 października 2026)
+
+Zapis w repozytorium: (uzupełnię w następnym zapisie)
+
+### Dodane
+- **Żart przy przegranej**, wymyślony przez dzieci: gdy wojsko przegra, słychać „buuuuu”, ekran zalewa zielona mgła,
+  a na środku wyskakuje chwiejący się napis **„Śmierdzi Ci spod pachy!!!”** i lecą chmurki 💨 🤢.
+  Ten sam napis jest w tytule karty z wynikiem.
+- Na telefonach z wyłączonymi animacjami napis po prostu się pojawia, bez ruchu i bez chmurek.
+
+### Zmienione
+- „Buuuu” słychać teraz **tylko przy przegranej**. Wcześniej potwór jęczał „buuu” także wtedy, gdy przegrał z nami.
+- Po przegranej karta z wynikiem pojawia się po 3 sekundach zamiast po 2, żeby zdążyć przeczytać żart.
+
+### Usunięte
+- Dawna smutna melodyjka przy przegranej (zastąpiło ją „buuuu”).
+
+---
+
 ## Wersja 9 (20 października 2026)
 
 Zapis w repozytorium: `d856fa1`
