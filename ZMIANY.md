@@ -7,6 +7,8 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 
 ## Wersja 4 (20 października 2026)
 
+Zapis w repozytorium: `d0fe679`
+
 ### Dodane
 - **Nauka po błędzie.** Po złej odpowiedzi gra się zatrzymuje i pokazuje krok po kroku, jak to łatwo policzyć w pamięci.
   Dotyczy to bramek i walki, także sytuacji, gdy zabraknie czasu.
