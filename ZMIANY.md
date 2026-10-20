@@ -9,6 +9,8 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 
 ## Wersja 7 (20 października 2026)
 
+Zapis w repozytorium: `1ad8f06`
+
 ### Dodane
 - **Zombie.** Zamiast czerwonej armii na armię idą hordy zombie. Od 11. gry w każdym levelu w hordach chodzą też duże zombie.
   Mają więcej życia (liczba nad głową), a gdy dojdą do armii, zabierają kilku żołnierzy.
