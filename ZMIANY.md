@@ -7,7 +7,7 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 
 ---
 
-## Wersja 14 (w przygotowaniu)
+## Wersja 14 (20 października 2026)
 
 ### Dodane
 - **Zbrojownia jak w Archero: 13 ulepszeń na stałe**, kupowanych za złoto poziom po poziomie:
