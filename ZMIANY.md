@@ -9,7 +9,7 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 
 ## Wersja 10 (20 października 2026)
 
-Zapis w repozytorium: (uzupełnię w następnym zapisie)
+Zapis w repozytorium: `cb2cceb`
 
 ### Dodane
 - **Żart przy przegranej**, wymyślony przez dzieci: gdy wojsko przegra, słychać „buuuuu”, ekran zalewa zielona mgła,
