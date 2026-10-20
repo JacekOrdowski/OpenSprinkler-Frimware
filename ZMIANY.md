@@ -9,6 +9,8 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 
 ## Wersja 8 (20 października 2026)
 
+Zapis w repozytorium: `ae8ed79`
+
 ### Dodane
 - **7 światów** zamiast samego mostu: Most nad morzem, Las, Kanion, Śnieżne góry, Wulkan, Miasto nocą i Kosmos.
   Każdy temat w levelu to inny świat. Młodsze levele mają więcej jasnych światów, starsze więcej miasta nocą, wulkanu i kosmosu.
