@@ -252,7 +252,8 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
 
 /* ---------- after a mistake: how to calculate it, then practice ---------- */
 .lesson { gap: 12px; }
-.le-solved { font-family: var(--display); font-size: clamp(28px, 9vw, 40px); line-height: 1.15; color: var(--good); overflow-wrap: anywhere; text-wrap: balance; font-variant-numeric: tabular-nums; }
+.le-solved { font-family: var(--display); font-size: clamp(28px, 9vw, 40px); line-height: 1.15; color: var(--ink); overflow-wrap: anywhere; text-wrap: balance; font-variant-numeric: tabular-nums; }
+.le-solved small { display: block; margin-top: 4px; font-family: var(--body); font-weight: 800; font-size: 15px; color: var(--muted); }
 .le-your { margin: -6px 0 0; font-weight: 800; font-size: 15px; color: var(--red); }
 .le-method { background: #fff; border-radius: 16px; padding: 12px 14px; display: grid; gap: 9px; text-align: left; }
 .le-method h3 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 20px; line-height: 1.15; color: var(--blue); }
@@ -268,6 +269,13 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
 }
 .calc.nw { white-space: nowrap; }
 .le-task { display: grid; gap: 10px; background: #eaf3ff; border-radius: 16px; padding: 12px; }
+/* the bar in the middle: a wrong answer moves it one field left (red), a right one one field right (green) */
+.le-bar { display: grid; grid-template-columns: repeat(3, 1fr) 8px repeat(3, 1fr); gap: 5px; height: 26px; }
+.le-bar .c { border-radius: 8px; background: #fff; box-shadow: inset 0 0 0 2px #cfd9e6; transition: background 0.25s, transform 0.25s; }
+.le-bar .c.bad { background: var(--red); box-shadow: none; transform: scaleY(1.12); }
+.le-bar .c.good { background: var(--good); box-shadow: none; transform: scaleY(1.12); }
+.le-bar .mid { border-radius: 4px; background: var(--ink); }
+.le-legend { display: flex; justify-content: space-between; margin-top: -4px; font-weight: 800; font-size: 12px; color: var(--muted); }
 .le-q { font-family: var(--display); font-size: clamp(28px, 9vw, 40px); line-height: 1.12; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; text-wrap: balance; }
 .le-q.long { font-size: clamp(23px, 7vw, 32px); }
 .le-q.xlong { font-size: clamp(18px, 5.4vw, 24px); line-height: 1.2; }
@@ -427,10 +435,12 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
     <ol class="howto">
       <li>Przesuwaj palcem w lewo i w prawo.</li>
       <li><span>Wbiegnij w bramkę z dobrym wynikiem. Zielona liczba mówi, ilu żołnierzy dostaniesz, na przykład <b>+14</b>. Zła odpowiedź tyle samo zabiera.</span></li>
-      <li>Armia strzela sama. Zestrzel zombie, rozbij klatki z jeńcami, otwórz skrzynie z lepszą bronią i napraw most.</li>
+      <li>Za dobrą bramką czeka nagroda: klatka z jeńcami, skrzynia z lepszą bronią albo most do naprawy. Armia strzela sama.</li>
+      <li>Potem nadchodzą wrogowie: zombie, mrówki, osy, węże i klauny. Każdy, kto cię minie, też zabiera żołnierzy. Omijaj dziury, młoty i płonące beczki.</li>
+      <li>Dopiero po wrogach pojawia się następne zadanie, z czasem na spokojne liczenie.</li>
       <li>Na końcu drogi walczysz z potworem. Stukaj w dobre odpowiedzi, żeby dostać posiłki.</li>
       <li>Za dobre odpowiedzi dostajesz złoto. W Zbrojowni kupisz za nie lepszą broń i większą armię.</li>
-      <li>Po pomyłce gra pokaże, jak to łatwo policzyć, i da 2 zadania na próbę.</li>
+      <li>Po pomyłce gra da podpowiedź (bez gotowego wyniku) i ćwiczenie bez pośpiechu: 3 dobre odpowiedzi i grasz dalej, 3 złe kończą grę.</li>
     </ol>
     <div class="row2">
       <button class="btn btn-ghost" data-toggle="music">Muzyka: wł.</button>
@@ -438,7 +448,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
     </div>
     <button class="btn btn-ghost" data-toggle="learn" aria-pressed="true">Nauka po błędzie: wł.</button>
     <button class="btn btn-ghost" id="btnInstallHelp" hidden>Jak dodać grę do ekranu telefonu</button>
-    <p class="version" id="menuVersion">Wersja 12</p>
+    <p class="version" id="menuVersion">Wersja 13</p>
   </div>
 </div>
 
@@ -541,11 +551,16 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
     <div class="eyebrow" id="leEyebrow">Jak to policzyć w pamięci?</div>
     <div class="le-solved" id="leSolved"></div>
     <p class="le-your" id="leYour"></p>
-    <div class="le-method">
+    <div class="le-method" id="leMethod">
       <h3 id="leTitle"></h3>
       <ol class="le-steps" id="leSteps"></ol>
     </div>
     <div class="le-task" id="leTask" hidden>
+      <div class="le-bar" id="leBar" role="img" aria-label="Pasek odpowiedzi">
+        <span class="c" data-v="-3"></span><span class="c" data-v="-2"></span><span class="c" data-v="-1"></span><span class="mid"></span>
+        <span class="c" data-v="1"></span><span class="c" data-v="2"></span><span class="c" data-v="3"></span>
+      </div>
+      <div class="le-legend"><span>3 złe: koniec gry</span><span>3 dobre: grasz dalej</span></div>
       <div class="le-q" id="leQ"></div>
       <div class="le-sub" id="leSub"></div>
       <div class="fight-btns">

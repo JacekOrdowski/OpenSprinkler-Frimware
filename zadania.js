@@ -255,9 +255,9 @@ const K1 = [
   }),
   T('Pieniądze do 20 zł', t => {
     const coins = [1, 2, 5];
-    if (t === 1) { const a = pick(coins), b = pick(coins), v = a + b; return mk(`${a} zł + ${b} zł = ?`, zl(v), [zl(v + 1), zl(Math.max(1, v - 1)), zl(v + 2)], { how: H('Liczenie pieniędzy', `Dodaj złotówki. {${a} + ${b} = ${v}}`, `Razem ${v} zł.`) }); }
+    if (t === 1) { const a = pick([1, 2, 5, 10]), b = pick(coins), v = a + b; return mk(`${a} zł + ${b} zł = ?`, zl(v), [zl(v + 1), zl(Math.max(1, v - 1)), zl(v + 2)], { how: H('Liczenie pieniędzy', `Dodaj złotówki. {${a} + ${b} = ${v}}`, `Razem ${v} zł.`) }); }
     if (t === 2) { const a = pick(coins), b = pick(coins), c = pick(coins), v = a + b + c; return mk(`${a} zł + ${b} zł + ${c} zł = ?`, zl(v), [zl(v + 1), zl(v - 1), zl(v + 2)], { how: H('Liczenie pieniędzy', `Dodawaj monety po kolei. {${a} + ${b} = ${a + b}}`, `{${a + b} + ${c} = ${v}}`, `Razem ${v} zł.`) }); }
-    if (t === 3) { const a = pick(coins), b = pick(coins), v = 10 + a + b; return mk(`10 zł + ${a} zł + ${b} zł = ?`, zl(v), [zl(v + 1), zl(v - 1), zl(a + b + 1)], { how: H('Liczenie pieniędzy', `Najpierw monety. {${a} + ${b} = ${a + b}}`, `Dodaj banknot 10 zł. {10 + ${a + b} = ${v}}`) }); }
+    if (t === 3) { const n = pick([10, 10, 5]), a = pick(coins), b = pick(coins), v = n + a + b; return mk(`${n} zł + ${a} zł + ${b} zł = ?`, zl(v), [zl(v + 1), zl(v - 1), zl(a + b + 1)], { how: H('Liczenie pieniędzy', `Najpierw drobne monety. {${a} + ${b} = ${a + b}}`, `Dodaj ${n} zł. {${n} + ${a + b} = ${v}}`) }); }
     const a = randi(2, 9), b = Math.random() < 0.5 ? 10 : 20, v = b - a; return mk(`${b} zł ${M} ${a} zł = ?`, zl(v), [zl(v + 1), zl(v - 1), zl(v + 2)], { sub: 'Ile reszty?', how: hSub(b, a) });
   }),
 ];
@@ -290,7 +290,7 @@ const K2 = [
     return mk(`${a} ${M} ${b} = ?`, v, [v + 10, v - 10, v + 1, v - 1].filter(x => x >= 0), { mistake: v + 10, how: hSub(a, b) });
   }),
   T('Mnożenie do 30', t => mulProblem(...mulIn(30, [[2], [2, 3], [2, 3, 4, 5], [2, 3, 4, 5, 6]][t - 1]))),
-  T('Dzielenie do 30', t => divProblem(...mulIn(30, [[2], [2, 3], [2, 3, 4, 5], [2, 3, 4, 5, 6]][t - 1]))),
+  T('Dzielenie do 30', t => divProblem(...mulIn(30, [[2, 10], [2, 3], [2, 3, 4, 5], [2, 3, 4, 5, 6]][t - 1]))),
   T('Okienka do 100', t => {
     if (t === 1) { const c = randi(3, 10) * 10, a = randi(1, c / 10 - 1) * 10; return mk(`${a} + ? = ${c}`, c - a, [c - a + 10, c - a - 10].filter(v => v > 0), { mistake: c + a <= 100 ? c + a : null, how: H('Brakująca liczba', `Ile brakuje od ${a} do ${c}? {${c} ${M} ${a} = ${c - a}}`, `Sprawdź. {${a} + ${c - a} = ${c}}`) }); }
     if (t === 2) { const c = randi(30, 100), a = randi(11, c - 5); return Math.random() < 0.5 ? mk(`${a} + ? = ${c}`, c - a, [c - a + 10, c - a - 10, c - a + 1, c - a - 1].filter(v => v > 0), { how: H('Brakująca liczba', `Szukasz, ile brakuje od ${a} do ${c}.`, ...hSub(c, a).s) }) : mk(`${c} ${M} ? = ${a}`, c - a, [c - a + 10, c - a - 10, c + a].filter(v => v > 0 && v <= 100), { how: H('Brakująca liczba', `Ile trzeba zabrać z ${c}, żeby zostało ${a}?`, ...hSub(c, a).s) }); }
@@ -299,13 +299,17 @@ const K2 = [
   }),
   T('Pieniądze i miary', t => {
     if (t === 1) { const a = randi(1, 7) * 10 + randi(0, 9), b = randi(1, 9 - Math.floor(a / 10)) * 10, v = a + b; return mk(`${a} zł + ${b} zł = ?`, zl(v), [zl(v + 10), zl(v - 10), zl(v + 1)], { how: H('Dodawanie dziesiątek', `Dodaj dziesiątki, jedności zostają. {${a} + ${b} = ${v}}`, `Razem ${v} zł.`) }); }
-    if (t === 2) { const [big, small, k] = pick([['zł', 'gr', 100], ['m', 'cm', 100]]), n = randi(1, 5); return mk(`${n} ${big} = ? ${small}`, n * k, [n * 10, n * k * 10, n * k + 10], { mistake: n * 10, how: H('Zamiana jednostek', `1 ${big} to ${k} ${small}.`, `{${n} · ${k} = ${n * k}}`, `Czyli ${n} ${big} to ${n * k} ${small}.`) }); }
+    if (t === 2) { const [big, small, k] = pick([['zł', 'gr', 100], ['m', 'cm', 100]]), n = randi(1, 9); return mk(`${n} ${big} = ? ${small}`, n * k, [n * 10, n * k * 10, n * k + 10], { mistake: n * 10, how: H('Zamiana jednostek', `1 ${big} to ${k} ${small}.`, `{${n} · ${k} = ${n * k}}`, `Czyli ${n} ${big} to ${n * k} ${small}.`) }); }
     if (t === 3) { const a = randi(11, 89), v = 100 - a; return mk(`100 zł ${M} ${a} zł = ?`, zl(v), [zl(v + 10), zl(v - 1 > 0 ? v - 1 : v + 2), zl(110 - a)].filter(x => x !== zl(v)), { sub: 'Ile reszty ze 100 zł?', how: hSub(100, a) }); }
     const [big, small] = pick([['m', 'cm'], ['zł', 'gr']]), a = randi(1, 9) * 10, v = 100 - a; return mk(`1 ${big} ${M} ${a} ${small} = ? ${small}`, v, [v + 10, v - 10, a].filter(x => x > 0 && x !== v), { mistake: 10 - a / 10 > 0 ? 10 - a / 10 : null, how: H('Zamiana jednostek', `1 ${big} to 100 ${small}.`, `{100 ${M} ${a} = ${v}}`, `Zostaje ${v} ${small}.`) });
   }),
   T('Liczby rzymskie do XII', t => {
     if (t === 1) { const n = pick([1, 2, 3, 5, 6, 7, 8, 10, 11, 12]); return mk(`${roman(n)} = ?`, n, [n + 1, n - 1].filter(v => v > 0), { how: hRoman(n) }); }
-    if (t === 2) { const n = pick([4, 9, 6, 11, 4, 9]); return mk(`${roman(n)} = ?`, n, [n + 1, n - 1], { mistake: n === 4 ? 6 : n === 9 ? 11 : n === 6 ? 4 : 9, how: hRoman(n) }); }
+    if (t === 2) {
+      const n = pick([4, 9, 6, 11, 4, 9, 7, 12, 8]), twin = { 4: 6, 6: 4, 9: 11, 11: 9 }[n];
+      if (Math.random() < 0.4 && twin) return mk(`${n} = ?`, roman(n), [roman(twin), roman(n + 1)], { sub: 'Zapisz liczbę po rzymsku', mistake: roman(twin), how: hRoman(n) });
+      return mk(`${roman(n)} = ?`, n, [n + 1, n - 1], { mistake: twin || null, how: hRoman(n) });
+    }
     if (t === 3) { const n = randi(1, 12); return mk(`${n} = ?`, roman(n), [roman(n + 1), n > 1 ? roman(n - 1) : roman(3)], { sub: 'Zapisz liczbę po rzymsku', mistake: n === 4 ? 'IIII' : n === 9 ? 'VIIII' : n === 6 ? 'IV' : n === 11 ? 'IX' : null, how: hRoman(n) }); }
     const a = randi(1, 8), b = randi(1, 12 - a); return mk(`${roman(a)} + ${roman(b)} = ?`, roman(a + b), [roman(a + b + 1), roman(Math.max(1, a + b - 1))].filter(x => x !== roman(a + b)), { sub: 'Wynik zapisz po rzymsku', how: H('Liczby rzymskie', `Zamień na zwykłe liczby. ${roman(a)} = ${a}, ${roman(b)} = ${b}.`, `{${a} + ${b} = ${a + b}}`, `${a + b} po rzymsku to ${roman(a + b)}.`) });
   }),
@@ -341,10 +345,10 @@ const K3 = [
     const a = randi(2, 9), b = randi(2, 9), v = a * b * 10; return mk(`${a * 10} · ${b} = ?`, v, [v * 10, v / 10, v + 10], { how: H('Mnożenie pełnych dziesiątek', `Pomnóż bez zera. {${a} · ${b} = ${a * b}}`, `Dopisz zero. {${a * 10} · ${b} = ${v}}`) });
   }),
   T('Obwody figur', t => {
-    if (t === 1) { const a = randi(2, 12); return mk('Obwód = ? cm', 4 * a, [2 * a, a * a, 4 * a + 4].filter(v => v !== 4 * a), { sub: `Kwadrat o boku ${a} cm`, sol: `Kwadrat o boku ${a} cm: obwód = 4 · ${a} = ${4 * a} cm`, mistake: a * a === 4 * a ? 2 * a : a * a, how: H('Obwód kwadratu', 'Obwód to suma długości wszystkich boków. Kwadrat ma 4 równe boki.', `{4 · ${a} = ${4 * a}}`, `Obwód ${4 * a} cm.`) }); }
+    if (t === 1) { const a = randi(2, 20); return mk('Obwód = ? cm', 4 * a, [2 * a, a * a, 4 * a + 4].filter(v => v !== 4 * a), { sub: `Kwadrat o boku ${a} cm`, sol: `Kwadrat o boku ${a} cm: obwód = 4 · ${a} = ${4 * a} cm`, mistake: a * a === 4 * a ? 2 * a : a * a, how: H('Obwód kwadratu', 'Obwód to suma długości wszystkich boków. Kwadrat ma 4 równe boki.', `{4 · ${a} = ${4 * a}}`, `Obwód ${4 * a} cm.`) }); }
     if (t === 2) { const a = randi(3, 12), b = randi(2, a - 1), v = 2 * (a + b); return mk('Obwód = ? cm', v, [a + b, a * b, v + 2].filter(x => x !== v), { sub: `Prostokąt ${a} cm na ${b} cm`, sol: `Prostokąt ${a} cm na ${b} cm: obwód = ${a} + ${b} + ${a} + ${b} = ${v} cm`, mistake: a + b, how: H('Obwód prostokąta', `Prostokąt ma dwa boki po ${a} cm i dwa po ${b} cm.`, `{${a} + ${b} + ${a} + ${b} = ${v}}`, `Obwód ${v} cm.`) }); }
     if (t === 3) { const a = randi(3, 9), b = randi(3, 9), c = randi(Math.abs(a - b) + 1, Math.min(9, a + b - 1)), v = a + b + c; return mk('Obwód = ? cm', v, [v + 1, v - 1, v + 2], { sub: `Trójkąt o bokach ${a} cm, ${b} cm, ${c} cm`, sol: `Obwód = ${a} + ${b} + ${c} = ${v} cm`, how: H('Obwód trójkąta', 'Dodaj długości trzech boków.', `{${a} + ${b} + ${c} = ${v}}`) }); }
-    const a = randi(2, 12); return mk('Bok = ? cm', a, [a * 2, a + 2, a - 1].filter(v => v > 0 && v !== a), { sub: `Kwadrat ma obwód ${4 * a} cm`, sol: `Obwód ${4 * a} cm : 4 = bok ${a} cm`, mistake: 4 * a / 2, how: H('Bok kwadratu z obwodu', 'Kwadrat ma 4 równe boki, więc obwód dzielimy na 4.', `{${4 * a} : 4 = ${a}}`) });
+    const a = randi(2, 20); return mk('Bok = ? cm', a, [a * 2, a + 2, a - 1].filter(v => v > 0 && v !== a), { sub: `Kwadrat ma obwód ${4 * a} cm`, sol: `Obwód ${4 * a} cm : 4 = bok ${a} cm`, mistake: 4 * a / 2, how: H('Bok kwadratu z obwodu', 'Kwadrat ma 4 równe boki, więc obwód dzielimy na 4.', `{${4 * a} : 4 = ${a}}`) });
   }),
   T('Jednostki, połowa i ćwierć', t => {
     if (t <= 2) {
@@ -389,8 +393,8 @@ const K4 = [
       how: H('Dzielenie z resztą', `Szukaj, ile razy ${d} zmieści się w ${n}. {${d} · ${q} = ${d * q}}`, `Następne, {${d} · ${q + 1} = ${d * (q + 1)}}, to już za dużo.`, `Reszta to {${n} ${M} ${d * q} = ${r}}`, `Reszta musi być mniejsza od ${d}. Wynik ${R(q, r)}.`) });
   }),
   T('Kwadraty i sześciany liczb', t => {
-    if (t === 1) { const a = randi(2, 10), v = a * a; return mk(`${a}² = ?`, v, [v + a, v - a, v + 1], { mistake: a === 2 ? null : 2 * a, how: H('Kwadrat liczby', `Kwadrat to liczba pomnożona przez siebie, a nie razy 2. {${a}² = ${a} · ${a} = ${v}}`) }); }
-    if (t === 2) { const a = pick([1, 2, 3, 4, 5, 10]), v = a ** 3; return mk(`${a}³ = ?`, v, [a * a, v + a, v * 10].filter(x => x !== v), { mistake: a * 3 === v ? null : a * 3, how: H('Sześcian liczby', `Sześcian to liczba pomnożona przez siebie 3 razy. {${a} · ${a} = ${a * a}}`, `{${a * a} · ${a} = ${N(v)}}`) }); }
+    if (t === 1) { const a = pick([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 20, 30]), v = a * a; return mk(`${a}² = ?`, v, [v + a, v - a, v + 1], { mistake: a === 2 ? null : 2 * a, how: H('Kwadrat liczby', `Kwadrat to liczba pomnożona przez siebie, a nie razy 2. {${a}² = ${a} · ${a} = ${v}}`) }); }
+    if (t === 2) { const a = pick([1, 2, 3, 4, 5, 6, 10, 20]), v = a ** 3; return mk(`${a}³ = ?`, v, [a * a, v + a, v * 10].filter(x => x !== v), { mistake: a * 3 === v ? null : a * 3, how: H('Sześcian liczby', `Sześcian to liczba pomnożona przez siebie 3 razy. {${a} · ${a} = ${a * a}}`, `{${a * a} · ${a} = ${N(v)}}`) }); }
     if (t === 3) { const a = randi(2, 6), b = randi(2, 6), v = a * a + b * b; return mk(`${a}² + ${b}² = ?`, v, near(v), { mistake: (a + b) ** 2, how: H('Kwadraty, potem dodawanie', 'Najpierw policz każdy kwadrat osobno.', `{${a}² = ${a * a}}`, `{${b}² = ${b * b}}`, `{${a * a} + ${b * b} = ${v}}`) }); }
     const a = randi(2, 4), b = randi(2, 5), c = randi(2, 9), v = a ** 3 * b - c * c; if (v < 0) return K4[2].gen(4);
     return mk(`${a}³ · ${b} ${M} ${c}² = ?`, v, near(v), { mistake: a * 3 * b - c * 2 >= 0 ? a * 3 * b - c * 2 : null, how: H('Potęgi, mnożenie, odejmowanie', 'Najpierw potęgi.', `{${a}³ = ${a ** 3}}`, `{${c}² = ${c * c}}`, `Potem mnożenie. {${a ** 3} · ${b} = ${a ** 3 * b}}`, `Na końcu odejmowanie. {${a ** 3 * b} ${M} ${c * c} = ${v}}`) });
@@ -448,8 +452,8 @@ function divHow(n, d, yes) {
 }
 const K5 = [
   T('Potęgi i kolejność działań', t => {
-    if (t === 1) { const [b, e] = pick([[2, 4], [2, 5], [10, 3], [10, 4], [3, 3], [1, 7]]), v = b ** e; return mk(`${b}${sup(e)} = ?`, v, [b ** (e + 1), b ** (e - 1)], { mistake: b * e === v ? null : b * e, how: hPow(b, e) }); }
-    if (t === 2) { const [b, e] = pick([[3, 4], [5, 3], [4, 3], [2, 6], [6, 2], [0, 5]]), v = b ** e; return mk(`${b}${sup(e)} = ?`, v, [b ** (e + 1), b ** (e - 1), v + b].filter(x => x !== v), { mistake: b * e === v ? null : b * e, how: hPow(b, e) }); }
+    if (t === 1) { const [b, e] = pick([[2, 3], [2, 4], [2, 5], [2, 6], [10, 2], [10, 3], [10, 4], [10, 5], [10, 6], [3, 2], [3, 3], [5, 2], [1, 5], [1, 7], [1, 9], [4, 2]]), v = b ** e; return mk(`${b}${sup(e)} = ?`, v, [b ** (e + 1), b ** (e - 1)], { mistake: b * e === v ? null : b * e, how: hPow(b, e) }); }
+    if (t === 2) { const [b, e] = pick([[3, 4], [5, 3], [4, 3], [2, 6], [2, 7], [2, 8], [6, 2], [7, 2], [8, 2], [9, 2], [6, 3], [7, 3], [5, 4], [0, 5], [0, 8], [11, 2]]), v = b ** e; return mk(`${b}${sup(e)} = ?`, v, [b ** (e + 1), b ** (e - 1), v + b].filter(x => x !== v), { mistake: b * e === v ? null : b * e, how: hPow(b, e) }); }
     if (t === 3) { const a = randi(2, 4), b = randi(2, 5), v = a ** 3 + b ** 2; return mk(`${a}³ + ${b}² = ?`, v, near(v), { mistake: a * 3 + b * 2, how: H('Potęgi, potem dodawanie', 'Najpierw policz potęgi.', `{${a}³ = ${a} · ${a} · ${a} = ${a ** 3}}`, `{${b}² = ${b} · ${b} = ${b * b}}`, `{${a ** 3} + ${b * b} = ${v}}`) }); }
     const a = randi(2, 5), b = randi(1, 4), c = randi(2, 4), v = (a + b) ** 2 - c ** 3; if (v < 0) return K5[0].gen(4);
     return mk(`(${a} + ${b})² ${M} ${c}³ = ?`, v, near(v), { mistake: a * a + b * b - c ** 3 >= 0 ? a * a + b * b - c ** 3 : null, how: H('Nawias, potęgi, odejmowanie', `Najpierw nawias. {${a} + ${b} = ${a + b}}`, `Potem potęgi. {${a + b}² = ${(a + b) ** 2}}`, `{${c}³ = ${c ** 3}}`, `{${(a + b) ** 2} ${M} ${c ** 3} = ${v}}`) });
@@ -580,10 +584,11 @@ const K6 = [
     if (t === 1) return mk(`${FR(n, d)} = ?`, D(k, p), [D(k, p + 1), D(k + 1, p), D(n, 1)].filter(x => x !== D(k, p)), { mistake: `${n},${d}`, how: H('Ułamek zwykły na dziesiętny', `Rozszerz ułamek tak, żeby w mianowniku było ${N(P10)}. Mnożymy przez ${P10 / d}.`, `{${FR(n, d)} = ${FR(k, P10)}}`, `{${FR(k, P10)} = ${D(k, p)}}`) });
     if (t === 2) return mk(`${D(k, p)} = ?`, F(n, d), [F(n + 1, d), F(n, d + 1), F(k, P10 + 1)], { sub: 'Zapisz jako ułamek zwykły', how: H('Ułamek dziesiętny na zwykły', `${p === 1 ? 'Jedna cyfra' : p === 2 ? 'Dwie cyfry' : 'Trzy cyfry'} po przecinku, więc w mianowniku ${N(P10)}. {${D(k, p)} = ${FR(k, P10)}}`, `Skróć. {${FR(k, P10)} = ${F(n, d)}}`) });
     if (t === 3) {
-      const [a, b] = pick([[1, 3], [2, 3], [1, 6], [5, 6], [1, 7], [2, 7], [1, 9], [5, 9], [4, 7]]), h = Math.round(a * 100 / b), th = Math.floor(a * 1000 / b), third = th % 10;
+      const [a, b] = pick([[1, 3], [2, 3], [1, 6], [5, 6], [1, 7], [2, 7], [3, 7], [4, 7], [5, 7], [6, 7], [1, 9], [2, 9], [4, 9], [5, 9], [7, 9], [8, 9], [1, 12], [5, 12], [7, 12], [2, 11]]), h = Math.round(a * 100 / b), th = Math.floor(a * 1000 / b), third = th % 10;
       return mk(`${FR(a, b)} ≈ ?`, D(h, 2), [D(Math.floor(a * 100 / b) === h ? h + 1 : h - 1, 2), D(Math.round(a * 10 / b), 1), D(h + 10, 2)].filter(x => x !== D(h, 2)), { sub: 'Zaokrąglij do części setnych', sol: `${a}/${b} ≈ ${D(h, 2)}`, how: H('Zaokrąglanie', `Podziel ${a} przez ${b} do trzeciej cyfry po przecinku. Wychodzi ${D(th, 3)}…`, `Trzecia cyfra po przecinku to ${third}. ${third >= 5 ? 'To 5 albo więcej, więc druga cyfra rośnie o 1.' : 'To mniej niż 5, więc druga cyfra zostaje.'}`, `Wynik ${D(h, 2)}.`) });
     }
-    const [a, b, s, wr, long] = pick([[1, 3, '0,(3)', '0,3', '0,3333'], [2, 3, '0,(6)', '0,6', '0,6666'], [1, 9, '0,(1)', '0,1', '0,1111'], [4, 9, '0,(4)', '0,4', '0,4444'], [1, 6, '0,1(6)', '0,16', '0,1666'], [5, 6, '0,8(3)', '0,83', '0,8333'], [1, 11, '0,(09)', '0,09', '0,090909']]);
+    const [a, b] = pick([[1, 3], [2, 3], [1, 9], [2, 9], [4, 9], [5, 9], [7, 9], [8, 9], [1, 6], [5, 6], [1, 11], [2, 11], [5, 11], [1, 12], [5, 12], [7, 12], [1, 15], [2, 15]]);
+    const [s, wr, long] = periodic(a, b);
     return mk(`${FR(a, b)} = ?`, s, [wr], { sub: 'Ułamek okresowy', sol: `${a}/${b} = ${s}`, how: H('Ułamek okresowy', `Podziel ${a} przez ${b}. Wychodzi ${long}… i cyfry się powtarzają bez końca.`, `Powtarzającą się część piszemy w nawiasie: ${s}.`) });
   }, 1.1),
   T('Liczby całkowite: wszystkie działania', t => {
@@ -636,7 +641,7 @@ const K6 = [
     return mk('s = ? km', s, [w * min, w / 2 === s ? w : w / 2, s + w / frac / 2].filter(z => Number.isInteger(z) && z !== s), { sub: `Prędkość ${w} km/h, czas ${min} min`, sol: `${min} min = ${FR(1, frac)} h, więc s = ${w} : ${frac} = ${s} km`, mistake: w * min, how: H('Droga w minutach', `Godzina ma 60 minut. {60 : ${min} = ${frac}}, więc ${min} min to ${FR(1, frac)} godziny.`, `W tym czasie jedzie ${FR(1, frac)} z ${w} km. {${w} : ${frac} = ${s}}`) });
   }, 1.2),
   T('Objętość prostopadłościanu', t => {
-    if (t === 1) { const a = randi(2, 6); return mk('V = ? cm³', a ** 3, [a * a, 6 * a * a, 3 * a], { sub: `Sześcian o krawędzi ${a} cm`, sol: `Sześcian o krawędzi ${a} cm: V = ${a ** 3} cm³`, mistake: a * a, how: H('Objętość sześcianu', 'Objętość to długość razy szerokość razy wysokość. W sześcianie wszystkie są równe.', `{${a} · ${a} · ${a} = ${a ** 3}}`) }); }
+    if (t === 1) { const a = randi(2, 10), u = pick(['cm', 'dm']); return mk(`V = ? ${u}³`, a ** 3, [a * a, 6 * a * a, 3 * a], { sub: `Sześcian o krawędzi ${a} ${u}`, sol: `Sześcian o krawędzi ${a} ${u}: V = ${a ** 3} ${u}³`, mistake: a * a, how: H('Objętość sześcianu', 'Objętość to długość razy szerokość razy wysokość. W sześcianie wszystkie są równe.', `{${a} · ${a} · ${a} = ${a ** 3}}`) }); }
     if (t === 2) { const a = randi(2, 6), b = randi(2, 6), c = randi(2, 9); return mk('V = ? cm³', a * b * c, [a * b + c, 2 * (a * b + b * c + a * c), a * b * c + a * b], { sub: `Prostopadłościan ${a} cm × ${b} cm × ${c} cm`, sol: `V = ${a} · ${b} · ${c} = ${a * b * c} cm³`, how: H('Objętość prostopadłościanu', 'Pomnóż trzy wymiary.', `{${a} · ${b} = ${a * b}}`, `{${a * b} · ${c} = ${a * b * c}}`) }); }
     if (t === 3) { const [from, to, k, fact] = pick([['dm³', 'l', 1, '1 dm³ to 1 litr.'], ['l', 'cm³', 1000, '1 litr to 1000 cm³.'], ['l', 'ml', 1000, '1 litr to 1000 ml.'], ['m³', 'dm³', 1000, '1 m³ to 1000 dm³.']]), n = randi(2, 9); return mk(`${n} ${from} = ? ${to}`, n * k, [n * 10, n * 100, n * k * 10].filter(v => v !== n * k), { how: H('Jednostki objętości', fact, `{${n} · ${k} = ${n * k}}`) }); }
     const a = randi(2, 5), b = randi(2, 6), c = randi(2, 9); return mk('c = ? cm', c, [c + 1, a * b * c - a * b, c * 2].filter(v => v !== c), { sub: `Prostopadłościan: V = ${a * b * c} cm³, a = ${a} cm, b = ${b} cm`, sol: `c = ${a * b * c} : (${a} · ${b}) = ${c} cm`, how: H('Brakujący wymiar', `V = a · b · c. Najpierw pole podstawy. {${a} · ${b} = ${a * b}}`, `Podziel objętość przez pole podstawy. {${a * b * c} : ${a * b} = ${c}}`) });
@@ -711,9 +716,11 @@ const K7 = [
     return mk(`${a}x ${M} ${b} = ${c}x + ${d}`, x, [x + 1, x - 1], { sub: 'x = ?', ask: 'x', mistake: (d - b) % (a - c) === 0 && (d - b) / (a - c) > 0 && (d - b) / (a - c) !== x ? (d - b) / (a - c) : null, how: H('Równanie', `Odejmij ${term(c, 'x')} od obu stron. {${a}x ${M} ${term(c, 'x')} = ${term(a - c, 'x')}}`, `Dodaj ${b}. ${term(a - c, 'x')} = {${d} + ${b} = ${d + b}}`, `Podziel przez ${a - c}. x = {${d + b} : ${a - c} = ${x}}`) });
   }, 1.25),
   T('Twierdzenie Pitagorasa', t => {
-    const triples = [[3, 4, 5], [6, 8, 10], [5, 12, 13], [9, 12, 15], [8, 15, 17], [12, 16, 20], [7, 24, 25]];
-    if (t <= 2) { const [a, b, c] = pick(t === 1 ? triples.slice(0, 3) : triples.slice(2)); return mk('c = ?', c, [c + 1, c - 1], { sub: `Trójkąt prostokątny, przyprostokątne ${a} i ${b}`, sol: `c = √(${a}² + ${b}²) = √${a * a + b * b} = ${c}`, mistake: a + b, how: H('Twierdzenie Pitagorasa', 'Kwadrat przeciwprostokątnej to suma kwadratów przyprostokątnych. Boków nie dodajemy.', `{${a}² + ${b}² = ${a * a} + ${b * b}}`, `{${a * a} + ${b * b} = ${a * a + b * b}}`, `{√${a * a + b * b} = ${c}}`) }); }
-    if (t === 3) { const [a, b, c] = pick(triples); return mk('b = ?', b, [b + 1, b - 1].filter(v => v > 0), { sub: `Przeciwprostokątna ${c}, przyprostokątna ${a}`, sol: `b = √(${c}² − ${a}²) = √${c * c - a * a} = ${b}`, mistake: c - a === b ? null : c - a, how: H('Twierdzenie Pitagorasa', 'Szukamy przyprostokątnej, więc od kwadratu przeciwprostokątnej odejmujemy kwadrat drugiej przyprostokątnej.', `{${c}² ${M} ${a}² = ${c * c} ${M} ${a * a}}`, `{${c * c} ${M} ${a * a} = ${c * c - a * a}}`, `{√${c * c - a * a} = ${b}}`) }); }
+    const triples = [[3, 4, 5], [6, 8, 10], [9, 12, 15], [12, 16, 20], [15, 20, 25], [18, 24, 30], [5, 12, 13], [10, 24, 26],
+      [8, 15, 17], [7, 24, 25], [20, 21, 29], [12, 35, 37], [9, 40, 41], [16, 30, 34], [24, 32, 40], [21, 28, 35]];
+    const legs = ([a, b, c]) => (Math.random() < 0.5 ? [a, b, c] : [b, a, c]);
+    if (t <= 2) { const [a, b, c] = legs(pick(t === 1 ? triples.slice(0, 8) : triples.slice(6))); return mk('c = ?', c, [c + 1, c - 1], { sub: `Trójkąt prostokątny, przyprostokątne ${a} i ${b}`, sol: `c = √(${a}² + ${b}²) = √${a * a + b * b} = ${c}`, mistake: a + b, how: H('Twierdzenie Pitagorasa', 'Kwadrat przeciwprostokątnej to suma kwadratów przyprostokątnych. Boków nie dodajemy.', `{${a}² + ${b}² = ${a * a} + ${b * b}}`, `{${a * a} + ${b * b} = ${a * a + b * b}}`, `{√${a * a + b * b} = ${c}}`) }); }
+    if (t === 3) { const [a, b, c] = legs(pick(triples)); return mk('b = ?', b, [b + 1, b - 1].filter(v => v > 0), { sub: `Przeciwprostokątna ${c}, przyprostokątna ${a}`, sol: `b = √(${c}² − ${a}²) = √${c * c - a * a} = ${b}`, mistake: c - a === b ? null : c - a, how: H('Twierdzenie Pitagorasa', 'Szukamy przyprostokątnej, więc od kwadratu przeciwprostokątnej odejmujemy kwadrat drugiej przyprostokątnej.', `{${c}² ${M} ${a}² = ${c * c} ${M} ${a * a}}`, `{${c * c} ${M} ${a * a} = ${c * c - a * a}}`, `{√${c * c - a * a} = ${b}}`) }); }
     const r = Math.random();
     if (r < 0.35) { const a = randi(2, 9); return mk('d = ?', `${a}√2`, [`${a}√3`, `${2 * a}`, `${a * 2}√2`], { sub: `Przekątna kwadratu o boku ${a}`, sol: `Przekątna kwadratu o boku ${a} = ${a}√2`, mistake: `${a}√3`, how: H('Przekątna kwadratu', 'Przekątna dzieli kwadrat na dwa trójkąty prostokątne.', `{${a}² + ${a}² = ${2 * a * a}}`, `{√${2 * a * a} = ${a}√2}`) }); }
     if (r < 0.65) { const a = 2 * randi(1, 6), h = `${a / 2 === 1 ? '' : a / 2}√3`; return mk('h = ?', h, [`${a}√3`, `${a / 2 === 1 ? '' : a / 2}√2`], { sub: `Wysokość trójkąta równobocznego o boku ${a}`, sol: `h = ${a}√3 : 2 = ${h}`, mistake: `${a}√3`, how: H('Wysokość trójkąta równobocznego', `Wysokość dzieli podstawę na połowy po ${a / 2}.`, `{${a}² ${M} ${a / 2}² = ${a * a - a * a / 4}}`, a === 2 ? 'h = √3' : `{√${a * a - a * a / 4} = ${h}}`) }); }
@@ -734,8 +741,21 @@ const K7 = [
    ============================================================ */
 const ineq = (s, b) => `x ${s} ${N(b)}`;
 const flip = s => ({ '>': '<', '<': '>', '≥': '≤', '≤': '≥' }[s]);
+// a / b (less than 1) as a repeating decimal "0,1(6)", the same without the brackets "0,16", and its first digits "0,1666"
+function periodic(a, b) {
+  const digits = [], seen = new Map(); let r = a % b;
+  while (r && !seen.has(r)) { seen.set(r, digits.length); r *= 10; digits.push(Math.floor(r / b)); r %= b; }
+  const st = seen.get(r), pre = digits.slice(0, st).join(''), rep = digits.slice(st).join('');
+  const long = (pre + rep.repeat(Math.ceil(6 / rep.length))).slice(0, Math.max(4, pre.length + 2 * rep.length));
+  return [`0,${pre}(${rep})`, `0,${pre}${rep}`, `0,${long}`];
+}
 const pStep = (k, n) => (F(k, n) !== FR(k, n) ? `P = {${FR(k, n)} = ${F(k, n)}}` : `P = ${FR(k, n)}`);
-const AXES = { kwadrat: 'Kwadrat ma 4 osie: dwie przez środki przeciwległych boków i dwie po przekątnych.', prostokąt: 'Prostokąt ma 2 osie, przez środki przeciwległych boków. Przekątne nie są osiami.', 'trójkąt równoboczny': 'Trójkąt równoboczny ma 3 osie, po jednej z każdego wierzchołka do środka przeciwległego boku.', romb: 'Romb ma 2 osie, wzdłuż przekątnych.', 'sześciokąt foremny': 'Sześciokąt foremny ma 6 osi: 3 przez wierzchołki i 3 przez środki boków.', 'trójkąt równoramienny': 'Trójkąt równoramienny ma 1 oś, przez wierzchołek między ramionami.', 'pięciokąt foremny': 'Pięciokąt foremny ma 5 osi, z każdego wierzchołka do środka przeciwległego boku.' };
+const AXES = { kwadrat: 'Kwadrat ma 4 osie: dwie przez środki przeciwległych boków i dwie po przekątnych.', prostokąt: 'Prostokąt ma 2 osie, przez środki przeciwległych boków. Przekątne nie są osiami.', 'trójkąt równoboczny': 'Trójkąt równoboczny ma 3 osie, po jednej z każdego wierzchołka do środka przeciwległego boku.', romb: 'Romb ma 2 osie, wzdłuż przekątnych.', 'sześciokąt foremny': 'Sześciokąt foremny ma 6 osi: 3 przez wierzchołki i 3 przez środki boków.', 'trójkąt równoramienny': 'Trójkąt równoramienny ma 1 oś, przez wierzchołek między ramionami.', 'pięciokąt foremny': 'Pięciokąt foremny ma 5 osi, z każdego wierzchołka do środka przeciwległego boku.' , 'ośmiokąt foremny': 'Ośmiokąt foremny ma tyle osi, ile boków: przez przeciwległe wierzchołki i przez środki przeciwległych boków.',
+  'siedmiokąt foremny': 'Siedmiokąt foremny ma tyle osi, ile boków: każda idzie przez wierzchołek i środek boku naprzeciwko.',
+  'dziesięciokąt foremny': 'Dziesięciokąt foremny ma tyle osi, ile boków: przez przeciwległe wierzchołki i przez środki przeciwległych boków.',
+  'trapez równoramienny': 'Trapez równoramienny ma jedną oś: przez środki obu podstaw.',
+  'trójkąt różnoboczny': 'Trójkąt różnoboczny ma wszystkie boki różne, więc żadna linia nie dzieli go na dwie pasujące połówki.',
+  'równoległobok, który nie jest prostokątem ani rombem': 'Taki równoległobok po złożeniu na pół nigdy nie pasuje do siebie, więc nie ma osi symetrii.' };
 const K8 = [
   T('Średnia i mediana', t => {
     const n = t === 1 ? 3 : 4;
@@ -745,16 +765,22 @@ const K8 = [
   }),
   T('Prawdopodobieństwo', t => {
     if (t === 1) {
-      const [txt, k, which] = pick([['liczba parzysta', 3, '2, 4, 6'], ['liczba nieparzysta', 3, '1, 3, 5'], ['szóstka', 1, '6'], ['liczba większa od 4', 2, '5, 6'], ['liczba mniejsza od 3', 2, '1, 2'], ['liczba podzielna przez 3', 2, '3, 6']]);
+      const [txt, k, which] = pick([['liczba parzysta', 3, '2, 4, 6'], ['liczba nieparzysta', 3, '1, 3, 5'], ['szóstka', 1, '6'], ['jedynka', 1, '1'], ['liczba większa od 4', 2, '5, 6'],
+        ['liczba mniejsza od 3', 2, '1, 2'], ['liczba podzielna przez 3', 2, '3, 6'], ['liczba większa od 2', 4, '3, 4, 5, 6'], ['liczba mniejsza od 5', 4, '1, 2, 3, 4'],
+        ['jedynka albo szóstka', 2, '1, 6'], ['liczba większa od 1', 5, '2, 3, 4, 5, 6'], ['liczba pierwsza', 3, '2, 3, 5']]);
       return mk('P = ?', F(k, 6), [F(k, 12), F(6 - k, 6) === F(k, 6) ? F(k + 1, 6) : F(6 - k, 6), FR(1, k + 1)].filter(x => x !== F(k, 6)), { sub: `Rzut kostką: ${txt}`, sol: `Kostka, ${txt}: P = ${F(k, 6)}`, how: H('Prawdopodobieństwo', 'Kostka ma 6 możliwych wyników.', `Pasują ${which}, czyli ${k} z 6.`, pStep(k, 6)) });
     }
     if (t === 2) { const r = randi(1, 6), b = randi(1, 7); return mk('P(czerwona) = ?', F(r, r + b), [F(b, r + b), F(r + 1, r + b + 1)].filter(x => x !== F(r, r + b)), { sub: `W worku ${r} czerwonych i ${b} niebieskich kul`, sol: `${r} czerwonych z ${r + b} kul: P = ${F(r, r + b)}`, mistake: F(r, b), how: H('Prawdopodobieństwo', `Wszystkich kul jest {${r} + ${b} = ${r + b}}`, `Czerwonych jest ${r} z ${r + b}. W mianowniku wszystkie kule, nie tylko niebieskie.`, pStep(r, r + b)) }); }
     if (t === 3) {
-      const [txt, k, which] = pick([['liczba pierwsza', 8, '2, 3, 5, 7, 11, 13, 17, 19'], ['liczba podzielna przez 5', 4, '5, 10, 15, 20'], ['liczba parzysta', 10, '2, 4, 6, …, 20'], ['liczba większa od 15', 5, '16, 17, 18, 19, 20'], ['liczba podzielna przez 3', 6, '3, 6, 9, 12, 15, 18']]);
-      return mk('P = ?', F(k, 20), [F(k + 1, 20), F(k, 10), F(20 - k, 20)].filter(x => x !== F(k, 20)), { sub: `Losujemy liczbę od 1 do 20: ${txt}`, sol: `${txt}: ${k} z 20, P = ${F(k, 20)}`, how: H('Prawdopodobieństwo', 'Możliwych wyników jest 20.', `Pasują ${which}, czyli ${k} z 20.`, pStep(k, 20)) });
+      const n = pick([10, 12, 15, 20, 25, 30]), all = Array.from({ length: n }, (_, i) => i + 1), m = randi(Math.ceil(n / 2), n - 2), d = pick([3, 4, 5]);
+      const [txt, set] = pick([['liczba parzysta', all.filter(v => v % 2 === 0)], ['liczba nieparzysta', all.filter(v => v % 2)], [`liczba podzielna przez ${d}`, all.filter(v => v % d === 0)],
+        [`liczba większa od ${m}`, all.filter(v => v > m)], ['liczba pierwsza', all.filter(v => v > 1 && all.every(q => q < 2 || q >= v || v % q))]]);
+      const k = set.length, which = k <= 8 ? set.join(', ') : `${set[0]}, ${set[1]}, ${set[2]}, …, ${set[k - 1]}`, wn = n === 10 ? 20 : 10;
+      return mk('P = ?', F(k, n), [F(k + 1, n), F(k, wn), F(n - k, n)].filter(x => x !== F(k, n)), { sub: `Losujemy liczbę od 1 do ${n}: ${txt}`, sol: `${txt}: ${k} z ${n}, P = ${F(k, n)}`, how: H('Prawdopodobieństwo', `Możliwych wyników jest ${n}.`, `Pasują ${which}, czyli ${k} z ${n}.`, pStep(k, n)) });
     }
-    const [ch, k] = pick([['A', 3], ['M', 2], ['T', 2], ['K', 1], ['E', 1]]);
-    return mk('P = ?', F(k, 10), [F(k, 9), F(k + 1, 10), F(1, 6)].filter(x => x !== F(k, 10)), { sub: `Losujemy literę ze słowa MATEMATYKA: litera ${ch}`, sol: `MATEMATYKA ma 10 liter, w tym ${k} × ${ch}: P = ${F(k, 10)}`, mistake: F(1, 6), how: H('Prawdopodobieństwo', 'MATEMATYKA ma 10 liter, liczymy też powtórzenia.', `Litera ${ch} występuje ${k === 1 ? 'raz' : `${k} razy`}.`, pStep(k, 10)) });
+    const word = pick(['MATEMATYKA', 'KALKULATOR', 'ABRAKADABRA', 'ANANAS', 'LOKOMOTYWA', 'POMARAŃCZA', 'KAKADU', 'PARASOL']), L = word.length, ch = pick([...word]), k = [...word].filter(x => x === ch).length;
+    const kinds = new Set(word).size;
+    return mk('P = ?', F(k, L), [F(k, L - 1), F(k + 1, L), F(1, kinds)].filter(x => x !== F(k, L)), { sub: `Losujemy literę ze słowa ${word}: litera ${ch}`, sol: `${word} ma ${L} liter, w tym ${k} × ${ch}: P = ${F(k, L)}`, mistake: F(1, kinds) !== F(k, L) ? F(1, kinds) : null, how: H('Prawdopodobieństwo', `${word} ma ${L} liter, liczymy też powtórzenia.`, `Litera ${ch} występuje ${k === 1 ? 'raz' : `${k} razy`}.`, pStep(k, 10)) });
   }, 1.1),
   T('Nierówności', t => {
     const s = pick(['>', '<', '≥', '≤']), r = randi(-5, 9);
@@ -773,11 +799,13 @@ const K8 = [
     return mk(`${FR(`x + ${c}`, d)} = ${v}`, xx, [d * v, xx + 1, xx - 1], { sub: 'x = ?', ask: 'x', mistake: d * v + c, how: H('Równanie z ułamkiem', `Pomnóż obie strony przez ${d}. x + ${c} = {${v} · ${d} = ${d * v}}`, `Odejmij ${c}. x = {${d * v} ${M} ${c} = ${N(xx)}}`) });
   }, 1.3),
   T('Procenty w praktyce', t => {
-    if (t === 1) { const w = 100 * randi(1, 9), v = w * 123 / 100, ten = w / 10, one = w / 100; return mk(`${w} zł + 23% VAT = ?`, zl(v), [zl(w * 12 / 10), zl(w * 132 / 100)], { sub: 'Cena z podatkiem VAT', sol: `${w} zł + 23% VAT = ${zl(v)}`, mistake: zl(w + 23), how: H('VAT w pamięci', `10% z ${w} to {${w} : 10 = ${ten}}, więc 20% to {2 · ${ten} = ${2 * ten}}`, `1% to {${w} : 100 = ${one}}, więc 3% to {3 · ${one} = ${3 * one}}`, `23% to {${2 * ten} + ${3 * one} = ${23 * one}}`, `Cena z VAT. {${w} + ${23 * one} = ${v}}`) }); }
+    if (t === 1) { const w = 100 * randi(1, 20), v = w * 123 / 100, ten = w / 10, one = w / 100; return mk(`${w} zł + 23% VAT = ?`, zl(v), [zl(w * 12 / 10), zl(w * 132 / 100)], { sub: 'Cena z podatkiem VAT', sol: `${w} zł + 23% VAT = ${zl(v)}`, mistake: zl(w + 23), how: H('VAT w pamięci', `10% z ${w} to {${w} : 10 = ${ten}}, więc 20% to {2 · ${ten} = ${2 * ten}}`, `1% to {${w} : 100 = ${one}}, więc 3% to {3 · ${one} = ${3 * one}}`, `23% to {${2 * ten} + ${3 * one} = ${23 * one}}`, `Cena z VAT. {${w} + ${23 * one} = ${v}}`) }); }
     if (t === 2) { const k = pick([1000, 2000, 5000]), p = pick([2, 4, 5, 6]), one = k / 100, v = k + one * p; return mk(`${N(k)} zł, ${p}% na rok`, zl(v), [zl(k + k * p / 10), zl(k + 2 * k * p / 100)], { sub: 'Lokata w banku: ile będzie po roku?', sol: `${N(k)} zł + ${p}% = ${zl(v)}`, mistake: zl(k + p), how: H('Odsetki', `1% z ${N(k)} to {${N(k)} : 100 = ${one}}`, `${p}% to {${p} · ${one} = ${p * one}}`, `Po roku. {${N(k)} + ${p * one} = ${N(v)}}`) }); }
     if (t === 3) {
-      const [a, b] = pick([[40, 50], [80, 100], [50, 60], [20, 25], [200, 250], [60, 45], [80, 60], [50, 40]]), p = Math.round((b - a) / a * 100), q = Math.round((b - a) / b * 100), ch = Math.abs(b - a);
-      return mk(`${a} zł → ${b} zł`, `${p > 0 ? '+' : M}${Math.abs(p)}%`, [`${p > 0 ? '+' : M}${ch}%`].filter(x => x !== `${p > 0 ? '+' : M}${Math.abs(p)}%`), { sub: 'O ile procent zmieniła się cena?', sol: `${a} zł → ${b} zł: ${p > 0 ? 'wzrost' : 'spadek'} o ${Math.abs(p)}%`, mistake: q !== p ? `${p > 0 ? '+' : M}${Math.abs(q)}%` : null, how: H('Zmiana procentowa', `Cena zmieniła się o ${ch} zł. {${Math.max(a, b)} ${M} ${Math.min(a, b)} = ${ch}}`, `Procent liczymy od starej ceny, ${a} zł. {${FR(ch, a)} = ${F(ch, a)}}`, `{${F(ch, a)} = ${FR(Math.abs(p), 100)}}`, `To ${p > 0 ? 'wzrost' : 'spadek'} o ${Math.abs(p)}%.`) });
+      const a = 20 * randi(1, 15), pc = pick([10, 20, 25, 50, -10, -20, -25, -50]), b = a + a * pc / 100;
+      if (!Number.isInteger(b) || b === a) return K8[4].gen(3);
+      const p = Math.round((b - a) / a * 100), q = Math.round((b - a) / b * 100), ch = Math.abs(b - a);
+      const sg = p > 0 ? '+' : M; return mk(`${a} zł → ${b} zł`, `${sg}${Math.abs(p)}%`, [`${sg}${ch}%`, `${sg}${Math.abs(p) + 5}%`, `${sg}${2 * Math.abs(p)}%`].filter(x => x !== `${sg}${Math.abs(p)}%`), { sub: 'O ile procent zmieniła się cena?', sol: `${a} zł → ${b} zł: ${p > 0 ? 'wzrost' : 'spadek'} o ${Math.abs(p)}%`, mistake: q !== p ? `${p > 0 ? '+' : M}${Math.abs(q)}%` : null, how: H('Zmiana procentowa', `Cena zmieniła się o ${ch} zł. {${Math.max(a, b)} ${M} ${Math.min(a, b)} = ${ch}}`, `Procent liczymy od starej ceny, ${a} zł. {${FR(ch, a)} = ${F(ch, a)}}`, `{${F(ch, a)} = ${FR(Math.abs(p), 100)}}`, `To ${p > 0 ? 'wzrost' : 'spadek'} o ${Math.abs(p)}%.`) });
     }
     const p = pick([10, 20, 25, 50]), before = 20 * randi(2, 20), after = before - before * p / 100, naive = after * p / 100, times = (100 - p) / p, chunk = after / times;
     return mk(`Po obniżce o ${p}%: ${zl(after)}`, zl(before), [zl(after + p), zl(before + 10)], { sub: 'Ile kosztowało przed obniżką?', sol: `Przed obniżką ${zl(before)}, bo ${zl(before)} − ${p}% = ${zl(after)}`, mistake: Number.isInteger(naive) && after + naive !== before ? zl(after + naive) : null, how: H('Cena przed obniżką', `Po obniżce zostało ${100 - p}% ceny, czyli ${times === 1 ? `tyle samo co ${p}%` : `${times} razy po ${p}%`}.`, times > 1 ? `Więc ${p}% to {${after} : ${times} = ${chunk}}` : `Więc ${p}% to ${after} zł.`, `Cała cena to 100%. {${after} + ${chunk} = ${before}}`, `Uwaga, nie liczymy ${p}% od ceny po obniżce.`) });
@@ -790,7 +818,8 @@ const K8 = [
       const yes = a + b > c && a + c > b && b + c > a, sides = [a, b, c].sort((x, y) => x - y), sum = sides[0] + sides[1];
       return mk(`Czy z odcinków ${a}, ${b} i ${c} zbudujesz trójkąt?`, yes ? 'tak' : 'nie', [yes ? 'nie' : 'tak'], { sol: `${a}, ${b}, ${c}: ${yes ? 'tak' : 'nie'}, bo ${yes ? 'każdy bok jest krótszy od sumy dwóch pozostałych' : 'jeden bok nie jest krótszy od sumy dwóch pozostałych'}`, how: H('Nierówność trójkąta', 'Najdłuższy odcinek musi być krótszy od sumy dwóch pozostałych.', `{${sides[0]} + ${sides[1]} = ${sum}}`, yes ? `{${sum} > ${sides[2]}}, więc trójkąt da się zbudować.` : `{${sum} ≤ ${sides[2]}}, więc trójkąta nie da się zbudować.`) });
     }
-    if (t === 3) { const [f, k] = pick([['kwadrat', 4], ['prostokąt', 2], ['trójkąt równoboczny', 3], ['romb', 2], ['sześciokąt foremny', 6], ['trójkąt równoramienny', 1], ['pięciokąt foremny', 5]]); return mk('Liczba osi symetrii = ?', k, [k + 1, k * 2, k - 1].filter(v => v >= 0 && v !== k), { sub: `Ile osi symetrii ma ${f}?`, sol: `${f[0].toUpperCase() + f.slice(1)} ma ${k} ${k === 1 ? 'oś' : k < 5 ? 'osie' : 'osi'} symetrii`, how: H('Osie symetrii', 'Oś symetrii dzieli figurę na dwie części, które pasują do siebie jak w lustrze.', AXES[f]) }); }
+    if (t === 3) { const [f, k] = pick([['kwadrat', 4], ['prostokąt', 2], ['trójkąt równoboczny', 3], ['romb', 2], ['sześciokąt foremny', 6], ['trójkąt równoramienny', 1], ['pięciokąt foremny', 5],
+      ['ośmiokąt foremny', 8], ['trapez równoramienny', 1], ['siedmiokąt foremny', 7], ['dziesięciokąt foremny', 10], ['trójkąt różnoboczny', 0], ['równoległobok, który nie jest prostokątem ani rombem', 0]]); return mk('Liczba osi symetrii = ?', k, [k + 1, k * 2, k - 1].filter(v => v >= 0 && v !== k), { sub: `Ile osi symetrii ma ${f}?`, sol: k ? `${f[0].toUpperCase() + f.slice(1)} ma ${k} ${k === 1 ? 'oś' : k < 5 ? 'osie' : 'osi'} symetrii` : `${f[0].toUpperCase() + f.slice(1)} nie ma żadnej osi symetrii`, how: H('Osie symetrii', 'Oś symetrii dzieli figurę na dwie części, które pasują do siebie jak w lustrze.', AXES[f]) }); }
     let x = randi(-7, 7), y = randi(-7, 7); if (!x) x = 3; if (!y) y = -2;
     const [txt, sx, sy, rule] = pick([['osi x', x, -y, 'Względem osi x pierwsza współrzędna zostaje, a druga zmienia znak.'], ['osi y', -x, y, 'Względem osi y pierwsza współrzędna zmienia znak, a druga zostaje.'], ['punktu (0, 0)', -x, -y, 'Względem punktu (0, 0) obie współrzędne zmieniają znak.']]);
     return mk('A′ = ?', pt(sx, sy), [pt(-sx, -sy), pt(y, x), pt(sx === x ? -x : x, sy === y ? -y : y)].filter(s => s !== pt(sx, sy)), { sub: `Punkt symetryczny do A = ${pt(x, y)} względem ${txt}`, sol: `Względem ${txt}: A = ${pt(x, y)} → A′ = ${pt(sx, sy)}`, how: H('Symetria punktu', rule, `A = ${pt(x, y)} → A′ = ${pt(sx, sy)}.`) });
@@ -802,7 +831,7 @@ const K8 = [
     const a = 3 * randi(1, 4), h = randi(2, 9); return mk('V = ? cm³', a * a * h / 3, [a * a * h, a * h], { sub: `Ostrosłup prawidłowy czworokątny: krawędź podstawy ${a} cm, wysokość ${h} cm`, sol: `V = ${FR(1, 3)} · ${a}² · ${h} = ${a * a * h / 3} cm³`, mistake: a * a * h, how: H('Objętość ostrosłupa', `Podstawa to kwadrat. Jego pole {${a} · ${a} = ${a * a}}`, `{${a * a} · ${h} = ${a * a * h}}`, `Ostrosłup ma ${FR(1, 3)} tej objętości. {${a * a * h} : 3 = ${a * a * h / 3}}`) });
   }, 1.3),
   T('Koło i okrąg', t => {
-    const r = randi(2, 10);
+    const r = randi(2, 15);
     if (t === 1) return mk('P = ?', `${r * r}π`, [`${r}π`, `${r * r * 2}π`], { sub: `Pole koła o promieniu ${r}`, sol: `P = π · ${r}² = ${r * r}π`, mistake: `${2 * r}π`, how: H('Pole koła', 'Pole koła to π razy promień razy promień.', `{${r} · ${r} = ${r * r}}`, `P = ${r * r}π.`) });
     if (t === 2) return mk('Obwód = ?', `${2 * r}π`, [`${r}π`, `${4 * r}π`], { sub: `Obwód okręgu o promieniu ${r}`, sol: `Obwód = 2π · ${r} = ${2 * r}π`, mistake: `${r * r}π`, how: H('Obwód okręgu', 'Obwód okręgu to 2 razy π razy promień.', `{2 · ${r} = ${2 * r}}`, `Obwód = ${2 * r}π.`) });
     if (t === 3) { const d = 2 * r; return mk('P = ?', `${r * r}π`, [`${d}π`, `${r}π`], { sub: `Pole koła o średnicy ${d}`, sol: `Średnica ${d}, więc promień ${r}: P = ${r * r}π`, mistake: `${d * d}π`, how: H('Pole koła ze średnicy', `Promień to połowa średnicy. {${d} : 2 = ${r}}`, `{${r} · ${r} = ${r * r}}`, `P = ${r * r}π.`) }); }
@@ -845,5 +874,36 @@ function practice(p, n = 2) {
   return out;
 }
 
-globalThis.Zadania = { KLASY, stage, practice, _test: { roman, simpleRoot, nice } };
+// A hint instead of the solution: the same way of calculating, but the last result is left for the pupil.
+// Results equal to the answer become "?", sentences that say the answer and the checking steps are left out.
+const flat = x => String(x).replace(/(\d)\[/g, '$1 [').replace(/\[([^\/\]]+)\/([^\]]+)\]/g, '$1/$2');
+const core = x => flat(x).trim().replace(/\s*(zł|gr|cm²|cm³|dm³|m²|cm|dm|mm|km\/h|km|kg|dag|ml|g|l|h|min|s|°|%)\.?$/, '').trim();
+function hint(p) {
+  if (!p.how) return null;
+  const a = core(p.a), esc = a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const tok = a ? new RegExp(`(^|[^0-9A-Za-zĄĆĘŁŃÓŚŹŻąćęłńóśźż,/])${esc}(?![0-9A-Za-zĄĆĘŁŃÓŚŹŻąćęłńóśźż/]|,\\d)`, 'g') : null;
+  const has = x => { if (!tok) return false; tok.lastIndex = 0; return tok.test(x); };
+  let hid = false;
+  let st = p.how.s.filter(x => !/^Sprawdź/.test(x)).map(x => x.replace(/\{([^}]*)\}/g, (m, c) => {
+    const i = c.lastIndexOf('=');
+    if (i >= 0 && core(c.slice(i + 1)) === a) { hid = true; return `{${c.slice(0, i + 1)} ?}`; }
+    if (!/\d/.test(a) && has(flat(c))) { hid = true; return '{' + flat(c).replace(tok, (t, pre) => pre + '?') + '}'; }   // a sign like < or > as the answer
+    return m;
+  }));
+  // a sentence that ends with the answer is the conclusion: it goes (the answer elsewhere in a sentence is just a number in the task)
+  const ends = x => { const raw = flat(x.replace(/\{[^}]*\}/g, ' ')).trim(); if (raw.endsWith('?')) return false;   // a question to think about, not the answer
+    const t = raw.replace(/[\s.,!:;]+$/, ''); return has(t) && core(core(t).split(/[\s,(]+/).pop()) === a; };
+  const kept = st.filter(x => { if (ends(x)) { hid = true; return false; } return true; });
+  if (!kept.length && st.length) {             // only conclusions: the first one, with its last mention of the answer hidden
+    const x = flat(st[0]); let at = -1, len = 0; tok.lastIndex = 0;
+    for (let m; (m = tok.exec(x));) { at = m.index + m[1].length; len = m[0].length - m[1].length; if (!m[0].length) tok.lastIndex++; }
+    kept.push(at < 0 ? x : x.slice(0, at) + '?' + x.slice(at + len));
+  }
+  // the answer said in the middle of a sentence ("Kwadrat ma 4 osie: …") becomes "?", unless that number is also in the task itself
+  const inTask = has(flat(`${p.q} ${p.sub || ''}`));
+  const out = inTask ? kept : kept.map(x => x.split(/(\{[^}]*\})/).map(part => part[0] === '{' ? part : flat(part).replace(tok, (t, pre) => pre + '?')).join(''));
+  return { t: p.how.t, s: out.length ? out : ['Policz to krok po kroku.'] };
+}
+
+globalThis.Zadania = { KLASY, stage, practice, hint, _test: { roman, simpleRoot, nice } };
 })();
