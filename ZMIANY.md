@@ -9,7 +9,7 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 
 ## Wersja 12 (20 października 2026)
 
-Zapis w repozytorium: `52a704d`
+Zapis w repozytorium: `6ace705`
 
 ### Dodane
 - **Nowy potwór na końcu Levelu 3: Hedwigonna**, przeniesiona z figurki zrobionej długopisem 3D: biała sowa z czarnym obrysem,

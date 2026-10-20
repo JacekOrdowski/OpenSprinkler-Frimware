@@ -79,9 +79,9 @@ Młodsze levele mają więcej jasnych światów, starsze więcej miasta nocą, w
 ## Dźwięk
 
 Muzyka jest zagrana prawdziwymi brzmieniami instrumentów (zestaw FluidR3_GM, licencja MIT) i ma kilka stylów:
-Wesoła, Przygoda, Chill, Elektro, a do tego Retro (dawne melodie tworzone przez samą grę). Każdy styl ma wersję do biegu i do walki.
-Przy ustawieniu „Auto” levele 1–3 mają Wesołą, 4–6 Przygodę, a 7–8 Elektro. Przycisk „Muzyka” w menu i w pauzie zmienia styl
-albo wyłącza muzykę. Efekty dźwiękowe tworzy sama gra; można je wyłączyć osobno.
+Wesoła, Chill, Elektro, trzy szybkie taneczne w duchu Geometry Dash (Turbo, Neon, Skok), a do tego Retro
+(dawne melodie tworzone przez samą grę). Każdy styl ma wersję do biegu i do walki. Każda gra losuje styl, inny niż poprzednia.
+Przycisk „Muzyka” w menu i w pauzie włącza albo wyłącza muzykę. Efekty dźwiękowe tworzy sama gra; można je wyłączyć osobno.
 
 Utwory są w folderze `muzyka/`. Tworzy je program `narzedzia/muzyka.py`: nuty są zapisane w kodzie,
 program gra je instrumentami i zapisuje pętle MP3. Bez internetu gra używa dawnych melodii.
