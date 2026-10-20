@@ -2138,6 +2138,9 @@ const dots = (x, y, vertical) => `<g fill="${INK}">${[-7, 0, 7].map(d => `<circl
 const ring = (x, y, r) => `<circle class="tap" cx="${x}" cy="${y}" r="${r}" fill="none" stroke="${TAP}" stroke-width="4"/>`;
 const box = (x, y, w, h) => `<rect class="tap" x="${x}" y="${y}" width="${w}" height="${h}" rx="9" fill="none" stroke="${TAP}" stroke-width="3.5"/>`;
 const row = (y, label, icon, hi) => `${hi ? `<rect x="74" y="${y}" width="168" height="26" rx="8" fill="#fff3d6"/>` : ''}<text x="86" y="${y + 17}" font-size="12" fill="${INK}">${label}</text>${icon || ''}${hi ? box(72, y - 2, 172, 30) : ''}`;
+// a menu row with its icon on the left, as in Safari on iOS 26
+const rowL = (x, y, w, label, icon, hi) => `${hi ? `<rect x="${x}" y="${y}" width="${w}" height="26" rx="8" fill="#fff3d6"/>` : ''}${icon || ''}<text x="${x + 32}" y="${y + 17}" font-size="12" fill="${INK}">${label}</text>${hi ? box(x - 2, y - 2, w + 4, 30) : ''}`;
+const bookIcon = (x, y) => `<path d="M${x - 7} ${y - 5}q3.5-2 7 0q3.5-2 7 0v11q-3.5-2-7 0q-3.5-2-7 0zM${x} ${y - 5}v11" fill="none" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/>`;
 const shareIcon = (x, y) => `<g fill="none" stroke="${BLUEI}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M${x} ${y + 2}v-12M${x - 4} ${y - 6}l4-4 4 4M${x - 6} ${y - 2}h-2v10h16v-10h-2"/></g>`;
 const plusIcon = (x, y) => `<g fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round"><rect x="${x - 7}" y="${y - 7}" width="14" height="14" rx="3"/><path d="M${x} ${y - 4}v8M${x - 4} ${y}h8"/></g>`;
 const gameIcon = (x, y, s) => `<rect x="${x}" y="${y}" width="${s}" height="${s}" rx="${s * 0.24}" fill="#ffc531" stroke="${INK}" stroke-width="2"/><text class="disp" x="${x + s / 2}" y="${y + s * 0.62}" text-anchor="middle" font-size="${s * 0.34}" fill="${INK}">7·8</text>`;
@@ -2148,17 +2151,22 @@ const INSTALL = {
         <circle cx="34" cy="111" r="16" fill="#fff"/><path d="M38 103l-8 8 8 8" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>
         <rect x="58" y="95" width="188" height="32" rx="16" fill="#fff" stroke="#cdd6e2"/><text x="72" y="115" font-size="11" fill="${INK}">jacekordowski.github.io</text>
         <circle cx="226" cy="111" r="12" fill="#e8eef6"/>${dots(226, 111)}${ring(226, 111, 18)}`)],
-    ['Stuknij <b>Udostępnij</b>.',
-      pic(`<rect x="70" y="12" width="176" height="116" rx="14" fill="#fff"/>${row(20, 'Nowa karta', plusIcon(228, 33))}${row(48, 'Dodaj zakładkę', '')}${row(76, 'Udostępnij', shareIcon(228, 93), true)}${row(104, 'Znajdź na stronie', '')}`)],
-    ['Przewiń listę w dół i stuknij <b>Dodaj do ekranu początkowego</b>.',
-      pic(`<rect x="14" y="12" width="232" height="116" rx="14" fill="#fff"/>${[40, 80, 120, 160, 200].map(x => `<circle cx="${x + 10}" cy="34" r="13" fill="#dfe6ef"/>`).join('')}
-        <g transform="translate(-56 0)">${row(56, 'Kopiuj', '')}${row(84, 'Dodaj do ekranu początkowego', plusIcon(290, 97), true)}</g>
-        <text x="30" y="128" font-size="11" fill="${GREY}">Dodaj do ulubionych…</text>`)],
-    ['Zostaw włączone <b>Otwórz jako aplikację internetową</b> i stuknij <b>Dodaj</b> w prawym górnym rogu.',
-      pic(`<rect x="14" y="12" width="232" height="116" rx="14" fill="#fff"/><text x="28" y="34" font-size="12" fill="${BLUEI}">Anuluj</text><text x="130" y="34" text-anchor="middle" font-size="12" fill="${INK}">Dodaj do ekranu</text>
-        <text x="230" y="34" text-anchor="end" font-size="13" fill="${BLUEI}">Dodaj</text>${box(194, 18, 46, 24)}
-        ${gameIcon(28, 50, 38)}<rect x="76" y="56" width="156" height="26" rx="8" fill="#eef2f7"/><text x="86" y="73" font-size="12" fill="${INK}">Śmierdzipacha</text>
-        <text x="28" y="104" font-size="11" fill="${INK}">Otwórz jako aplikację</text><text x="28" y="119" font-size="11" fill="${INK}">internetową</text><rect x="196" y="98" width="36" height="20" rx="10" fill="#34c759"/><circle cx="222" cy="108" r="8" fill="#fff"/>`)],
+    ['Stuknij <b>Udostępnij</b>. Jest na samej górze menu.',
+      pic(`<rect x="64" y="10" width="182" height="120" rx="16" fill="#fff"/>${rowL(72, 18, 166, 'Udostępnij', shareIcon(88, 32), true)}
+        ${rowL(72, 48, 166, 'Dodaj do Zakładki', `<path d="M83 53h10v14l-5-4-5 4z" fill="none" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/>`)}
+        ${rowL(72, 74, 166, 'Dodaj zakładkę do…', bookIcon(88, 87))}${rowL(72, 100, 166, 'Nowa karta', `<path d="M88 107v12M82 113h12" stroke="${INK}" stroke-width="1.8" stroke-linecap="round"/>`)}`)],
+    ['Stuknij <b>Do ekranu głównego</b>. Jeśli nie widzisz tego napisu, stuknij najpierw <b>Pokaż więcej</b> (kółko ze strzałką) albo przewiń listę w dół.',
+      pic(`<rect x="10" y="6" width="240" height="128" rx="14" fill="#fff"/>${gameIcon(20, 12, 22)}<text x="50" y="22" font-size="11" fill="${INK}">Śmierdzipacha</text><text x="50" y="33" font-size="8" fill="${GREY}">jacekordowski.github.io</text>
+        ${[['Kopiuj', 46], ['Zakładki', 96], ['Czytelnia', 146], ['Pokaż więcej', 206]].map(([t, x]) => `<circle cx="${x}" cy="54" r="11" fill="#e3e8ef"/><text x="${x}" y="77" text-anchor="middle" font-size="8" fill="${INK}">${t}</text>`).join('')}
+        <path d="M201 52l5 5 5-5" fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="206" cy="54" r="15" fill="none" stroke="${TAP}" stroke-width="2.5" stroke-dasharray="4 3"/>
+        <text x="50" y="96" font-size="11" fill="${GREY}">Znajdź na stronie</text>
+        ${rowL(18, 104, 224, 'Do ekranu głównego', plusIcon(34, 117), true)}`)],
+    ['Zostaw włączone <b>Otwórz jako aplikację www</b> i stuknij niebieski przycisk <b>Dodaj</b> w prawym górnym rogu.',
+      pic(`<rect x="14" y="10" width="232" height="120" rx="14" fill="#fff"/><circle cx="34" cy="30" r="11" fill="#e3e8ef"/><path d="M30 26l8 8M38 26l-8 8" stroke="${INK}" stroke-width="2" stroke-linecap="round"/>
+        <text x="114" y="34" text-anchor="middle" font-size="11" fill="${INK}">Do ekranu głównego</text>
+        <rect x="190" y="18" width="48" height="24" rx="12" fill="${BLUEI}"/><text x="214" y="34" text-anchor="middle" font-size="12" fill="#fff">Dodaj</text>${box(186, 14, 56, 32)}
+        ${gameIcon(28, 52, 34)}<text x="74" y="66" font-size="12" fill="${INK}">Śmierdzipacha</text><text x="74" y="80" font-size="8" fill="${GREY}">https://jacekordowski.github.io/…</text>
+        <text x="28" y="112" font-size="11" fill="${INK}">Otwórz jako aplikację www</text><rect x="196" y="99" width="36" height="20" rx="10" fill="#34c759"/><circle cx="222" cy="109" r="8" fill="#fff"/>`)],
   ],
   android: [
     ['W przeglądarce Chrome stuknij <b>⋮</b> (trzy kropki) w prawym górnym rogu.',
