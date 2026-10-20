@@ -9,6 +9,8 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 
 ## Wersja 5 (20 października 2026)
 
+Zapis w repozytorium: `6984ae0`
+
 ### Zmienione
 - **Nowa nazwa gry: Głupia Gra** (wcześniej Armia Liczb). Widać ją w menu, w tytule strony i pod ikoną na ekranie telefonu.
 - **Klasy nazywają się teraz levelami.** Level 1 to 1. klasa, level 8 to 8. klasa. Zadania są takie same jak wcześniej.
