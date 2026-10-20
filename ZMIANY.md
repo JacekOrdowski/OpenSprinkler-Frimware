@@ -9,6 +9,8 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 
 ## Wersja 15 (20 października 2026)
 
+Zapis w repozytorium: `61d24b4`
+
 ### Dodane
 - **Pytanie na start: „Jak chcesz grać?”** (tylko u nowego gracza): „Od początku”, czyli wszystkie levele po kolei,
   albo „Selekcja na najemnika”.
