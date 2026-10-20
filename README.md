@@ -11,6 +11,13 @@ a każda odpowiedź to jedna runda. Dobra odpowiedź przynosi posiłki, potem ar
 Zła albo spóźniona odpowiedź: nie ma posiłków, a potwór dorzuca kulę ognia. Szybkość odpowiedzi nie ma znaczenia,
 liczy się tylko to, czy jest dobra (i czy zmieści się w czasie).
 
+## Nauka po błędzie
+
+Po złej odpowiedzi gra się zatrzymuje i pokazuje krok po kroku, jak to policzyć w pamięci.
+Potem są 2 zadania tego samego rodzaju. Po dwóch dobrych odpowiedziach gra toczy się dalej.
+Przy złej odpowiedzi lecą kciuki w dół i słychać „uuuuu”, a gra pokazuje rozwiązanie i daje kolejne zadanie (najwyżej 5).
+Naukę można wyłączyć w menu albo w pauzie: „Nauka po błędzie: wył.”.
+
 ## Jak trudny jest potwór
 
 Siła potwora jest liczona osobno dla każdej gry. Według symulacji (tysiące rozegranych gier):
@@ -43,6 +50,7 @@ Uwaga: od 1 września 2026 r. w klasach 1 i 4 obowiązuje nowa podstawa programo
 
 Każde zadanie losuje się na nowo. Wszystkie rodzaje zadań zostały sprawdzone automatycznie: osobny program przeliczył
 ponad 600 000 wylosowanych zadań i nie znalazł błędnego wyniku ani błędnej bramki, która byłaby jednocześnie dobra.
+Sprawdzone są też objaśnienia: każde obliczenie w każdym kroku (ponad 200 000 obliczeń, zero błędów).
 
 ## Dźwięk
 
@@ -60,6 +68,6 @@ Postęp (gwiazdki, otwarte gry) zapisuje się w telefonie, na którym grasz.
 
 - `ZMIANY.md` – historia wersji: co dodano, zmieniono i usunięto
 - `index.html` – wygląd ekranów
-- `zadania.js` – wszystkie zadania dla klas 1–8
+- `zadania.js` – wszystkie zadania dla klas 1–8 i objaśnienia, jak je policzyć
 - `gra.js` – sama gra: bieg, walka z potworem, grafika, muzyka
 - `manifest.webmanifest`, `ikona-180.png`, `ikona-512.png` – ikona i nazwa na ekranie telefonu

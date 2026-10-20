@@ -4,7 +4,7 @@
 'use strict';
 const HAS_DOM = typeof document !== 'undefined';
 const Z = globalThis.Zadania;
-const WERSJA = 3;          // numer wersji gry; opis zmian w ZMIANY.md
+const WERSJA = 4;          // numer wersji gry; opis zmian w ZMIANY.md
 
 /* ============================================================
    Helpers
@@ -286,7 +286,7 @@ if (!HAS_DOM) { globalThis.ArmiaLiczb = { STAGES, stageConfig, createGame, step,
    ============================================================ */
 const KEY = 'armia-liczb-v2';
 const NCLS = Z.KLASY.length;
-const save = { stars: new Array(NCLS * STAGES).fill(0), next: [0, 0], music: true, sfx: true, tab: 0 };
+const save = { stars: new Array(NCLS * STAGES).fill(0), next: [0, 0], music: true, sfx: true, learn: true, tab: 0 };
 try { Object.assign(save, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { /* storage blocked */ }
 if (!Array.isArray(save.stars) || save.stars.length !== NCLS * STAGES) save.stars = new Array(NCLS * STAGES).fill(0);
 if (!Array.isArray(save.next) || save.next.length !== 2) save.next = [0, 0];
@@ -466,6 +466,28 @@ const Snd = (() => {
     }),
     win: fx('win', 0, t => { [72, 76, 79, 84, 79, 84, 88].forEach((m, i) => tone('square', mtof(m), t + i * 0.12, i === 6 ? 0.6 : 0.14, 0.12, sfxBus, 0, 3800)); }),
     lose: fx('lose', 0, t => { [67, 64, 60, 55].forEach((m, i) => tone('triangle', mtof(m), t + i * 0.22, 0.34, 0.17, sfxBus)); }),
+    // Booing crowd, "uuuuu": several low voices through the formants of the vowel "u", sliding down
+    boo: fx('boo', 1, t => {
+      const dur = 2.1, out = ctx.createGain(), mix = ctx.createGain();
+      out.gain.setValueAtTime(0.0001, t); out.gain.exponentialRampToValueAtTime(1, t + 0.3);
+      out.gain.setValueAtTime(1, t + 1.3); out.gain.linearRampToValueAtTime(0, t + dur);
+      out.connect(sfxBus);
+      for (const [f, q, v] of [[330, 3, 1.6], [820, 5, 0.5]]) {
+        const bp = ctx.createBiquadFilter(), g = ctx.createGain();
+        bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = q; g.gain.value = v;
+        mix.connect(bp); bp.connect(g); g.connect(out);
+      }
+      for (let i = 0; i < 7; i++) {
+        const o = ctx.createOscillator(), g = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain();
+        const f = rand(120, 215), t0 = t + rand(0, 0.15);
+        o.type = 'sawtooth'; o.frequency.setValueAtTime(f * 1.06, t0); o.frequency.exponentialRampToValueAtTime(f * 0.8, t + dur);
+        lfo.frequency.value = rand(4.5, 6.5); lg.gain.value = f * 0.02;
+        lfo.connect(lg); lg.connect(o.frequency);
+        g.gain.value = 0.11; o.connect(g); g.connect(mix);
+        o.start(t0); lfo.start(t0); o.stop(t + dur + 0.05); lfo.stop(t + dur + 0.05);
+      }
+      hiss(t, dur, 0.06, out, 'bandpass', 420, 1.5);
+    }),
   };
 })();
 
@@ -1027,7 +1049,7 @@ function render(g, dt) {
    Screens, HUD and controls
    ============================================================ */
 const $ = id => document.getElementById(id);
-const screens = { menu: $('scrMenu'), levels: $('scrLevels'), intro: $('scrIntro'), pause: $('scrPause'), result: $('scrResult') };
+const screens = { menu: $('scrMenu'), levels: $('scrLevels'), intro: $('scrIntro'), pause: $('scrPause'), result: $('scrResult'), lesson: $('scrLesson') };
 const hud = $('hud'), probCard = $('probCard'), probText = $('probText'), probSub = $('probSub'), probTime = $('probTime'), probReward = $('probReward');
 const fight = $('fightPanel'), fqText = $('fqText'), fqSub = $('fqSub'), fqTime = $('fqTime'), ansL = $('ansL'), ansR = $('ansR');
 const ICON = {
@@ -1036,15 +1058,16 @@ const ICON = {
 };
 
 let game = createGame(0, 0, true);
-let mode = 'menu';            // menu | levels | intro | play | pause | result
+let mode = 'menu';            // menu | levels | intro | play | pause | lesson | result
 let pending = null;           // the stage shown on the intro card, started by "Start"
-const ui = { shownGate: null, until: 0 };
+const ui = { shownGate: null, until: 0, lessonQ: null };
 const stageLabel = (c, s) => `Klasa ${c + 1} · gra ${s + 1}`;
-const solved = p => p.sol || (p.q.includes('?') ? p.q.replace('?', p.a) : `${p.q}, ${p.ask || 'x'} = ${p.a}`);
+const solved = p => p.sol || (p.q.includes('?') ? p.q.replace('?', p.a) : /^x [<>≤≥]/.test(p.a) ? `${p.q}, więc ${p.a}` : `${p.q}, ${p.ask || 'x'} = ${p.a}`);
 
 function show(name) { for (const k in screens) screens[k].hidden = k !== name; }
 function goMenu() {
   mode = 'menu'; game = createGame(0, 0, true); hud.hidden = true; fight.hidden = true; view.hudBottom = 0; layout();
+  ui.lessonQ = null; lesson = null;
   $('btnPlay').textContent = `Graj · ${stageLabel(save.next[0], save.next[1])}`;
   $('menuVersion').textContent = `Wersja ${WERSJA}`;
   updateSoundBtns(); show('menu'); Snd.play('menu'); Snd.duck(false);
@@ -1065,7 +1088,7 @@ function openIntro(c, s) {
 }
 function startStage(g) {
   game = g; mode = 'play'; pending = null;
-  ui.shownGate = null; ui.until = 0;
+  ui.shownGate = null; ui.until = 0; ui.lessonQ = null; lesson = null;
   parts.length = 0; floats.length = 0; confetti.length = 0; rings.length = 0; balls.length = 0; hitTexts.length = 0;
   show(null); hud.hidden = false; fight.hidden = true; probCard.hidden = false; view.k = 0;
   $('hudLevel').textContent = stageLabel(g.cls, g.s);
@@ -1140,6 +1163,7 @@ function onGate(g, e) {
     floatText('+' + e.n, '#4be08a'); fx.flash = 0.6; fx.flashColor = '40,210,110';
   } else {
     setCard(solved(p), `Twoja odpowiedź: ${p.w}`, 'bad', 0); Snd.bad();
+    if (save.learn) ui.lessonQ = { p, your: p.w, at: g.time + 1.1 };
     if (e.n > 0) floatText(MINUS + e.n, '#ff6a5e');
     fx.flash = 0.8; fx.flashColor = '235,60,50'; fx.shake = 0.35;
   }
@@ -1174,6 +1198,7 @@ function handleEvents(g) {
         else {
           setFight(solved(e.p), e.timeout ? 'Za późno! Potwór atakuje' : `Twoja odpowiedź: ${e.p.w}`, 'bad');
           Snd.bad(); Snd.roar();
+          if (save.learn) ui.lessonQ = { p: e.p, your: e.timeout ? null : e.p.w, at: g.time + 1.5 };
         }
         break;
       case 'volley': if (e.n > 0) { hitTexts.push({ text: MINUS + group(e.n), t: 0 }); Snd.hit(); } break;
@@ -1206,6 +1231,99 @@ function handleEvents(g) {
     }
   }
   g.events.length = 0;
+}
+
+/* ============================================================
+   After a mistake: how to calculate it in your head, then practice of the same kind
+   ============================================================ */
+const NEED = 2, MAX_TASKS = 5;   // 2 good answers to go back to the game; at most 5 tries
+let lesson = null;
+const le = {
+  card: $('leCard'), eyebrow: $('leEyebrow'), solved: $('leSolved'), your: $('leYour'), title: $('leTitle'), steps: $('leSteps'),
+  task: $('leTask'), q: $('leQ'), sub: $('leSub'), L: $('leL'), R: $('leR'), msg: $('leMsg'), next: $('leNext'),
+};
+// "{…}" in a step is a calculation, shown in bold
+const stepHTML = s => s.split(/(\{[^}]*\})/).map(x => x[0] === '{' ? `<b class="calc${plain(x).length < 20 ? ' nw' : ''}">${richHTML(x.slice(1, -1))}</b>` : richHTML(x)).join('');
+function showSteps(how) {
+  le.title.textContent = how.t;
+  le.steps.innerHTML = how.s.map(x => `<li><span>${stepHTML(x)}</span></li>`).join('');
+}
+function setMsg(html, cls) { le.msg.innerHTML = html; le.msg.className = 'le-msg' + (cls ? ' ' + cls : ''); le.msg.hidden = !html; }
+const later = (sec, fn) => { const L = lesson; setTimeout(() => { if (lesson === L && mode === 'lesson') fn(); }, sec * 1000); };
+
+function openLesson(p, your) {
+  const tasks = p.how ? Z.practice(p, MAX_TASKS) : [];
+  if (tasks.length < NEED) return;   // nothing to practise: keep playing
+  lesson = { tasks, n: 0, good: 0, bad: 0, cur: null, left: true, busy: false, panels: [hud.hidden, fight.hidden] };
+  mode = 'lesson'; Snd.duck(true);
+  hud.hidden = fight.hidden = true;   // the problem behind the card would only confuse
+  le.eyebrow.textContent = 'Jak to policzyć w pamięci?';
+  le.solved.innerHTML = richHTML(solved(p)); le.solved.hidden = false;
+  le.your.innerHTML = your === null ? 'Zabrakło czasu' : richHTML(`Twoja odpowiedź: ${your}`); le.your.hidden = false;
+  showSteps(p.how);
+  le.task.hidden = true; setMsg('');
+  le.next.textContent = `Ćwiczymy: ${NEED} zadania`; le.next.hidden = false;
+  show('lesson'); le.card.scrollTop = 0;
+}
+function nextTask() {
+  const L = lesson, t = L.cur = L.tasks[L.n++];
+  L.left = Math.random() < 0.5; L.busy = false;
+  le.eyebrow.textContent = `Ćwiczenie ${L.good + 1} z ${NEED}`;
+  le.solved.hidden = le.your.hidden = true;
+  le.q.innerHTML = richHTML(t.q);
+  const len = plain(t.q).length;
+  le.q.classList.toggle('long', len > 13 && len <= 22); le.q.classList.toggle('xlong', len > 22);
+  le.sub.innerHTML = richHTML(t.sub || ''); le.sub.hidden = !t.sub;
+  le.L.innerHTML = richHTML(L.left ? t.a : t.w); le.R.innerHTML = richHTML(L.left ? t.w : t.a);
+  le.L.className = le.R.className = 'ans'; le.L.disabled = le.R.disabled = false;
+  le.task.hidden = false; setMsg(''); le.next.hidden = true;
+  le.card.scrollTop = le.card.scrollHeight;
+}
+function lessonPick(left) {
+  const L = lesson;
+  if (!L || !L.cur || L.busy || le.task.hidden) return;
+  Snd.unlock();
+  L.busy = true; le.L.disabled = le.R.disabled = true;
+  (left ? le.L : le.R).classList.add('picked');
+  (L.left ? le.L : le.R).classList.add('right');
+  if (left === L.left) {
+    L.good++; Snd.good();
+    if (L.good < NEED) { setMsg('Dobrze!', 'good'); later(0.9, nextTask); }
+    else { setMsg(L.bad ? 'Dobrze! Już umiesz. Grasz dalej.' : 'Super! Grasz dalej.', 'good'); Snd.reinforce(); later(1.4, closeLesson); }
+  } else {
+    L.bad++; Snd.boo(); thumbsDown();
+    const out = L.n >= L.tasks.length;
+    setMsg(`Uuuuu…<small>${richHTML(`Dobra odpowiedź: ${L.cur.a}`)}${out ? '. Ten temat warto jeszcze poćwiczyć.' : ''}</small>`, 'bad');
+    showSteps(L.cur.how);
+    le.next.textContent = out ? 'Wracamy do gry' : 'Jeszcze jedno zadanie'; le.next.hidden = false;
+  }
+  le.card.scrollTop = le.card.scrollHeight;
+}
+function lessonNext() {
+  if (!lesson || mode !== 'lesson') return;
+  if (lesson.cur && lesson.n >= lesson.tasks.length) closeLesson(); else nextTask();
+}
+function closeLesson() {
+  [hud.hidden, fight.hidden] = lesson.panels;
+  lesson = null; mode = 'play'; show(null); last = performance.now(); Snd.duck(false);
+}
+// Thumbs down falling over the screen
+function thumbsDown() {
+  const box = $('thumbs'), n = REDUCED ? 6 : 26;
+  for (let i = 0; i < n; i++) {
+    const el = document.createElement('span');
+    el.textContent = '👎';
+    el.style.left = rand(0, 92).toFixed(1) + '%';
+    if (REDUCED) el.style.top = rand(10, 80).toFixed(1) + '%';
+    el.style.fontSize = Math.round(rand(30, 64)) + 'px';
+    el.style.animationDuration = rand(1.5, 2.5).toFixed(2) + 's';
+    el.style.animationDelay = rand(0, 0.7).toFixed(2) + 's';
+    el.style.setProperty('--rot', Math.round(rand(-60, 60)) + 'deg');
+    el.addEventListener('animationend', () => el.remove());
+    setTimeout(() => el.remove(), 4000);
+    box.appendChild(el);
+  }
+  le.card.classList.remove('shake'); void le.card.offsetWidth; le.card.classList.add('shake');
 }
 
 function showResult(g) {
@@ -1277,13 +1395,13 @@ function buildLevelList() {
   });
 }
 function updateSoundBtns() {
-  for (const [id, key, label] of [['btnMusic', 'music', 'Muzyka'], ['btnSfx', 'sfx', 'Dźwięki']]) {
+  for (const [id, key, label] of [['btnMusic', 'music', 'Muzyka'], ['btnSfx', 'sfx', 'Dźwięki'], ['btnLearn', 'learn', 'Nauka po błędzie']]) {
     for (const b of document.querySelectorAll(`[data-toggle="${key}"]`)) { b.textContent = `${label}: ${save[key] ? 'wł.' : 'wył.'}`; b.setAttribute('aria-pressed', String(save[key])); }
   }
 }
 function toggle(key) {
   save[key] = !save[key]; persist(); updateSoundBtns();
-  if (save[key]) Snd.unlock();
+  if (save[key] && key !== 'learn') Snd.unlock();
   if (key === 'music') Snd.setMusic(save.music);
 }
 
@@ -1301,6 +1419,9 @@ tap('btnPauseMenu', goMenu);
 tap('btnNext', () => { const [c, s] = save.next; openIntro(c, s); });
 tap('btnAgain', () => restart(game));
 tap('btnResultMenu', goMenu);
+le.L.addEventListener('click', () => lessonPick(true));
+le.R.addEventListener('click', () => lessonPick(false));
+tap('leNext', lessonNext);
 ansL.addEventListener('click', () => pickAnswer(true));
 ansR.addEventListener('click', () => pickAnswer(false));
 
@@ -1326,6 +1447,7 @@ const keys = { left: false, right: false };
 window.addEventListener('keydown', e => {
   const L = e.key === 'ArrowLeft' || e.key === 'a', R = e.key === 'ArrowRight' || e.key === 'd';
   if (mode === 'play' && game.state === 'fight' && (L || R)) { if (!e.repeat) pickAnswer(L); return; }
+  if (mode === 'lesson') { if ((L || R) && !e.repeat) lessonPick(L); return; }
   if (L) keys.left = true; else if (R) keys.right = true;
   else if (e.key === 'Escape' || e.key === 'p') { if (mode === 'play') pauseGame(); else if (mode === 'pause') resumeGame(); }
 });
@@ -1351,7 +1473,11 @@ function frame(now) {
     if (game.state === 'fight' && game.fight.p && !game.fight.done) fqTime.style.transform = `scaleX(${clamp((game.fight.deadline - game.time) / game.cfg.think, 0, 1)})`;
     $('hudProg').style.transform = `scaleX(${clamp(game.army.z / (game.monster.z - FIGHT_DIST), 0, 1)})`;
     if (game.state !== 'run' && game.state !== 'fight' && game.time > game.endAt) showResult(game);
-  } else if (mode !== 'pause') {
+    else if (ui.lessonQ && game.time >= ui.lessonQ.at) {
+      const q = ui.lessonQ; ui.lessonQ = null;
+      if (game.state === 'run' || game.state === 'fight') openLesson(q.p, q.your);
+    }
+  } else if (mode !== 'pause' && mode !== 'lesson') {
     step(game, dt);
     handleEvents(game);
   }

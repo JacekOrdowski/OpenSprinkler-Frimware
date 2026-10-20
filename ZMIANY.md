@@ -5,6 +5,38 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 
 ---
 
+## Wersja 4 (20 października 2026)
+
+### Dodane
+- **Nauka po błędzie.** Po złej odpowiedzi gra się zatrzymuje i pokazuje krok po kroku, jak to łatwo policzyć w pamięci.
+  Dotyczy to bramek i walki, także sytuacji, gdy zabraknie czasu.
+  Przykład: 40% z 280. Najpierw 10% z 280 to 280 : 10 = 28. 40% to 4 razy po 10%, czyli 4 · 28 = 112.
+- Po objaśnieniu są **2 zadania tego samego rodzaju**. Dobra odpowiedź: „Dobrze!”. Po dwóch dobrych gra toczy się dalej.
+- Zła odpowiedź w ćwiczeniu: **lecą kciuki w dół 👎 i słychać „uuuuu”**. Gra pokazuje, jak policzyć to zadanie, i daje następne.
+  Najwyżej 5 zadań. Jeśli dalej nie wychodzi, gra wraca do biegu z radą, żeby ten temat jeszcze poćwiczyć.
+- Objaśnienia do wszystkich rodzajów zadań w klasach 1–8.
+- Przełącznik **„Nauka po błędzie: wł./wył.”** w menu i w pauzie.
+- W menu czwarta wskazówka: po pomyłce gra pokaże, jak to policzyć.
+
+### Zmienione
+- Podczas nauki gra stoi: czas nie ucieka, a potwór nie atakuje. Ćwiczenia nie zmieniają liczby żołnierzy.
+  Szanse w walce są takie same jak w wersji 3 (symulacja: około 33% przy wszystkich bramkach dobrze i zgadywaniu w walce).
+- Klasa 7, wyrażenia algebraiczne: zamiast „1x” jest teraz „x”, tak jak w zeszycie (np. 6x + 5x − x).
+- Klasa 7, twierdzenie Pitagorasa, najłatwiejsza gra: 3 różne trójkąty zamiast 2, żeby było z czego ćwiczyć.
+- Klasa 6, równania: liczba ujemna po prawej stronie miała krótki myślnik zamiast minusa (np. „-2”). Teraz jest „−2”.
+- Klasa 8, nierówności: rozwiązanie po błędzie zapisuje się „x + 8 > 3, więc x > −5”. Wcześniej było niezgrabne „x = x > −5”.
+- Sprawdzanie zadań rozszerzone. Osobny program przelicza teraz także każdy krok objaśnień.
+  Wynik: ponad 200 000 obliczeń w objaśnieniach i 256 000 zadań, zero błędów.
+
+### Usunięte
+- Nic.
+
+### Do sprawdzenia
+- Jak brzmi „uuuuu” i jak wyglądają kciuki na prawdziwym iPhonie.
+- Czy objaśnienia są zrozumiałe dla młodszych dzieci. Najlepiej przejrzeć kilka razem z dzieckiem.
+
+---
+
 ## Wersja 3 (20 października 2026)
 
 Zapis w repozytorium: `dde3488`

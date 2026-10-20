@@ -247,9 +247,46 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
 .ans.right { background: #d5f5e0; border-color: var(--good); }
 .ans.picked:not(.right) { background: #ffe0dc; border-color: var(--red); }
 
+/* ---------- after a mistake: how to calculate it, then practice ---------- */
+.lesson { gap: 12px; }
+.le-solved { font-family: var(--display); font-size: clamp(28px, 9vw, 40px); line-height: 1.15; color: var(--good); overflow-wrap: anywhere; text-wrap: balance; font-variant-numeric: tabular-nums; }
+.le-your { margin: -6px 0 0; font-weight: 800; font-size: 15px; color: var(--red); }
+.le-method { background: #fff; border-radius: 16px; padding: 12px 14px; display: grid; gap: 9px; text-align: left; }
+.le-method h3 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 20px; line-height: 1.15; color: var(--blue); }
+.le-steps { margin: 0; padding: 0; list-style: none; counter-reset: st; display: grid; gap: 8px; }
+.le-steps li { display: grid; grid-template-columns: 24px 1fr; gap: 9px; align-items: start; font-weight: 800; font-size: 16px; line-height: 1.5; }
+.le-steps li::before {
+  counter-increment: st; content: counter(st); width: 24px; height: 24px; margin-top: 1px; border-radius: 50%;
+  background: var(--gold); color: var(--ink); display: grid; place-items: center; font-family: var(--display); font-size: 14px;
+}
+.calc {
+  font-family: var(--display); font-weight: 400; font-size: 1.12em; color: var(--ink); font-variant-numeric: tabular-nums;
+  background: #fff1c2; border-radius: 6px; padding: 0 5px; -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
+.calc.nw { white-space: nowrap; }
+.le-task { display: grid; gap: 10px; background: #eaf3ff; border-radius: 16px; padding: 12px; }
+.le-q { font-family: var(--display); font-size: clamp(28px, 9vw, 40px); line-height: 1.12; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; text-wrap: balance; }
+.le-q.long { font-size: clamp(23px, 7vw, 32px); }
+.le-q.xlong { font-size: clamp(18px, 5.4vw, 24px); line-height: 1.2; }
+.le-sub { font-weight: 800; font-size: 15px; color: var(--muted); text-wrap: balance; }
+.le-task .fight-btns { max-width: none; }
+.le-task .ans { min-height: 68px; font-size: clamp(24px, 8vw, 34px); }
+.le-msg { margin: 0; font-family: var(--display); font-size: 28px; line-height: 1.15; }
+.le-msg.good { color: var(--good); }
+.le-msg.bad { color: var(--red); }
+.le-msg small { display: block; margin-top: 4px; font-family: var(--body); font-weight: 800; font-size: 16px; line-height: 1.35; color: var(--ink); }
+.card.shake { animation: shake 0.45s ease-in-out; }
+@keyframes shake { 20% { transform: translateX(-10px); } 40% { transform: translateX(9px); } 60% { transform: translateX(-6px); } 80% { transform: translateX(3px); } }
+#thumbs { position: fixed; inset: 0; z-index: 40; pointer-events: none; overflow: hidden; }
+#thumbs span { position: absolute; top: 0; line-height: 1; animation: thumbFall 2s cubic-bezier(.45, .05, .85, .55) both; }
+@keyframes thumbFall { from { transform: translateY(-90px) rotate(0deg); } to { transform: translateY(calc(100vh + 90px)) rotate(var(--rot, 30deg)); } }
+@keyframes thumbFade { 0%, 100% { opacity: 0; } 20%, 75% { opacity: 1; } }
+
 @media (prefers-reduced-motion: reduce) {
   .problem.pop, .fight.pop .fight-q, .stars svg.on { animation: none; }
   .logo, .logo-gate { transform: none; }
+  .card.shake { animation: none; }
+  #thumbs span { animation-name: thumbFade; }
 }
 </style>
 </head>
@@ -299,12 +336,14 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
       <li>Przesuwaj palcem w lewo i w prawo.</li>
       <li><span>Wbiegnij w bramkę z dobrym wynikiem. Zielona liczba mówi, ilu żołnierzy dostaniesz, na przykład <b>+14</b>. Zła odpowiedź tyle samo zabiera.</span></li>
       <li>Na końcu mostu walczysz z potworem. Stukaj w dobre odpowiedzi, żeby dostać posiłki.</li>
+      <li>Po pomyłce gra pokaże, jak to łatwo policzyć, i da 2 zadania na próbę.</li>
     </ol>
     <div class="row2">
       <button class="btn btn-ghost" data-toggle="music" aria-pressed="true">Muzyka: wł.</button>
       <button class="btn btn-ghost" data-toggle="sfx" aria-pressed="true">Dźwięki: wł.</button>
     </div>
-    <p class="version" id="menuVersion">Wersja 3</p>
+    <button class="btn btn-ghost" data-toggle="learn" aria-pressed="true">Nauka po błędzie: wł.</button>
+    <p class="version" id="menuVersion">Wersja 4</p>
   </div>
 </div>
 
@@ -353,8 +392,32 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
       <button class="btn btn-ghost" data-toggle="music" aria-pressed="true">Muzyka: wł.</button>
       <button class="btn btn-ghost" data-toggle="sfx" aria-pressed="true">Dźwięki: wł.</button>
     </div>
+    <button class="btn btn-ghost" data-toggle="learn" aria-pressed="true">Nauka po błędzie: wł.</button>
   </div>
 </div>
+
+<div class="screen" id="scrLesson" hidden>
+  <div class="card lesson" id="leCard" role="dialog" aria-labelledby="leEyebrow">
+    <div class="eyebrow" id="leEyebrow">Jak to policzyć w pamięci?</div>
+    <div class="le-solved" id="leSolved"></div>
+    <p class="le-your" id="leYour"></p>
+    <div class="le-method">
+      <h3 id="leTitle"></h3>
+      <ol class="le-steps" id="leSteps"></ol>
+    </div>
+    <div class="le-task" id="leTask" hidden>
+      <div class="le-q" id="leQ"></div>
+      <div class="le-sub" id="leSub"></div>
+      <div class="fight-btns">
+        <button class="ans" id="leL" aria-label="Lewa odpowiedź">…</button>
+        <button class="ans" id="leR" aria-label="Prawa odpowiedź">…</button>
+      </div>
+    </div>
+    <p class="le-msg" id="leMsg" aria-live="polite" hidden></p>
+    <button class="btn btn-gold" id="leNext">Ćwiczymy</button>
+  </div>
+</div>
+<div id="thumbs" aria-hidden="true"></div>
 
 <div class="screen" id="scrResult" hidden>
   <div class="card" role="dialog" aria-labelledby="reTitle">
