@@ -4,7 +4,7 @@
 'use strict';
 const HAS_DOM = typeof document !== 'undefined';
 const Z = globalThis.Zadania;
-const WERSJA = 11;         // numer wersji gry; opis zmian w ZMIANY.md
+const WERSJA = 12;         // numer wersji gry; opis zmian w ZMIANY.md
 
 /* ============================================================
    Helpers
