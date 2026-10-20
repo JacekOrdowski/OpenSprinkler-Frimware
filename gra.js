@@ -852,7 +852,7 @@ const backOut = t => { const c = 1.9; t -= 1; return 1 + t * t * ((c + 1) * t + 
 const MONSTERS = [
   { name: 'Glutek', body: '#5cc443', dark: '#2c7a26', light: '#b9f59a', eyes: 1, horns: 0, size: 0.82 },
   { name: 'Artur Pająkojad', body: '#2f3539', dark: '#23282b', light: '#f3a99a', horn: '#e8dfc3', chalk: true, size: 0.86 },   // drawn in chalk by the owner for his son
-  { name: 'Ropuchor', body: '#f08a2e', dark: '#9c4c17', light: '#ffd29a', eyes: 2, horns: 0, spots: true, size: 0.9 },
+  { name: 'Hedwigonna', body: '#fbfbf7', dark: '#16181d', light: '#f2a44b', owl: true, fem: true, size: 0.9 },   // made with a 3D pen by the owner's child
   { name: 'Głazor', body: '#8e98a5', dark: '#4f5966', light: '#cfd6de', eyes: 2, horns: 0, cracks: true, size: 0.94 },
   { name: 'Płomyk', body: '#e2452f', dark: '#871d12', light: '#ffb07a', eyes: 2, horns: 2, flames: true, size: 0.96 },
   { name: 'Lodowiec', body: '#79cfee', dark: '#2a7fa6', light: '#e8f9ff', eyes: 2, horns: 1, spikes: true, size: 0.98 },
@@ -933,6 +933,83 @@ function drawPajakojad(T, t, u, X, Y, lunge, breathe, flash, alpha) {
   if (flash) { ctx.globalAlpha = 0.25 * alpha; head(); ctx.fillStyle = '#ffffff'; ctx.fill(); }
 }
 
+// Hedwigonna looks like the 3D pen figure: a snowy owl with speckled wings and sleepy orange eyes,
+// holding a letter with a red seal and standing on a blue board
+function drawHedwigonna(T, t, u, X, Y, lunge, breathe, flash, alpha) {
+  const ink = T.dark, lw = Math.max(2, 0.12 * u);
+  const outline = (w = 1) => { ctx.lineWidth = lw * w; ctx.strokeStyle = ink; ctx.stroke(); };
+  const by = 2.25, H = y => by + (y - by) * breathe * (1 + lunge * 0.05) + lunge * 0.25;
+  // blue board, black feet and legs
+  ctx.beginPath(); rr(ctx, X(-2.9), Y(0.42), 5.8 * u, 0.42 * u, 0.2 * u); ctx.fillStyle = '#2d8fe0'; ctx.fill(); outline(0.8);
+  for (const sd of [-1, 1]) {
+    ctx.beginPath(); ctx.moveTo(X(sd * 1.25), Y(0.42)); ctx.lineTo(X(sd * 3.15), Y(0.42)); ctx.quadraticCurveTo(X(sd * 2.7), Y(0.95), X(sd * 1.5), Y(1.0)); ctx.closePath();
+    ctx.fillStyle = ink; ctx.fill(); outline(0.6);
+    ctx.beginPath(); ctx.moveTo(X(sd * 1.7), Y(0.7)); ctx.lineTo(X(sd * 1.75), Y(H(2.5))); ctx.lineWidth = 0.6 * u; ctx.strokeStyle = ink; ctx.stroke();
+  }
+  // the letter with a red seal swings a little under the talons
+  const ly = 0.78 + Math.sin(t * 3) * 0.05;
+  ctx.beginPath(); rr(ctx, X(-1.15), Y(ly + 1.3), 2.3 * u, 1.3 * u, 0.12 * u); ctx.fillStyle = '#ffffff'; ctx.fill(); outline(0.8);
+  ctx.beginPath(); ctx.moveTo(X(-1.05), Y(ly + 1.22)); ctx.lineTo(X(0), Y(ly + 0.6)); ctx.lineTo(X(1.05), Y(ly + 1.22)); outline(0.6);
+  ctx.beginPath(); ctx.arc(X(0), Y(ly + 0.62), 0.27 * u, 0, Math.PI * 2); ctx.fillStyle = '#e2382c'; ctx.fill(); outline(0.5);
+  // speckled wings hang at the sides and rise when she attacks
+  const DOTS = [[0.35, -0.6, 0.12], [0.75, -1.0, 0.1], [0.4, -1.4, 0.13], [0.95, -1.7, 0.11], [0.55, -2.0, 0.12], [1.0, -2.3, 0.1], [0.3, -2.4, 0.1]];
+  for (const sd of [-1, 1]) {
+    const ang = (Math.sin(t * 2.2 + sd) * 0.05 + lunge * 0.85) * -sd;
+    ctx.save(); ctx.translate(X(sd * 2.0), Y(H(5.3))); ctx.rotate(ang);
+    const P = (x, y) => [sd * x * u, -y * u];
+    const wing = () => {
+      ctx.beginPath(); ctx.moveTo(...P(0, 0.1)); ctx.quadraticCurveTo(...P(1.05, -0.1), ...P(1.25, -1.5)); ctx.quadraticCurveTo(...P(1.35, -2.9), ...P(0.85, -3.3));
+      ctx.quadraticCurveTo(...P(0.3, -3.35), ...P(0.05, -2.6)); ctx.closePath();
+    };
+    wing(); ctx.fillStyle = T.body; ctx.fill();
+    ctx.save(); ctx.clip();
+    ctx.fillStyle = ink; ctx.fillRect(-2 * u, 2.45 * u, 4 * u, 2 * u);
+    for (const [x, y, r] of DOTS) { ctx.beginPath(); ctx.arc(...P(x, y), r * u, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = T.body; for (const [x, y] of [[0.5, -2.7], [0.95, -2.85], [0.7, -3.1]]) { ctx.beginPath(); ctx.arc(...P(x, y), 0.09 * u, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
+    wing(); outline();
+    ctx.restore();
+  }
+  // body
+  const body = () => {
+    ctx.beginPath(); ctx.moveTo(X(-2.0), Y(H(by)));
+    ctx.bezierCurveTo(X(-2.35), Y(H(3.85)), X(-2.45), Y(H(5.2)), X(-2.2), Y(H(6.0)));
+    ctx.bezierCurveTo(X(-1.9), Y(H(7.3)), X(1.9), Y(H(7.3)), X(2.2), Y(H(6.0)));
+    ctx.bezierCurveTo(X(2.45), Y(H(5.2)), X(2.35), Y(H(3.85)), X(2.0), Y(H(by))); ctx.closePath();
+  };
+  body(); ctx.fillStyle = T.body; ctx.fill(); outline();
+  // a few soft strokes like the plastic of the 3D pen, and the dark streak on the chest
+  ctx.strokeStyle = '#d8dade'; ctx.lineWidth = Math.max(1, lw * 0.45);
+  for (const [x, y, r, a] of [[-1.2, 3.3, 0.5, 0.4], [1.1, 3.6, 0.55, 2.2], [-0.4, 4.2, 0.6, 1.2], [0.9, 4.6, 0.45, 3.4], [-1.4, 4.9, 0.4, 5.0], [0.2, 6.6, 0.5, 0.2]]) {
+    ctx.beginPath(); ctx.arc(X(x), Y(H(y)), r * u, a, a + 2.2); ctx.stroke();
+  }
+  ctx.beginPath(); ctx.moveTo(X(0.05), Y(H(4.0))); ctx.quadraticCurveTo(X(-0.12), Y(H(3.4)), X(0.02), Y(H(2.9))); ctx.lineWidth = lw * 1.1; ctx.strokeStyle = ink; ctx.stroke();
+  // talons hold the letter
+  ctx.beginPath(); rr(ctx, X(-1.75), Y(H(2.45)), 3.5 * u, (H(2.45) - 1.95) * u, 0.2 * u); ctx.fillStyle = ink; ctx.fill();
+  ctx.fillStyle = T.light; for (const x of [-1.05, -0.38, 0.38, 1.05]) { ctx.beginPath(); ctx.ellipse(X(x), Y(2.15), 0.18 * u, 0.22 * u, 0, 0, Math.PI * 2); ctx.fill(); }
+  // sleepy orange eyes under heavy lids; the lids lift when she attacks
+  const ey = H(5.6), lid = (t % 4.3) < 0.12 ? 1 : 0.34 - lunge * 0.3;
+  for (const sd of [-1, 1]) {
+    const ex = sd * 0.95, rx = 0.7, ry = 0.55;
+    ctx.beginPath(); ctx.ellipse(X(ex), Y(ey), (rx + 0.1) * u, (ry + 0.1) * u, 0, 0, Math.PI * 2); ctx.fillStyle = ink; ctx.fill();
+    ctx.save(); ctx.beginPath(); ctx.ellipse(X(ex), Y(ey), rx * u, ry * u, 0, 0, Math.PI * 2); ctx.clip();
+    ctx.fillStyle = T.light; ctx.fillRect(X(ex - rx), Y(ey + ry), 2 * rx * u, 2 * ry * u);
+    ctx.beginPath(); ctx.arc(X(ex - sd * 0.08), Y(ey - 0.02), 0.36 * u, 0, Math.PI * 2); ctx.fillStyle = ink; ctx.fill();
+    ctx.beginPath(); ctx.arc(X(ex - sd * 0.2), Y(ey + 0.15), 0.09 * u, 0, Math.PI * 2); ctx.fillStyle = '#ffffff'; ctx.fill();
+    const li = ey + ry - 2 * ry * lid, lo = li + 0.18;     // the lid line is lower on the inner side: a stern look
+    ctx.beginPath(); ctx.moveTo(X(ex - sd * (rx + 0.2)), Y(lo)); ctx.lineTo(X(ex + sd * (rx + 0.2)), Y(li - 0.1)); ctx.lineTo(X(ex + sd * (rx + 0.2)), Y(ey + ry + 0.2)); ctx.lineTo(X(ex - sd * (rx + 0.2)), Y(ey + ry + 0.2)); ctx.closePath();
+    ctx.fillStyle = T.body; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(X(ex - sd * (rx + 0.2)), Y(lo)); ctx.lineTo(X(ex + sd * (rx + 0.2)), Y(li - 0.1)); outline(0.9);
+    ctx.restore();
+    ctx.beginPath(); ctx.ellipse(X(ex), Y(ey), (rx + 0.05) * u, (ry + 0.05) * u, 0, 0, Math.PI * 2); outline(0.8);
+    // the dark line of the face under each eye
+    ctx.beginPath(); ctx.moveTo(X(sd * 0.3), Y(ey - 0.85)); ctx.quadraticCurveTo(X(sd * 1.15), Y(ey - 1.1), X(sd * 2.0), Y(ey - 0.55)); outline();
+  }
+  // small dark beak
+  ctx.beginPath(); ctx.moveTo(X(-0.14), Y(ey - 0.35)); ctx.lineTo(X(0.14), Y(ey - 0.35)); ctx.lineTo(X(0.03), Y(ey - 1.0 - lunge * 0.15)); ctx.closePath(); ctx.fillStyle = ink; ctx.fill();
+  if (flash) { ctx.globalAlpha = 0.22 * alpha; body(); ctx.fillStyle = '#ffcf8a'; ctx.fill(); }
+}
+
 function drawMonster(M, g, o) {
   const T = MONSTERS[M.kind], t = g.time, u = o.s * T.size;
   const atk = clamp(1 - (t - M.anim) / 0.7, 0, 1), lunge = Math.sin(atk * Math.PI);
@@ -948,6 +1025,7 @@ function drawMonster(M, g, o) {
   // shadow
   ctx.fillStyle = 'rgba(10,30,50,0.28)'; ctx.beginPath(); ctx.ellipse(o.x, o.y, 3.4 * u, 0.8 * u, 0, 0, Math.PI * 2); ctx.fill();
   if (T.chalk) { drawPajakojad(T, t, u, X, Y, lunge, breathe, t - M.hit < 0.06 && !M.dead, alpha); ctx.restore(); return; }
+  if (T.owl) { drawHedwigonna(T, t, u, X, Y, lunge, breathe, t - M.hit < 0.06 && !M.dead, alpha); ctx.restore(); return; }
   const cy = 3.2 + lunge * 0.35, rx = 3.0 * (1 + lunge * 0.05), ry = 2.9 * breathe * (1 + lunge * 0.06);
   // wings
   if (T.wings) {
@@ -1846,12 +1924,12 @@ function handleEvents(g) {
       case 'won':
         Snd.stop(); Snd.win(); confettiBurst();
         if (M) for (let i = 0; i < 4; i++) burst(M.x + rand(-2, 2), M.z, [MONSTERS[g.cls].body, MONSTERS[g.cls].light, '#ffffff'], 16, rand(1, 6));
-        if (g.fight) { setFight('Wygrana!', `${MONSTERS[g.cls].name} pokonany`, 'good'); ansL.disabled = ansR.disabled = true; }
+        if (g.fight) { setFight('Wygrana!', `${MONSTERS[g.cls].name} ${MONSTERS[g.cls].fem ? 'pokonana' : 'pokonany'}`, 'good'); ansL.disabled = ansR.disabled = true; }
         else setCard('Wygrana!', 'Potwór pokonany', 'good', 0);
         break;
       case 'lost':
         Snd.stop(); Snd.boo(); stinkShow();          // "buuuu" and the joke the children asked for
-        if (g.fight) { setFight('Przegrana', `${MONSTERS[g.cls].name} był silniejszy`, 'bad'); ansL.disabled = ansR.disabled = true; }
+        if (g.fight) { setFight('Przegrana', `${MONSTERS[g.cls].name} ${MONSTERS[g.cls].fem ? 'była silniejsza' : 'był silniejszy'}`, 'bad'); ansL.disabled = ansR.disabled = true; }
         else setCard('Przegrana', 'Wrogowie mieli przewagę', 'bad', 0);
         break;
     }
