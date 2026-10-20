@@ -5,14 +5,20 @@ Wcześniej gra nazywała się „Armia Liczb” (wersje 1–4) i „Głupia Gra�
 
 Armia biegnie przez różne światy. Przed każdą bramką pojawia się działanie, a na bramkach dwie odpowiedzi.
 Wbiegasz w bramkę z dobrym wynikiem i dostajesz tylu żołnierzy, ile pokazuje zielona liczba (na przykład +14).
-Zła odpowiedź zabiera tyle samo.
+Zła odpowiedź zabiera tyle samo. Strona dobrej bramki jest losowana przy każdej bramce, a zadania nie powtarzają się
+w jednej grze i w dwóch poprzednich grach tego samego poziomu, więc gry nie da się nauczyć na pamięć.
 
-Armia strzela sama. Między bramkami idą hordy zombie (od 11. gry także duże zombie z większą liczbą żyć),
-a po bokach drogi stoją rzeczy do zestrzelenia. Liczba na każdej mówi, ile trafień potrzeba:
+Po każdej bramce jest stały porządek:
 
-- **klatka z jeńcami:** po rozbiciu jeńcy dołączają do armii,
-- **skrzynia z bronią:** lepsza broń do końca gry (Blaster, Turboblaster, Plazma, Działko, Laser),
-- **zepsuty most:** każde trafienie kładzie deskę, a naprawiony daje moc: Olbrzymy albo Szybki ogień.
+1. Za dobrą bramką czeka nagroda do zestrzelenia (liczba mówi, ile trafień potrzeba):
+   - **klatka z jeńcami:** po rozbiciu jeńcy dołączają do armii,
+   - **skrzynia z bronią:** lepsza broń do końca gry (Blaster, Turboblaster, Plazma, Działko, Laser),
+   - **zepsuty most:** każde trafienie kładzie deskę, a naprawiony daje moc: Olbrzymy albo Szybki ogień.
+2. Po chwili wyskakują wrogowie i pojawiają się przeszkody. Wrogowie różnią się trudnością: zombie, mrówki (szybkie, w gromadach),
+   osy (latają zygzakiem), węże (2 trafienia) i klauny (3 trafienia, zabierają po 2 żołnierzy). Od 9. gry gromadę może prowadzić
+   duża wersja wroga. Nowe rodzaje dochodzą w kolejnych grach. Wróg, który minie armię, też zabiera żołnierzy.
+   Przeszkody: dziura w drodze, młot spadający z góry i płonące beczki (beczki da się zestrzelić).
+3. Dopiero gdy wrogowie znikną, pojawia się następne zadanie, z pełnym czasem na liczenie.
 
 W biegu armia nigdy nie traci ostatniego żołnierza, więc zawsze dochodzi do potwora.
 
@@ -23,9 +29,11 @@ liczy się tylko to, czy jest dobra (i czy zmieści się w czasie).
 
 ## Nauka po błędzie
 
-Po złej odpowiedzi gra się zatrzymuje i pokazuje krok po kroku, jak to policzyć w pamięci.
-Potem są 2 zadania tego samego rodzaju. Po dwóch dobrych odpowiedziach gra toczy się dalej.
-Przy złej odpowiedzi gra pisze „Prawie!”, pokazuje rozwiązanie i daje kolejne zadanie (najwyżej 5).
+Po złej odpowiedzi gra się zatrzymuje, włącza spokojną muzykę i pokazuje podpowiedź: sposób liczenia,
+w którym ostatni wynik jest zostawiony jako „?”. Gotowej odpowiedzi podpowiedź nie podaje.
+Potem jest ćwiczenie bez odliczania czasu. Na środku jest pasek: dobra odpowiedź przesuwa go o jedno pole w prawo (zielone),
+zła o jedno pole w lewo (czerwone). Trzy pola w prawo: gra toczy się dalej. Trzy pola w lewo: koniec gry
+z napisem „Chyba śmierdzi Ci spod pachy!”. Po złej odpowiedzi jest podpowiedź do tego zadania i nowe zadanie.
 Za każde dobrze rozwiązane zadanie jest +3 złota.
 
 ## Złoto i Zbrojownia
@@ -41,7 +49,7 @@ Siła potwora jest liczona osobno dla każdej gry. Według symulacji (tysiące r
 
 - wszystkie odpowiedzi w walce dobre: wygrana zawsze, niezależnie od tego, jak szybko się odpowiada.
   Cios potwora nigdy nie zabiera więcej żołnierzy, niż daje dobra odpowiedź,
-- wszystkie bramki dobrze, a w walce odpowiedzi na chybił trafił (gracz celuje w skrzynie): wygrana w około 38% gier,
+- wszystkie bramki dobrze, a w walce odpowiedzi na chybił trafił (gracz strzela w nagrody i omija przeszkody): wygrana w około 40% gier,
 - to samo z połową ulepszeń ze Zbrojowni: około 58%, ze wszystkimi: około 68%.
 
 ## Levele i gry

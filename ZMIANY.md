@@ -7,6 +7,40 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 
 ---
 
+## Wersja 13 (20 października 2026)
+
+Zapis w repozytorium: (uzupełnię w następnym zapisie)
+
+### Dodane
+- **Nowy porządek po każdej bramce:** za dobrą bramką nagroda, po chwili wrogowie i przeszkody, a dopiero gdy wrogowie znikną,
+  następne zadanie z pełnym czasem na liczenie (zawsze co najmniej 6,8 sekundy). Do tego czasu na bramce są znaki zapytania.
+- **Nowi wrogowie:** mrówki (szybkie, w gromadach), osy (latają zygzakiem), węże (2 trafienia) i klauny (3 trafienia,
+  zabierają po 2 żołnierzy), każdy także w dużej wersji. Nowe rodzaje dochodzą w kolejnych grach.
+- **Przeszkody na drodze:** dziura w nawierzchni, młot spadający z góry i płonące beczki. Beczki da się zestrzelić,
+  a ich wybuch pali wrogów obok.
+- **Wróg, który minie armię, też zabiera żołnierzy.**
+- **Ćwiczenie po błędzie z paskiem:** spokojna muzyka, bez odliczania czasu. Dobra odpowiedź przesuwa pasek o pole w prawo,
+  zła o pole w lewo. 3 dobre: grasz dalej. 3 złe: koniec gry z napisem „Chyba śmierdzi Ci spod pachy!”.
+
+### Zmienione
+- **Podpowiedzi nie podają gotowego wyniku:** pokazują sposób liczenia, a ostatni wynik zostawiają jako „?”.
+  Sprawdzone automatycznie na 48 000 zadań. Po pomyłce (przy włączonej nauce) gra nie pokazuje od razu dobrej odpowiedzi.
+- **Bez nauki na pamięć:** zadania nie powtarzają się w jednej grze, a gra omija też zadania z dwóch poprzednich gier
+  tego samego poziomu. Powtórki z poprzedniej gry spadły z około 15% do około 5%.
+- Większe pule zadań: Pitagoras, liczby rzymskie, objętość sześcianu, prawdopodobieństwo, kwadraty i sześciany, potęgi,
+  ułamki okresowe i zaokrąglanie, osie symetrii, procenty w praktyce, pieniądze, obwody, koło, dzielenie, jednostki.
+- Skrzynie z bronią, klatki i mosty stoją teraz za dobrą bramką, a nie przypadkiem za złą.
+- Wrogów jest o około 30% więcej. Duże wersje pojawiają się od 9. gry (wcześniej od 11.).
+- Instrukcja w menu opisuje nowy przebieg gry.
+
+### Usunięte
+- Stare ćwiczenie po błędzie (2 zadania, pokazywanie dobrej odpowiedzi po pomyłce).
+
+### Do sprawdzenia
+- Liczby rzymskie do XII i sześciany liczb nadal czasem się powtarzają, bo w programie szkolnym jest ich mało.
+
+---
+
 ## Wersja 12 (20 października 2026)
 
 Zapis w repozytorium: `6ace705`
