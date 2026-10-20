@@ -9,6 +9,8 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 
 ## Wersja 6 (20 października 2026)
 
+Zapis w repozytorium: `5ffe7d3`
+
 ### Zmienione
 - **Nowa nazwa gry: Śmierdzipacha.** Wybrały ją dzieci. Widać ją w menu, w tytule strony i pod ikoną na ekranie telefonu.
 - **Polskie litery w dużych napisach wyglądają tak samo jak reszta.** Czcionka gry nie ma liter ą, ć, ę, ń, ś, ź, ż,
