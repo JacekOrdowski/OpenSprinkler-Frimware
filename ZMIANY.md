@@ -9,7 +9,7 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 
 ## Wersja 13 (20 października 2026)
 
-Zapis w repozytorium: (uzupełnię w następnym zapisie)
+Zapis w repozytorium: `9098b43`
 
 ### Dodane
 - **Nowy porządek po każdej bramce:** za dobrą bramką nagroda, po chwili wrogowie i przeszkody, a dopiero gdy wrogowie znikną,
