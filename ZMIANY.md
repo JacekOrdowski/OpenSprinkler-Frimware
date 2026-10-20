@@ -7,6 +7,39 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 
 ---
 
+## Wersja 12 (20 października 2026)
+
+Zapis w repozytorium: `52a704d`
+
+### Dodane
+- **Nowy potwór na końcu Levelu 3: Hedwigonna**, przeniesiona z figurki zrobionej długopisem 3D: biała sowa z czarnym obrysem,
+  skrzydła w kropki, pomarańczowe, przymknięte oczy, list z czerwoną pieczęcią w pazurach i niebieska deska pod łapami.
+  Kołysze skrzydłami i mruga, a gdy atakuje, podnosi skrzydła i szeroko otwiera oczy. Teksty mówią o niej „pokonana”, „była silniejsza”.
+- **Przycisk „Udostępnij grę” w menu** z kodem QR do gry. Drugi telefon albo tablet skanuje go aparatem, bez SMS-a i komunikatorów.
+  Są też przyciski „Wyślij link” (zwykłe udostępnianie telefonu) i „Kopiuj link”. Działa również w grze dodanej do ekranu telefonu.
+- **Zakładka „Kod QR”** w okienku „Dodaj grę do ekranu telefonu”, obok zakładek iPhone / iPad i Android.
+- **Trzy nowe szybkie style muzyki w duchu Geometry Dash**: Turbo (taneczny, akordy „pompują” do rytmu), Neon (jak z dawnych konsol)
+  i Skok (ciężki rytm z falującym basem). Każdy ma wersję do biegu i szybszą do walki, z werblem, który narasta przed refrenem.
+
+### Zmienione
+- **Muzyka jest losowana** w każdej grze spośród: Elektro, Retro, Wesoła, Chill, Turbo, Neon i Skok, nigdy ta sama dwa razy pod rząd.
+  Walka z potworem ma styl swojej gry. Przycisk „Muzyka” tylko włącza i wyłącza muzykę (nie ma już wyboru stylu).
+- Okienko „Dodaj grę do ekranu telefonu” na iPhonie pokazuje kroki jak w Safari w iOS 26: „Udostępnij” na górze menu,
+  „Do ekranu głównego” (czasem po „Pokaż więcej”) i przełącznik „Otwórz jako aplikację www”.
+- To samo okienko na Androidzie zaczyna od ikony „Zainstaluj” na pasku adresu Chrome (ekran ze strzałką w dół, obok gwiazdki),
+  a potem okienka „Zainstaluj aplikację”, jak na prawdziwym telefonie.
+- Okienko pokazuje się też na dużych tabletach z Androidem, na których Chrome udaje komputer.
+
+### Usunięte
+- Potwór Ropuchor z Levelu 3 (zastąpiła go Hedwigonna).
+- Styl muzyki Przygoda (nie ma go w losowaniu; da się go przywrócić z wcześniejszego zapisu).
+- Przycisk z kodem QR na komputerze, który był tylko w wersji testowej: zastąpiło go „Udostępnij grę”.
+
+### Do sprawdzenia
+- Przycisk „Wyślij link” widać tylko w przeglądarkach, które umieją udostępniać (telefony); w przeglądarce testowej na komputerze go nie ma.
+
+---
+
 ## Wersja 11 (20 października 2026)
 
 Zapis w repozytorium: `81a16e9`
