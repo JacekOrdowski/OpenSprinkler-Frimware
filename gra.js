@@ -2200,7 +2200,7 @@ const isStandalone = () => navigator.standalone === true ||
 const canOfferInstall = () => (IS_IOS || IS_ANDROID) && !isStandalone() && window.top === window;
 let installEvent = null;      // Android Chrome: the system "install" window, if the phone offers it
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvent = e; $('instInstall').hidden = instOS !== 'android'; });
-window.addEventListener('appinstalled', () => { installEvent = null; closeInstall(); updateInstallBtn(); });
+window.addEventListener('appinstalled', () => { installEvent = null; closeInstall(); $('btnInstallHelp').hidden = true; });
 
 // Pictures: a phone screen with the button to tap circled in orange
 const TAP = '#ff9f1a', INK = '#15233b', BLUEI = '#2f7df6', GREY = '#5f6b7d';
@@ -2285,9 +2285,7 @@ function renderInstall() {
   $('instSteps').innerHTML = inApp ? li(INSTALL.inApp) : INSTALL[instOS].map(li).join('') + (qr ? '' : li(INSTALL.done));
   for (const b of $('instTabs').children) b.setAttribute('aria-selected', String(b.dataset.os === instOS));
 }
-// the menu button: on a phone it explains how to add the game; elsewhere (a computer, or the game already added) it shows the QR code
-function updateInstallBtn() { $('btnInstallHelp').textContent = canOfferInstall() ? 'Jak dodać grę do ekranu telefonu' : 'Kod QR: zagraj na innym tablecie lub telefonie'; }
-function openInstall() { if (!canOfferInstall()) instOS = 'qr'; renderInstall(); $('scrInstall').hidden = false; $('scrInstall').querySelector('.card').scrollTop = 0; }
+function openInstall() { renderInstall(); $('scrInstall').hidden = false; $('scrInstall').querySelector('.card').scrollTop = 0; }
 function closeInstall() { $('scrInstall').hidden = true; }
 for (const b of $('instTabs').children) b.addEventListener('click', () => { Snd.unlock(); Snd.tap(); instOS = b.dataset.os; renderInstall(); });
 tap('instClose', closeInstall);
@@ -2298,6 +2296,23 @@ tap('instInstall', () => {
   installEvent.prompt();
   installEvent.userChoice.then(c => { if (c.outcome === 'accepted') closeInstall(); }).catch(() => {});
   installEvent = null; renderInstall();
+});
+// Share the game: the QR code for another phone or tablet, also when the game already runs from the home screen
+const SHARE_URL = `https://${GAME_URL}/`;
+function openShare() {
+  $('shQr').innerHTML = qrPic();
+  $('shSend').hidden = !navigator.share;
+  $('shCopy').textContent = 'Kopiuj link';
+  $('scrShare').hidden = false; $('scrShare').querySelector('.card').scrollTop = 0;
+}
+function closeShare() { $('scrShare').hidden = true; }
+tap('btnShare', openShare);
+tap('shClose', closeShare);
+tap('shBack', closeShare);
+tap('shSend', () => { navigator.share({ title: 'Śmierdzipacha', text: 'Zagraj w Śmierdzipachę: matematyka w biegu i w walce!', url: SHARE_URL }).catch(() => {}); });
+tap('shCopy', () => {
+  const done = () => { $('shCopy').textContent = 'Skopiowano link'; };
+  try { navigator.clipboard.writeText(SHARE_URL).then(done, () => { prompt('Skopiuj ten link:', SHARE_URL); }); } catch (e) { prompt('Skopiuj ten link:', SHARE_URL); }
 });
 tap('instCopy', () => {
   const done = () => { $('instCopy').textContent = 'Skopiowano. Wklej link w Safari albo Chrome'; };
@@ -2327,6 +2342,7 @@ window.addEventListener('keydown', e => {
   const L = e.key === 'ArrowLeft' || e.key === 'a', R = e.key === 'ArrowRight' || e.key === 'd';
   if (mode === 'play' && game.state === 'fight' && (L || R)) { if (!e.repeat) pickAnswer(L); return; }
   if (!$('scrInstall').hidden) { if (e.key === 'Escape') closeInstall(); return; }
+  if (!$('scrShare').hidden) { if (e.key === 'Escape') closeShare(); return; }
   if (mode === 'lesson') { if ((L || R) && !e.repeat) lessonPick(L); return; }
   if (L) keys.left = true; else if (R) keys.right = true;
   else if (e.key === 'Escape' || e.key === 'p') { if (mode === 'play') pauseGame(); else if (mode === 'pause') resumeGame(); }
@@ -2371,7 +2387,7 @@ function boot() {
   if ('serviceWorker' in navigator && window.top === window && /^https:|^http:\/\/(localhost|127\.0\.0\.1)/.test(location.href)) {
     navigator.serviceWorker.register('sw.js').catch(() => {});   // lets the game open without internet
   }
-  updateInstallBtn(); $('btnInstallHelp').hidden = false;
+  $('btnInstallHelp').hidden = !canOfferInstall();
   if (canOfferInstall()) openInstall();
   if (document.fonts && document.fonts.load) document.fonts.load(`40px ${FD}`, 'Aąćęńśźż').catch(() => {});
   requestAnimationFrame(t => { last = t; frame(t); });
