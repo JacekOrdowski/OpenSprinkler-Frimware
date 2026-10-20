@@ -88,7 +88,7 @@ program gra je instrumentami i zapisuje pętle MP3. Bez internetu gra używa daw
 
 ## Jak zagrać
 
-Gra jest w internecie pod adresem **https://jacekordowski.github.io/OpenSprinkler-Frimware/**
+Gra jest w internecie pod adresem **https://jacekordowski.github.io/Yaceq-Placeq/**
 (GitHub Pages; każda nowa wersja pojawia się tam sama po minucie lub dwóch).
 Działa w każdej przeglądarce, na telefonie i na komputerze, bez konta i bez instalowania.
 
