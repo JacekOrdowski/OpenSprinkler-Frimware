@@ -532,14 +532,15 @@ const Snd = (() => {
   // where the loop starts and ends in every file (printed by narzedzia/muzyka.py)
   const MUSIC_LOOPS = { 'wesola-bieg': [0.5, 33.603424], 'wesola-walka': [0.5, 29.590884], 'przygoda-bieg': [0.5, 36.055578], 'przygoda-walka': [0.5, 27.928549],
     'chill-bieg': [0.5, 46.214308], 'chill-walka': [0.5, 41.351066], 'elektro-bieg': [0.5, 33.042404], 'elektro-walka': [0.5, 29.156712] };
-  const buffers = {}, loading = {};
+  const buffers = {}, loading = {}, failed = {};
   let cur = null, want = null;
   function loadLoop(file) {
     if (buffers[file]) return Promise.resolve(buffers[file]);
+    if (Date.now() - (failed[file] || -1e9) < 60000) return Promise.resolve(null);   // do not ask again at once after a failure
     if (!loading[file]) {
       loading[file] = fetch(`muzyka/${file}.mp3`).then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
         .then(b => new Promise((res, rej) => ctx.decodeAudioData(b, res, rej)))
-        .then(buf => (buffers[file] = buf)).catch(() => null)
+        .then(buf => (buffers[file] = buf)).catch(() => { failed[file] = Date.now(); return null; })
         .finally(() => { delete loading[file]; });
     }
     return loading[file];
