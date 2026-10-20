@@ -7,6 +7,32 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 
 ---
 
+## Wersja 9 (20 października 2026)
+
+### Dodane
+- **Okienko „Dodaj grę do ekranu telefonu”** z obrazkową instrukcją krok po kroku, osobno dla iPhone'a/iPada i dla Androida.
+  - Pojawia się przy każdym uruchomieniu gry w przeglądarce telefonu. Nie pojawia się, gdy gra jest już uruchomiona z ikony
+    na ekranie telefonu, ani na komputerze. Można je zamknąć krzyżykiem albo przyciskiem „Teraz graj w przeglądarce”.
+  - iPhone: instrukcja pasuje też do nowego Safari w iOS 26, gdzie przycisk „Udostępnij” jest schowany pod trzema kropkami.
+  - Android: jeśli telefon na to pozwala, jest przycisk **„Zainstaluj grę”**, który od razu otwiera okno instalacji.
+  - Gdy link otworzy się w komunikatorze (Messenger, Facebook, Instagram, TikTok itp.), okienko podpowiada,
+    jak otworzyć grę w Safari albo Chrome, i ma przycisk „Kopiuj link do gry”. Z komunikatora nie da się dodać gry do ekranu.
+- W menu przycisk „Jak dodać grę do ekranu telefonu”, który otwiera to okienko jeszcze raz.
+- **Gra działa bez internetu**, jeśli była już wcześniej otwarta na tym telefonie. Z internetem zawsze pobiera najnowszą wersję.
+- Ikona 192 × 192, której Android potrzebuje do instalacji.
+
+### Zmienione
+- Nic.
+
+### Usunięte
+- Nic.
+
+### Do sprawdzenia
+- Na prawdziwych telefonach: czy na Androidzie pojawia się przycisk „Zainstaluj grę” i czy napisy w menu przeglądarki zgadzają się z instrukcją
+  (różne telefony i wersje Chrome mają trochę inne nazwy, np. „Dodaj do ekranu głównego” albo „Zainstaluj aplikację”).
+
+---
+
 ## Wersja 8 (20 października 2026)
 
 Zapis w repozytorium: `ae8ed79`

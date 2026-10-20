@@ -4,7 +4,7 @@
 'use strict';
 const HAS_DOM = typeof document !== 'undefined';
 const Z = globalThis.Zadania;
-const WERSJA = 8;          // numer wersji gry; opis zmian w ZMIANY.md
+const WERSJA = 9;          // numer wersji gry; opis zmian w ZMIANY.md
 
 /* ============================================================
    Helpers
@@ -2037,6 +2037,100 @@ tap('leNext', lessonNext);
 ansL.addEventListener('click', () => pickAnswer(true));
 ansR.addEventListener('click', () => pickAnswer(false));
 
+/* ============================================================
+   How to add the game to the home screen: shown every time the game is opened in a phone browser
+   (not when it already runs from the home screen), with pictures for iPhone and Android
+   ============================================================ */
+const UA = navigator.userAgent || '';
+const IS_IOS = /iPhone|iPad|iPod/.test(UA) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const IS_ANDROID = /Android/i.test(UA);
+// browsers inside other apps (Messenger, Facebook, Instagram, TikTok…) cannot put a page on the home screen
+const IN_APP = /FBAN|FBAV|FB_IAB|FBIOS|Instagram|Messenger|Line\/|TikTok|musical_ly|Snapchat|GSA\/|; wv\)/.test(UA);
+const isStandalone = () => navigator.standalone === true ||
+  (!!window.matchMedia && ['standalone', 'fullscreen', 'minimal-ui'].some(m => matchMedia(`(display-mode: ${m})`).matches));
+const canOfferInstall = () => (IS_IOS || IS_ANDROID) && !isStandalone() && window.top === window;
+let installEvent = null;      // Android Chrome: the system "install" window, if the phone offers it
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvent = e; $('instInstall').hidden = instOS !== 'android'; });
+window.addEventListener('appinstalled', () => { installEvent = null; closeInstall(); $('btnInstallHelp').hidden = true; });
+
+// Pictures: a phone screen with the button to tap circled in orange
+const TAP = '#ff9f1a', INK = '#15233b', BLUEI = '#2f7df6', GREY = '#5f6b7d';
+const pic = body => `<svg viewBox="0 0 260 140" aria-hidden="true"><rect width="260" height="140" rx="14" fill="#e8eef6"/>${body}</svg>`;
+const dots = (x, y, vertical) => `<g fill="${INK}">${[-7, 0, 7].map(d => `<circle cx="${vertical ? x : x + d}" cy="${vertical ? y + d : y}" r="2.3"/>`).join('')}</g>`;
+const ring = (x, y, r) => `<circle class="tap" cx="${x}" cy="${y}" r="${r}" fill="none" stroke="${TAP}" stroke-width="4"/>`;
+const box = (x, y, w, h) => `<rect class="tap" x="${x}" y="${y}" width="${w}" height="${h}" rx="9" fill="none" stroke="${TAP}" stroke-width="3.5"/>`;
+const row = (y, label, icon, hi) => `${hi ? `<rect x="74" y="${y}" width="168" height="26" rx="8" fill="#fff3d6"/>` : ''}<text x="86" y="${y + 17}" font-size="12" fill="${INK}">${label}</text>${icon || ''}${hi ? box(72, y - 2, 172, 30) : ''}`;
+const shareIcon = (x, y) => `<g fill="none" stroke="${BLUEI}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M${x} ${y + 2}v-12M${x - 4} ${y - 6}l4-4 4 4M${x - 6} ${y - 2}h-2v10h16v-10h-2"/></g>`;
+const plusIcon = (x, y) => `<g fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round"><rect x="${x - 7}" y="${y - 7}" width="14" height="14" rx="3"/><path d="M${x} ${y - 4}v8M${x - 4} ${y}h8"/></g>`;
+const gameIcon = (x, y, s) => `<rect x="${x}" y="${y}" width="${s}" height="${s}" rx="${s * 0.24}" fill="#ffc531" stroke="${INK}" stroke-width="2"/><text class="disp" x="${x + s / 2}" y="${y + s * 0.62}" text-anchor="middle" font-size="${s * 0.34}" fill="${INK}">7·8</text>`;
+const INSTALL = {
+  ios: [
+    ['Stuknij <b>⋯</b> (trzy kropki) obok adresu strony na dole ekranu. Jeśli od razu widzisz ikonę <b>Udostępnij</b> (kwadrat ze strzałką w górę), stuknij ją i przejdź do kroku 3.',
+      pic(`<rect x="14" y="12" width="232" height="70" rx="10" fill="#fff"/><text class="disp" x="130" y="46" text-anchor="middle" font-size="20" fill="${INK}">Śmierdzipacha</text><text x="130" y="66" text-anchor="middle" font-size="10" fill="${GREY}">strona gry w Safari</text>
+        <circle cx="34" cy="111" r="16" fill="#fff"/><path d="M38 103l-8 8 8 8" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>
+        <rect x="58" y="95" width="188" height="32" rx="16" fill="#fff" stroke="#cdd6e2"/><text x="72" y="115" font-size="11" fill="${INK}">jacekordowski.github.io</text>
+        <circle cx="226" cy="111" r="12" fill="#e8eef6"/>${dots(226, 111)}${ring(226, 111, 18)}`)],
+    ['Stuknij <b>Udostępnij</b>.',
+      pic(`<rect x="70" y="12" width="176" height="116" rx="14" fill="#fff"/>${row(20, 'Nowa karta', plusIcon(228, 33))}${row(48, 'Dodaj zakładkę', '')}${row(76, 'Udostępnij', shareIcon(228, 93), true)}${row(104, 'Znajdź na stronie', '')}`)],
+    ['Przewiń listę w dół i stuknij <b>Dodaj do ekranu początkowego</b>.',
+      pic(`<rect x="14" y="12" width="232" height="116" rx="14" fill="#fff"/>${[40, 80, 120, 160, 200].map(x => `<circle cx="${x + 10}" cy="34" r="13" fill="#dfe6ef"/>`).join('')}
+        <g transform="translate(-56 0)">${row(56, 'Kopiuj', '')}${row(84, 'Dodaj do ekranu początkowego', plusIcon(290, 97), true)}</g>
+        <text x="30" y="128" font-size="11" fill="${GREY}">Dodaj do ulubionych…</text>`)],
+    ['Zostaw włączone <b>Otwórz jako aplikację internetową</b> i stuknij <b>Dodaj</b> w prawym górnym rogu.',
+      pic(`<rect x="14" y="12" width="232" height="116" rx="14" fill="#fff"/><text x="28" y="34" font-size="12" fill="${BLUEI}">Anuluj</text><text x="130" y="34" text-anchor="middle" font-size="12" fill="${INK}">Dodaj do ekranu</text>
+        <text x="230" y="34" text-anchor="end" font-size="13" fill="${BLUEI}">Dodaj</text>${box(194, 18, 46, 24)}
+        ${gameIcon(28, 50, 38)}<rect x="76" y="56" width="156" height="26" rx="8" fill="#eef2f7"/><text x="86" y="73" font-size="12" fill="${INK}">Śmierdzipacha</text>
+        <text x="28" y="104" font-size="11" fill="${INK}">Otwórz jako aplikację</text><text x="28" y="119" font-size="11" fill="${INK}">internetową</text><rect x="196" y="98" width="36" height="20" rx="10" fill="#34c759"/><circle cx="222" cy="108" r="8" fill="#fff"/>`)],
+  ],
+  android: [
+    ['W przeglądarce Chrome stuknij <b>⋮</b> (trzy kropki) w prawym górnym rogu.',
+      pic(`<rect x="10" y="10" width="240" height="40" rx="10" fill="#fff"/><rect x="22" y="18" width="160" height="24" rx="12" fill="#eef2f7"/><text x="34" y="34" font-size="11" fill="${INK}">jacekordowski.github.io</text>
+        <rect x="194" y="21" width="18" height="18" rx="4" fill="none" stroke="${INK}" stroke-width="2"/><text x="203" y="34" text-anchor="middle" font-size="10" fill="${INK}">1</text>
+        ${dots(232, 30, true)}${ring(232, 30, 16)}<rect x="10" y="58" width="240" height="72" rx="10" fill="#fff"/><text class="disp" x="130" y="100" text-anchor="middle" font-size="20" fill="${INK}">Śmierdzipacha</text>`)],
+    ['Stuknij <b>Dodaj do ekranu głównego</b>. W niektórych telefonach ten napis to <b>Zainstaluj aplikację</b>.',
+      pic(`<rect x="70" y="8" width="176" height="124" rx="12" fill="#fff"/>${row(14, 'Nowa karta', '')}${row(38, 'Historia', '')}${row(62, 'Pobrane pliki', '')}${row(88, 'Dodaj do ekranu głównego', '', true)}${row(112, 'Ustawienia', '')}`)],
+    ['Stuknij <b>Zainstaluj</b> (albo <b>Dodaj</b>). Jeśli telefon zapyta, gdzie położyć ikonę, wybierz <b>Dodaj automatycznie</b>.',
+      pic(`<rect x="34" y="14" width="192" height="112" rx="16" fill="#fff"/><text x="52" y="40" font-size="13" fill="${INK}">Zainstalować aplikację?</text>${gameIcon(52, 52, 32)}<text x="94" y="73" font-size="12" fill="${INK}">Śmierdzipacha</text>
+        <text x="120" y="112" text-anchor="middle" font-size="12" fill="${BLUEI}">Anuluj</text><rect x="152" y="94" width="62" height="26" rx="13" fill="${BLUEI}"/><text x="183" y="112" text-anchor="middle" font-size="12" fill="#fff">Zainstaluj</text>${box(148, 90, 70, 34)}`)],
+  ],
+  done: ['Gotowe! Uruchamiaj grę tą ikoną. Otworzy się na cały ekran, jak zwykła aplikacja.',
+    pic(`<rect x="10" y="8" width="240" height="124" rx="12" fill="#5b6fd6"/>${[0, 1, 2, 3].map(i => [0, 1].map(j => (i === 1 && j === 0) ? '' : `<rect x="${34 + i * 52}" y="${20 + j * 58}" width="36" height="36" rx="9" fill="rgba(255,255,255,0.35)"/>`).join('')).join('')}
+      ${gameIcon(86, 20, 36)}${ring(104, 38, 26)}<text x="104" y="70" text-anchor="middle" font-size="9" fill="#fff">Śmierdzipacha</text>`)],
+  inApp: ['Ten link otworzył się w komunikatorze, np. w Messengerze. Stąd nie da się dodać gry do ekranu. Stuknij <b>⋯</b> albo <b>⋮</b> w rogu i wybierz <b>Otwórz w przeglądarce</b> (Safari albo Chrome). Możesz też skopiować link i wkleić go w przeglądarce.',
+    pic(`<rect x="10" y="10" width="240" height="34" rx="10" fill="#fff"/><path d="M24 21l10 10M34 21L24 31" stroke="${INK}" stroke-width="2.5" stroke-linecap="round"/><text x="130" y="31" text-anchor="middle" font-size="11" fill="${INK}">jacekordowski.github.io</text>
+      ${dots(230, 27)}${ring(230, 27, 15)}<rect x="96" y="52" width="150" height="76" rx="12" fill="#fff"/>
+      <rect x="102" y="60" width="138" height="26" rx="8" fill="#fff3d6"/><text x="112" y="77" font-size="11" fill="${INK}">Otwórz w przeglądarce</text>${box(100, 58, 142, 30)}<text x="112" y="111" font-size="11" fill="${GREY}">Kopiuj link</text>`)],
+};
+let instOS = IS_ANDROID ? 'android' : 'ios';
+function renderInstall() {
+  const li = ([text, svg]) => `<li><p><span>${text}</span></p>${svg}</li>`;
+  const inApp = IN_APP && canOfferInstall();
+  $('instTitle').textContent = inApp ? 'Otwórz grę w przeglądarce' : 'Dodaj grę do ekranu telefonu';
+  $('instWhy').textContent = inApp ? 'Potem dodasz ją do ekranu telefonu i będzie się otwierać jak aplikacja.'
+    : 'Gra otworzy się jak aplikacja: na cały ekran, bez paska przeglądarki, jednym stuknięciem.';
+  $('instTabs').hidden = inApp;
+  $('instCopy').hidden = !inApp;
+  $('instInstall').hidden = !(installEvent && instOS === 'android' && !inApp);
+  $('instSteps').innerHTML = inApp ? li(INSTALL.inApp) : INSTALL[instOS].map(li).join('') + li(INSTALL.done);
+  for (const b of $('instTabs').children) b.setAttribute('aria-selected', String(b.dataset.os === instOS));
+}
+function openInstall() { renderInstall(); $('scrInstall').hidden = false; $('scrInstall').querySelector('.card').scrollTop = 0; }
+function closeInstall() { $('scrInstall').hidden = true; }
+for (const b of $('instTabs').children) b.addEventListener('click', () => { Snd.unlock(); Snd.tap(); instOS = b.dataset.os; renderInstall(); });
+tap('instClose', closeInstall);
+tap('instLater', closeInstall);
+tap('btnInstallHelp', openInstall);
+tap('instInstall', () => {
+  if (!installEvent) return;
+  installEvent.prompt();
+  installEvent.userChoice.then(c => { if (c.outcome === 'accepted') closeInstall(); }).catch(() => {});
+  installEvent = null; renderInstall();
+});
+tap('instCopy', () => {
+  const done = () => { $('instCopy').textContent = 'Skopiowano. Wklej link w Safari albo Chrome'; };
+  try { navigator.clipboard.writeText(location.href).then(done, () => { prompt('Skopiuj ten link:', location.href); }); } catch (e) { prompt('Skopiuj ten link:', location.href); }
+});
+
 // Steering: the army follows the finger
 let drag = null;
 canvas.addEventListener('pointerdown', e => {
@@ -2059,6 +2153,7 @@ const keys = { left: false, right: false };
 window.addEventListener('keydown', e => {
   const L = e.key === 'ArrowLeft' || e.key === 'a', R = e.key === 'ArrowRight' || e.key === 'd';
   if (mode === 'play' && game.state === 'fight' && (L || R)) { if (!e.repeat) pickAnswer(L); return; }
+  if (!$('scrInstall').hidden) { if (e.key === 'Escape') closeInstall(); return; }
   if (mode === 'lesson') { if ((L || R) && !e.repeat) lessonPick(L); return; }
   if (L) keys.left = true; else if (R) keys.right = true;
   else if (e.key === 'Escape' || e.key === 'p') { if (mode === 'play') pauseGame(); else if (mode === 'pause') resumeGame(); }
@@ -2100,6 +2195,11 @@ function frame(now) {
 function boot() {
   layout();
   goMenu();
+  if ('serviceWorker' in navigator && window.top === window && /^https:|^http:\/\/(localhost|127\.0\.0\.1)/.test(location.href)) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});   // lets the game open without internet
+  }
+  $('btnInstallHelp').hidden = !canOfferInstall();
+  if (canOfferInstall()) openInstall();
   if (document.fonts && document.fonts.load) document.fonts.load(`40px ${FD}`, 'Aąćęńśźż').catch(() => {});
   requestAnimationFrame(t => { last = t; frame(t); });
 }

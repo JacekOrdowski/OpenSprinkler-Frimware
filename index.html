@@ -9,6 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Śmierdzipacha">
 <meta name="theme-color" content="#1a5f9e">
 <link rel="apple-touch-icon" href="ikona-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="ikona-192.png">
 <link rel="icon" type="image/png" href="ikona-180.png">
 <link rel="manifest" href="manifest.webmanifest">
 <!-- ARTIFACT-START -->
@@ -316,10 +317,35 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
 .skin.on { box-shadow: 0 0 0 3px var(--blue), 0 3px 0 var(--paper-edge); }
 .skin:disabled { opacity: 0.55; cursor: default; }
 
+/* ---------- how to add the game to the home screen ---------- */
+.screen.install { z-index: 30; }
+.inst { position: relative; gap: 12px; text-align: left; }
+.inst h2 { text-align: center; padding: 0 34px; font-size: 30px; }
+.inst .hint { text-align: center; }
+.inst-x { position: absolute; top: 12px; right: 12px; background: #fff; box-shadow: 0 3px 0 var(--paper-edge); }
+.inst-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px; border-radius: 14px; background: #efe6d4; }
+.inst-tabs button { min-height: 42px; border-radius: 11px; font-weight: 900; font-size: 15px; color: var(--muted); }
+.inst-tabs button[aria-selected="true"] { background: #fff; color: var(--ink); box-shadow: 0 2px 0 var(--paper-edge); }
+.inst-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; counter-reset: st; }
+.inst-steps li { display: grid; gap: 8px; padding: 10px 12px 12px; border-radius: 16px; background: #fff; }
+.inst-steps p { margin: 0; display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: start; font-weight: 800; font-size: 15px; line-height: 1.35; }
+.inst-steps p::before {
+  counter-increment: st; content: counter(st); width: 28px; height: 28px; border-radius: 50%;
+  background: var(--blue); color: #fff; display: grid; place-items: center; font-family: var(--display); font-size: 16px;
+}
+.inst-steps li.done p::before { content: "✓"; background: var(--good); }
+.inst-steps b { color: var(--blue); }
+.inst-steps svg { display: block; width: 100%; height: auto; }
+.inst-steps svg text { font-family: var(--body); font-weight: 800; }
+.inst-steps svg .disp { font-family: var(--display); font-weight: 400; }
+.inst .tap { animation: tapPulse 1.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes tapPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(1.12); } }
+
 @media (prefers-reduced-motion: reduce) {
   .problem.pop, .fight.pop .fight-q, .stars svg.on { animation: none; }
   .logo, .logo-gate { transform: none; }
   .card.shake { animation: none; }
+  .inst .tap { animation: none; }
 }
 </style>
 </head>
@@ -379,7 +405,8 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
       <button class="btn btn-ghost" data-toggle="sfx" aria-pressed="true">Dźwięki: wł.</button>
     </div>
     <button class="btn btn-ghost" data-toggle="learn" aria-pressed="true">Nauka po błędzie: wł.</button>
-    <p class="version" id="menuVersion">Wersja 8</p>
+    <button class="btn btn-ghost" id="btnInstallHelp" hidden>Jak dodać grę do ekranu telefonu</button>
+    <p class="version" id="menuVersion">Wersja 9</p>
   </div>
 </div>
 
@@ -429,6 +456,24 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
       <button class="btn btn-ghost" data-toggle="sfx" aria-pressed="true">Dźwięki: wł.</button>
     </div>
     <button class="btn btn-ghost" data-toggle="learn" aria-pressed="true">Nauka po błędzie: wł.</button>
+  </div>
+</div>
+
+<div class="screen install" id="scrInstall" hidden>
+  <div class="card inst" role="dialog" aria-modal="true" aria-labelledby="instTitle">
+    <button class="icon-btn inst-x" id="instClose" aria-label="Zamknij">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <h2 id="instTitle">Dodaj grę do ekranu telefonu</h2>
+    <p class="hint" id="instWhy">Gra otworzy się jak aplikacja: na cały ekran, bez paska przeglądarki, jednym stuknięciem.</p>
+    <button class="btn btn-gold" id="instInstall" hidden>Zainstaluj grę</button>
+    <div class="inst-tabs" id="instTabs" role="tablist" aria-label="Telefon">
+      <button role="tab" data-os="ios" aria-selected="true">iPhone / iPad</button>
+      <button role="tab" data-os="android" aria-selected="false">Android</button>
+    </div>
+    <ol class="inst-steps" id="instSteps"></ol>
+    <button class="btn btn-gold" id="instCopy" hidden>Kopiuj link do gry</button>
+    <button class="btn btn-ghost" id="instLater">Teraz graj w przeglądarce</button>
   </div>
 </div>
 

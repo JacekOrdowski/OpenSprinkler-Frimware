@@ -92,6 +92,9 @@ Gra jest w internecie pod adresem **https://jacekordowski.github.io/Yaceq-Placeq
 (GitHub Pages; każda nowa wersja pojawia się tam sama po minucie lub dwóch).
 Działa w każdej przeglądarce, na telefonie i na komputerze, bez konta i bez instalowania.
 
+Przy każdym otwarciu w przeglądarce telefonu gra pokazuje okienko z obrazkową instrukcją, jak dodać ją do ekranu
+(osobno dla iPhone'a i Androida). Po dodaniu gra otwiera się jak aplikacja i działa też bez internetu.
+
 ### Na iPhonie
 
 Gra działa w przeglądarce Safari, bez instalowania ze sklepu.
