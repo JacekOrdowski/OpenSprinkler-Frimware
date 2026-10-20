@@ -39,13 +39,14 @@ function stageConfig(cls, s) {
   const speed = C.speed + 0.6 * f;
   // After every gate: a calm moment with the reward on the side of the right answer, then enemies and obstacles,
   // and only when they are behind comes the next problem, with the whole thinking time before its gate
-  const lead = 1.0, zone = s < 10 ? 3.2 : 3.6;
+  const lead = 1.0, zone = s < 10 ? 4.4 : 5.0;
   return {
     cls, s, info, think, speed, lead, zone, start: START,
     first: speed * (think + 1.0), spacing: speed * (lead + zone + think),
     gates: 5 + d + (s >= 35 ? 1 : 0),
-    rLo: 5 + 2 * d, rHi: 15 + 3 * d,            // soldiers won or lost at one gate
-    squadsPer: s < 5 ? 1 : s < 15 ? 2 : 3, enemyMul: (s === 0 ? 2.4 : 4.6) * (0.3 + 0.5 * f),   // enemies per span = enemyMul × average gate reward
+    rLo: Math.round((5 + 2 * d) * (1 + 0.7 * f)), rHi: Math.round((15 + 3 * d) * (1 + 0.7 * f)),   // soldiers won or lost at one gate (more in later games, against bigger hordes)
+    foeBase: 10 + 2.5 * d,                      // the size of the hordes follows this, not the bigger rewards
+    squadsPer: s < 5 ? 2 : s < 15 ? 3 : 4, enemyMul: s === 0 ? 2.6 : 3.8,   // enemies per span = enemyMul × average gate reward, in waves
     foes: FOE_ORDER.slice(0, clamp(2 + Math.floor(s / 6) + Math.floor(cls / 3), 2, FOE_ORDER.length)),
     brutes: s >= 8,                             // big enemies with many lives, from game 9
     bridges: s >= 3 ? 1 : 0,                    // broken bridge to repair by shooting, from game 4
@@ -60,7 +61,7 @@ const FOES = {
   ant: { hp: 1, speed: 3.1, dmg: 1, w: 0.32, sc: 0.95, n: 1.3 },             // fast and many
   wasp: { hp: 1, speed: 2.6, dmg: 1, w: 0.3, sc: 1.0, n: 0.9, fly: true },  // flies in zigzags
   snake: { hp: 2, speed: 1.7, dmg: 1, w: 0.36, sc: 1.1, n: 0.75 },          // two hits, slithers
-  clown: { hp: 3, speed: 1.5, dmg: 2, w: 0.4, sc: 1.2, n: 0.6 },            // three hits, takes two soldiers
+  clown: { hp: 3, speed: 1.5, dmg: 1, w: 0.4, sc: 1.2, n: 0.6 },            // three hits
 };
 const FOE_ORDER = ['zombie', 'ant', 'wasp', 'snake', 'clown'];
 const BIG_HP = { zombie: 1, ant: 0.8, wasp: 0.9, snake: 1.15, clown: 1.3 };
@@ -88,6 +89,7 @@ const ARMORY = {
 };
 const NO_ARM = { weapon: 0, army: 0, power: 0 };
 const GOLD = { gate: 5, fight: 5, practice: 3, brute: 2, star: 10 };
+const PIERCE = [2, 3, 3, 4, 5];     // how many enemies one shot of each weapon can hit
 const shotDmg = g => WEAPONS[g.weapon].dmg * (g.giant ? POWERS.giant.dmg : 1);
 const shotRate = g => WEAPONS[g.weapon].rate * (g.turbo ? POWERS.turbo.rate : 1) * g.fireBonus;
 const firePower = g => shotDmg(g) * shotRate(g);       // how hard one soldier hits the monster
@@ -174,11 +176,12 @@ function createGame(cls, s, attract, arm) {
     for (let j = 0; j < cfg.squadsPer; j++) {
       const kind = pick(cfg.foes), F = FOES[kind];
       const n = Math.max(3, Math.round(avgR * cfg.enemyMul / cfg.squadsPer * F.n) + randi(0, 2));
-      const ahead = 20 + j * 9 + rand(0, 4), sz = wake + ahead + j * cfg.speed * 0.8;
-      const sq = { kind, x: rand(-2.4, 2.4), z: sz, wake: sz - ahead, men: makeGroup(n, kind === 'ant' ? 0.85 : 1.0), active: false, span: k, ph: rand(0, 6) };
+      // waves one after another through the whole stretch, each from its own spot
+      const ahead = 18 + rand(0, 6), w0 = wake + j * cfg.speed * cfg.zone * 0.8 / cfg.squadsPer, sz = w0 + ahead;
+      const sq = { kind, x: rand(-2.6, 2.6), z: sz, wake: w0, men: makeGroup(n, kind === 'ant' ? 0.85 : 1.0), active: false, span: k, ph: rand(0, 6) };
       for (const m of sq.men) { m.hp = m.max = F.hp; }
       if (cfg.brutes && Math.random() < 0.7) {           // a big one walks in front of the horde
-        const hp = Math.round((Math.round(avgR * 0.35) + randi(2, 4)) * BIG_HP[kind]);
+        const hp = Math.round((Math.round(cfg.foeBase * 0.35) + randi(2, 4)) * BIG_HP[kind]);
         sq.men.unshift({ ox: 0, oz: -0.9, ph: Math.random() * 4, hp, max: hp, big: true });
       }
       g.squads.push(sq);
@@ -275,14 +278,14 @@ function bulletHit(g, b, zPrev) {
     const w = FOES[s.kind].w;
     for (let j = 0; j < s.men.length; j++) {
       const m = s.men[j], mx = s.x + m.ox, mz = s.z + m.oz;
-      if (mz >= lo && mz <= hi && Math.abs(mx - b.x) < (m.big ? w * 2 : w)) {
-        m.hp -= dmg; m.hit = g.time;
+      if (m !== b.last && mz >= lo && mz <= hi && Math.abs(mx - b.x) < (m.big ? w * 2 : w)) {
+        m.hp -= dmg; m.hit = g.time; b.last = m;
         if (m.hp <= 0) {
           s.men.splice(j, 1);
           if (m.big) g.gold += GOLD.brute;
           g.events.push({ type: 'kill', x: mx, z: mz, big: !!m.big, kind: s.kind });
         }
-        return true;
+        return --b.pierce <= 0;
       }
     }
   }
@@ -373,12 +376,12 @@ function step(g, dt) {
   // Shooting (in the fight only during the volley after an answer)
   const volley = g.state === 'fight' && g.time < g.fight.volleyUntil;
   if (a.n > 0 && (g.state === 'run' || volley)) {
-    g.fire += (volley ? Math.min(40, 8 + a.n / 3) : (3 + 1.1 * Math.sqrt(a.n)) * shotRate(g)) * dt;
+    g.fire += (volley ? Math.min(40, 8 + a.n / 3) : (5 + 1.8 * Math.sqrt(a.n)) * shotRate(g)) * dt;
     const sq = squeeze(a.n);
     while (g.fire >= 1) {
       g.fire -= 1;
       const i = Math.floor(Math.random() * Math.min(a.n, CAP));
-      g.bullets.push({ x: clamp(a.x + OX[i] * sq, -ROAD + 0.2, ROAD - 0.2), z: a.z + OZ[i] + 0.3, d: 0 });
+      g.bullets.push({ x: clamp(a.x + OX[i] * sq, -ROAD + 0.2, ROAD - 0.2), z: a.z + OZ[i] + 0.3, d: 0, pierce: PIERCE[g.weapon], last: null });
     }
   }
   const bv = (30 + sp) * dt;
@@ -402,7 +405,7 @@ function step(g, dt) {
       for (let j = s.men.length - 1; j >= 0; j--) {
         const m = s.men[j], dx = s.x + m.ox - a.x, dz = s.z + m.oz - a.z;
         // a big one takes several soldiers; on the road the last soldier always survives, so the monster is always reached
-        const k = Math.min(a.n - 1, m.big ? Math.min(6, Math.ceil(m.hp)) : F.dmg);
+        const k = Math.min(a.n - 1, m.big ? Math.min(4, Math.ceil(m.hp)) : F.dmg);
         if (inside(dx, dz) && a.n > 0) { s.men.splice(j, 1); a.n -= k; ev.push({ type: 'clash', x: a.x + dx, z: a.z + dz, big: !!m.big, n: k, kind: s.kind }); }
         else if (dz < -RZ - 0.4) { s.men.splice(j, 1); a.n -= Math.max(0, k); ev.push({ type: 'leak', x: a.x + dx, z: a.z + dz, n: Math.max(0, k), kind: s.kind }); }   // got past the army
       }
