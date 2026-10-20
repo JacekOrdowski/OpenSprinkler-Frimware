@@ -9,7 +9,7 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 
 ## Wersja 11 (20 października 2026)
 
-Zapis w repozytorium: (uzupełnię w następnym zapisie)
+Zapis w repozytorium: `81a16e9`
 
 ### Dodane
 - **Nowy potwór na końcu Levelu 2: Artur Pająkojad**, przeniesiony z rysunku kredą, który tata narysował kiedyś synowi na tablicy.
