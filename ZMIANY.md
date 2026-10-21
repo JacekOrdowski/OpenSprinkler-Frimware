@@ -9,6 +9,8 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 
 ## Wersja 16 (21 października 2026)
 
+Zapis w repozytorium: `d0bb862`
+
 ### Dodane
 - **Licznik widzi więcej** (dalej bez imion i bez danych osobowych):
   - `instalacja`: gra pierwszy raz otwarta z ikonki na ekranie telefonu, czyli dodana do telefonu (raz na urządzenie),
