@@ -9,6 +9,8 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 
 ## Wersja 17 (21 października 2026)
 
+Zapis w repozytorium: `e7655a9`
+
 ### Dodane
 - **Przycisk „Selekcja na najemnika” na ekranie wyboru levelu.** Selekcję można teraz zrobić w każdej chwili,
   nie tylko przy pierwszym uruchomieniu (np. gdy ktoś przypadkiem kliknął „Od początku”). Nic się nie traci:
