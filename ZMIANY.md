@@ -10,12 +10,10 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 ## Wersja 17 (21 października 2026)
 
 ### Dodane
-- **Nowy temat w levelu 8: przekształcanie wzorów** (np. V = a × b × h, wyznacz h; v = s : t, wyznacz t). Jest w podstawie
+- **Nowy temat w levelu 8: przekształcanie wzorów** (np. V = a · b · h, wyznacz h; v = s : t, wyznacz t). Jest w podstawie
   programowej klas 7–8, starej i nowej.
 
 ### Zmienione
-- **Znak mnożenia: „×” zamiast kropki „·”** we wszystkich zadaniach i podpowiedziach (np. 7 × 8 = ?).
-  Nie jest to litera x, tylko osobny znak, więc nie myli się z niewiadomą x w równaniach.
 - **Kod QR do gry:** sprawdzony, prowadzi na https://jacekordowski.github.io/Yaceq-Placeq/ i odczytuje się z ekranu
   także rozmazany i pod kątem. Jest teraz większy, a obok jest wskazówka: nie robić zdjęcia, tylko przytrzymać aparat,
   a na Androidzie, gdy nic się nie pojawia, użyć Google Lens albo włączyć „Skanuj kody QR” w ustawieniach aparatu (Samsung).
