@@ -4,7 +4,7 @@
 'use strict';
 const HAS_DOM = typeof document !== 'undefined';
 const Z = globalThis.Zadania;
-const WERSJA = 16;         // numer wersji gry; opis zmian w ZMIANY.md
+const WERSJA = 17;         // numer wersji gry; opis zmian w ZMIANY.md
 
 /* ============================================================
    Helpers
@@ -2413,7 +2413,8 @@ function openIntro(c, s, trial) {
   $('inTitle').textContent = exam ? `Egzamin do levelu ${c + 1}` : trial ? `Zajrzyj do levelu ${c + 1}` : info.name;
   $('inTopic').textContent = trial ? 'Po trochu ze wszystkich tematów tego levelu'
     : info.final ? 'Sprawdzian z całego levelu' : info.review ? 'Powtórka: wszystkie dotychczasowe tematy tego levelu' : `Stopień trudności ${info.tier} z 4`;
-  $('inExample').innerHTML = richHTML(pending.gen().q);
+  const ex = pending.gen();          // the second line holds the data of many problems (sides, speed, numbers…)
+  $('inExample').innerHTML = richHTML(ex.q); $('inExSub').innerHTML = richHTML(ex.sub || ''); $('inExSub').hidden = !ex.sub;
   $('inMonster').textContent = M.name;
   showHp();
   $('inHint').textContent = exam
@@ -2779,7 +2780,7 @@ function chestSVG(t) {
 }
 let chest = null;
 const ch = { card: $('chCard'), eyebrow: $('chEyebrow'), title: $('chTitle'), box: $('chChest'), info: $('chInfo'), tiers: $('chTiers'), quiz: $('chQuiz'),
-  dots: $('chDots'), time: $('chTime'), q: $('chQ'), L: $('chL'), R: $('chR'), loot: $('chLoot'), go: $('chGo') };
+  dots: $('chDots'), time: $('chTime'), q: $('chQ'), sub: $('chSub'), L: $('chL'), R: $('chR'), loot: $('chLoot'), go: $('chGo') };
 function openChest(g) {
   recordGame(g);
   mode = 'chest'; fight.hidden = true; hud.hidden = true; $('stink').hidden = true;
@@ -2809,7 +2810,7 @@ function chestStart() {
 function chestNext() {
   const C = chest, p = C.cur = freshProblem(C.g);
   C.left = Math.random() < 0.5; C.busy = false;
-  ch.q.innerHTML = richHTML(p.q);
+  ch.q.innerHTML = richHTML(p.q); ch.sub.innerHTML = richHTML(p.sub || ''); ch.sub.hidden = !p.sub;
   const len = plain(p.q).length;
   ch.q.classList.toggle('long', len > 13 && len <= 22); ch.q.classList.toggle('xlong', len > 22);
   ch.L.innerHTML = richHTML(C.left ? p.a : p.w); ch.R.innerHTML = richHTML(C.left ? p.w : p.a);
@@ -2894,16 +2895,17 @@ const SEL_N = 5, SEL_PASS = 4;
 const RANKS = ['Rekrut', 'Szeregowy', 'Starszy szeregowy', 'Kapral', 'Plutonowy', 'Sierżant', 'Chorąży', 'Porucznik', 'Kapitan'];
 let sel = null;
 const se = { card: $('seCard'), eyebrow: $('seEyebrow'), title: $('seTitle'), sarge: $('seSarge'), say: $('seSay'), quiz: $('seQuiz'),
-  dots: $('seDots'), time: $('seTime'), q: $('seQ'), L: $('seL'), R: $('seR'), go: $('seGo'), back: $('seBack') };
+  dots: $('seDots'), time: $('seTime'), q: $('seQ'), sub: $('seSub'), L: $('seL'), R: $('seR'), go: $('seGo'), back: $('seBack') };
 function openStart() { mode = 'start'; show('start'); }
 function chooseBegin() { save.start = 'od-poczatku'; persist(); countEvent('start/od-poczatku', 'Start: od początku'); goMenu(); }
-function openSelect() {
+// from: 'start' (the first start) or 'levels' (the button on the level screen, any time later)
+function openSelect(from = 'start') {
   mode = 'select';
-  sel = { c: 0, n: 0, ok: 0, phase: 'intro', used: new Set(), passed: -1, t: 0, busy: false };
+  sel = { c: 0, n: 0, ok: 0, phase: 'intro', used: new Set(), passed: -1, t: 0, busy: false, from };
   se.sarge.src = armySprite(save.skin, 0).toDataURL();
   se.eyebrow.textContent = 'Selekcja najemników';
   se.title.textContent = 'Baczność, rekrucie!';
-  se.say.textContent = `Pokaż, co umiesz. Każdy etap to ${SEL_N} zadań z jednej klasy, po trochu ze wszystkich tematów. ${SEL_PASS} dobre odpowiedzi i idziesz wyżej. Na końcu przydzielę cię do oddziału.`;
+  se.say.textContent = `Pokaż, co umiesz. Każdy etap to ${SEL_N} zadań z jednej klasy, po trochu ze wszystkich tematów. ${SEL_PASS} dobre odpowiedzi i idziesz wyżej. Na końcu przydzielę cię do oddziału.` + (from === 'levels' ? ' Nic nie tracisz: otwarte levele, gwiazdki i złoto zostają.' : '');
   se.quiz.hidden = true; se.go.textContent = 'Do boju!'; se.go.hidden = false; se.back.textContent = 'Wróć'; se.back.hidden = false;
   show('select'); se.card.scrollTop = 0;
 }
@@ -2923,7 +2925,7 @@ function selNext() {
   let p = S.gen();
   for (let i = 0; i < 30 && S.used.has(probKey(p)); i++) p = S.gen();
   S.used.add(probKey(p)); S.cur = p; S.left = Math.random() < 0.5; S.busy = false; S.t = 0;
-  se.q.innerHTML = richHTML(p.q);
+  se.q.innerHTML = richHTML(p.q); se.sub.innerHTML = richHTML(p.sub || ''); se.sub.hidden = !p.sub;
   const len = plain(p.q).length;
   se.q.classList.toggle('long', len > 13 && len <= 22); se.q.classList.toggle('xlong', len > 22);
   se.L.innerHTML = richHTML(S.left ? p.a : p.w); se.R.innerHTML = richHTML(S.left ? p.w : p.a);
@@ -2962,19 +2964,26 @@ function selStageEnd() {
 }
 function selFinish() {
   const S = sel, c = Math.max(0, S.passed);
+  let had = 0; for (let k = 1; k < NCLS; k++) if (levelOpen(k)) had = k;   // the highest level open before
   S.phase = 'done';
-  const add = openUpTo(c);
-  save.start = 'selekcja'; save.tab = c; persist();
-  countEvent(`start/selekcja-level-${c + 1}`, `Start: selekcja, przydział level ${c + 1}`);
+  const add = openUpTo(c), lower = c < had;
+  if (!save.start) save.start = 'selekcja';
+  if (!lower) save.tab = c;
+  persist();
+  if (S.from === 'levels') countEvent(`selekcja/level-${c + 1}`, `Selekcja z ekranu leveli: level ${c + 1}`);
+  else countEvent(`start/selekcja-level-${c + 1}`, `Start: selekcja, przydział level ${c + 1}`);
   S.add = add;
   Snd.win(); confettiBurst();
   se.eyebrow.textContent = `Stopień: ${RANKS[S.passed + 1]}`;
-  se.title.textContent = `Przydział: level ${c + 1}`;
-  se.say.textContent = (S.passed < 0
+  se.title.textContent = lower ? `Wynik: level ${c + 1}` : `Przydział: level ${c + 1}`;
+  se.say.textContent = (lower
+    ? (S.passed < 0 ? 'Tym razem żaden etap nie zaliczony.' : `Melduję: zaliczone etapy do levelu ${S.passed + 1}.`)
+      + ` Masz już otwarte levele do levelu ${had + 1}, więc wszystko zostaje po staremu.`
+    : S.passed < 0
     ? 'Zaczynasz od podstaw, od levelu 1. Do roboty, rekrucie!'
     : `Melduję: zaliczone etapy do levelu ${S.passed + 1}. Przydział: level ${c + 1}.` + (c ? ' Niższe levele też masz otwarte.' : ''))
     + (add ? ` Na start dostajesz ${group(add)} złota. Wydaj je w Zbrojowni, zanim ruszysz do boju!` : '')
-    + (c + 1 < NCLS ? ` Wyższy level otworzysz, przechodząc ten albo zdając egzamin.` : '');
+    + (!lower && c + 1 < NCLS ? ` Wyższy level otworzysz, przechodząc ten albo zdając egzamin.` : '');
   se.go.textContent = add ? 'Do Zbrojowni' : 'Do oddziału!'; se.go.hidden = false;
   se.back.textContent = 'Do menu'; se.back.hidden = !add;
 }
@@ -2988,7 +2997,7 @@ function selGo() {
 function selBack() {
   const S = sel;
   if (!S) return;
-  if (S.phase === 'intro') { sel = null; openStart(); }
+  if (S.phase === 'intro') { sel = null; if (S.from === 'levels') { mode = 'levels'; buildLevelList(); show('levels'); } else openStart(); }
   else if (S.phase === 'done') { sel = null; goMenu(); }
 }
 function chestGo() {
@@ -3173,6 +3182,7 @@ function buildLevelList() {
   const c = save.tab, K = Z.KLASY[c];
   const done = save.stars.slice(c * STAGES, c * STAGES + STAGES).filter(x => x > 0).length;
   $('lvClass').textContent = `Level ${c + 1}`;
+  $('btnSelect').hidden = levelOpen(NCLS - 1);   // with every level open the selection has nothing left to open
   $('lvAbout').textContent = `${c + 1}. klasa · ${K.opis} · ukończone: ${done} z ${STAGES}`;
   box.innerHTML = '';
   // a closed level says what opens it; every level has "gra na próbę"
@@ -3241,6 +3251,7 @@ tap('seGo', selGo);
 tap('seBack', selBack);
 tap('stBegin', chooseBegin);
 tap('stSelect', openSelect);
+tap('btnSelect', () => openSelect('levels'));
 ch.L.addEventListener('click', () => chestPick(true));
 ch.R.addEventListener('click', () => chestPick(false));
 tap('chGo', chestGo);
@@ -3287,6 +3298,8 @@ const GAME_URL = 'jacekordowski.github.io/Yaceq-Placeq';
 const QR = { n: 33, d: 'M0 0h7v1h-7zM11 0h1v1h-1zM13 0h4v1h-4zM18 0h1v1h-1zM20 0h3v1h-3zM26 0h7v1h-7zM0 1h1v1h-1zM6 1h1v1h-1zM8 1h1v1h-1zM10 1h1v1h-1zM12 1h1v1h-1zM14 1h1v1h-1zM16 1h2v1h-2zM19 1h1v1h-1zM26 1h1v1h-1zM32 1h1v1h-1zM0 2h1v1h-1zM2 2h3v1h-3zM6 2h1v1h-1zM10 2h2v1h-2zM13 2h1v1h-1zM16 2h1v1h-1zM19 2h1v1h-1zM21 2h1v1h-1zM23 2h2v1h-2zM26 2h1v1h-1zM28 2h3v1h-3zM32 2h1v1h-1zM0 3h1v1h-1zM2 3h3v1h-3zM6 3h1v1h-1zM8 3h2v1h-2zM11 3h1v1h-1zM14 3h2v1h-2zM18 3h6v1h-6zM26 3h1v1h-1zM28 3h3v1h-3zM32 3h1v1h-1zM0 4h1v1h-1zM2 4h3v1h-3zM6 4h1v1h-1zM8 4h1v1h-1zM10 4h3v1h-3zM14 4h1v1h-1zM16 4h1v1h-1zM18 4h3v1h-3zM26 4h1v1h-1zM28 4h3v1h-3zM32 4h1v1h-1zM0 5h1v1h-1zM6 5h1v1h-1zM10 5h1v1h-1zM12 5h1v1h-1zM14 5h2v1h-2zM20 5h2v1h-2zM23 5h1v1h-1zM26 5h1v1h-1zM32 5h1v1h-1zM0 6h7v1h-7zM8 6h1v1h-1zM10 6h1v1h-1zM12 6h1v1h-1zM14 6h1v1h-1zM16 6h1v1h-1zM18 6h1v1h-1zM20 6h1v1h-1zM22 6h1v1h-1zM24 6h1v1h-1zM26 6h7v1h-7zM8 7h1v1h-1zM10 7h3v1h-3zM14 7h1v1h-1zM18 7h3v1h-3zM22 7h1v1h-1zM1 8h1v1h-1zM3 8h4v1h-4zM8 8h2v1h-2zM12 8h2v1h-2zM17 8h1v1h-1zM19 8h1v1h-1zM24 8h3v1h-3zM28 8h2v1h-2zM31 8h1v1h-1zM0 9h5v1h-5zM8 9h2v1h-2zM11 9h1v1h-1zM13 9h2v1h-2zM16 9h1v1h-1zM18 9h2v1h-2zM21 9h1v1h-1zM23 9h1v1h-1zM28 9h3v1h-3zM1 10h1v1h-1zM3 10h1v1h-1zM5 10h3v1h-3zM9 10h1v1h-1zM11 10h2v1h-2zM16 10h3v1h-3zM21 10h3v1h-3zM25 10h1v1h-1zM28 10h5v1h-5zM2 11h1v1h-1zM7 11h1v1h-1zM10 11h1v1h-1zM12 11h2v1h-2zM16 11h4v1h-4zM23 11h1v1h-1zM25 11h3v1h-3zM30 11h1v1h-1zM3 12h4v1h-4zM8 12h1v1h-1zM11 12h1v1h-1zM14 12h1v1h-1zM16 12h3v1h-3zM21 12h1v1h-1zM23 12h5v1h-5zM32 12h1v1h-1zM3 13h1v1h-1zM10 13h2v1h-2zM14 13h3v1h-3zM18 13h1v1h-1zM22 13h2v1h-2zM25 13h1v1h-1zM27 13h1v1h-1zM0 14h1v1h-1zM2 14h2v1h-2zM5 14h3v1h-3zM11 14h2v1h-2zM15 14h2v1h-2zM19 14h2v1h-2zM22 14h1v1h-1zM26 14h1v1h-1zM28 14h1v1h-1zM30 14h1v1h-1zM1 15h1v1h-1zM9 15h1v1h-1zM16 15h2v1h-2zM22 15h4v1h-4zM29 15h2v1h-2zM32 15h1v1h-1zM0 16h7v1h-7zM12 16h4v1h-4zM17 16h2v1h-2zM20 16h1v1h-1zM22 16h7v1h-7zM0 17h3v1h-3zM5 17h1v1h-1zM7 17h2v1h-2zM10 17h1v1h-1zM14 17h2v1h-2zM17 17h4v1h-4zM22 17h1v1h-1zM26 17h1v1h-1zM28 17h1v1h-1zM30 17h3v1h-3zM2 18h1v1h-1zM4 18h1v1h-1zM6 18h4v1h-4zM12 18h3v1h-3zM16 18h1v1h-1zM18 18h2v1h-2zM21 18h3v1h-3zM27 18h1v1h-1zM29 18h2v1h-2zM32 18h1v1h-1zM0 19h1v1h-1zM2 19h1v1h-1zM4 19h1v1h-1zM7 19h6v1h-6zM14 19h1v1h-1zM17 19h1v1h-1zM20 19h1v1h-1zM23 19h2v1h-2zM28 19h3v1h-3zM32 19h1v1h-1zM3 20h5v1h-5zM9 20h2v1h-2zM13 20h1v1h-1zM17 20h1v1h-1zM19 20h1v1h-1zM24 20h1v1h-1zM27 20h1v1h-1zM29 20h1v1h-1zM31 20h2v1h-2zM0 21h1v1h-1zM2 21h1v1h-1zM4 21h1v1h-1zM8 21h5v1h-5zM15 21h3v1h-3zM19 21h1v1h-1zM22 21h2v1h-2zM25 21h6v1h-6zM0 22h1v1h-1zM4 22h3v1h-3zM8 22h1v1h-1zM11 22h1v1h-1zM14 22h1v1h-1zM17 22h1v1h-1zM21 22h3v1h-3zM27 22h2v1h-2zM30 22h3v1h-3zM0 23h1v1h-1zM4 23h2v1h-2zM8 23h1v1h-1zM13 23h2v1h-2zM16 23h1v1h-1zM19 23h1v1h-1zM22 23h3v1h-3zM26 23h2v1h-2zM30 23h2v1h-2zM0 24h3v1h-3zM5 24h4v1h-4zM10 24h2v1h-2zM14 24h2v1h-2zM19 24h1v1h-1zM23 24h7v1h-7zM8 25h1v1h-1zM10 25h2v1h-2zM13 25h2v1h-2zM18 25h1v1h-1zM21 25h1v1h-1zM24 25h1v1h-1zM28 25h1v1h-1zM30 25h2v1h-2zM0 26h7v1h-7zM11 26h1v1h-1zM13 26h2v1h-2zM16 26h1v1h-1zM19 26h3v1h-3zM23 26h2v1h-2zM26 26h1v1h-1zM28 26h1v1h-1zM30 26h1v1h-1zM0 27h1v1h-1zM6 27h1v1h-1zM8 27h1v1h-1zM10 27h1v1h-1zM13 27h1v1h-1zM15 27h1v1h-1zM19 27h1v1h-1zM22 27h3v1h-3zM28 27h4v1h-4zM0 28h1v1h-1zM2 28h3v1h-3zM6 28h1v1h-1zM8 28h1v1h-1zM11 28h1v1h-1zM15 28h1v1h-1zM17 28h1v1h-1zM20 28h1v1h-1zM22 28h7v1h-7zM31 28h2v1h-2zM0 29h1v1h-1zM2 29h3v1h-3zM6 29h1v1h-1zM8 29h1v1h-1zM11 29h1v1h-1zM13 29h2v1h-2zM16 29h2v1h-2zM19 29h4v1h-4zM24 29h2v1h-2zM27 29h1v1h-1zM29 29h2v1h-2zM32 29h1v1h-1zM0 30h1v1h-1zM2 30h3v1h-3zM6 30h1v1h-1zM10 30h2v1h-2zM13 30h2v1h-2zM19 30h1v1h-1zM23 30h3v1h-3zM27 30h3v1h-3zM31 30h2v1h-2zM0 31h1v1h-1zM6 31h1v1h-1zM8 31h1v1h-1zM10 31h2v1h-2zM15 31h3v1h-3zM19 31h2v1h-2zM22 31h1v1h-1zM25 31h1v1h-1zM27 31h2v1h-2zM30 31h3v1h-3zM0 32h7v1h-7zM13 32h1v1h-1zM15 32h2v1h-2zM18 32h3v1h-3zM23 32h2v1h-2zM27 32h2v1h-2z' };
 const qrPic = () => `<svg class="qr" viewBox="-4 -4 ${QR.n + 8} ${QR.n + 8}" shape-rendering="crispEdges" role="img" aria-label="Kod QR z adresem gry"><rect x="-4" y="-4" width="${QR.n + 8}" height="${QR.n + 8}" fill="#fff"/><path d="${QR.d}" fill="${INK}"/></svg>
   <div class="qr-url">Aparat nie widzi kodu? Wpisz w przeglądarce:<br><b>${GAME_URL}</b></div>`;
+// Many Android phones do not read QR codes in the plain camera, or only after a setting is switched on
+const QR_ANDROID = 'Na Androidzie nic się nie pojawia? W aparacie wybierz <b>Google Lens</b> (albo w aplikacji <b>Google</b> stuknij ikonę aparatu). W Samsungu włącz w ustawieniach aparatu <b>Skanuj kody QR</b>. Jeśli zdjęcie kodu już jest, otwórz je w <b>Zdjęciach Google</b> i stuknij <b>Lens</b>.';
 const INSTALL = {
   ios: [
     ['Stuknij <b>⋯</b> (trzy kropki) obok adresu strony na dole ekranu. Jeśli od razu widzisz ikonę <b>Udostępnij</b> (kwadrat ze strzałką w górę), stuknij ją i przejdź do kroku 3.',
@@ -3324,8 +3337,9 @@ const INSTALL = {
         <text x="138" y="114" text-anchor="middle" font-size="12" fill="${BLUEI}">Anuluj</text><text x="196" y="114" text-anchor="middle" font-size="12" fill="${BLUEI}">Zainstaluj</text>${box(166, 98, 60, 24)}`)],
   ],
   qr: [
-    ['Na drugim telefonie albo tablecie otwórz <b>Aparat</b> i skieruj go na ten kod.', qrPic()],
+    ['Na drugim telefonie albo tablecie otwórz <b>Aparat</b> i skieruj go na ten kod. <b>Nie rób zdjęcia</b>: przytrzymaj aparat chwilę nad kodem.', qrPic()],
     ['Stuknij link, który pojawi się na ekranie. Otworzy się gra.', ''],
+    [QR_ANDROID, ''],
     ['Dodaj grę do ekranu tamtego urządzenia. Instrukcja pokaże się tam sama. Jest też w zakładkach <b>iPhone / iPad</b> i <b>Android</b>.', ''],
   ],
   done: ['Gotowe! Uruchamiaj grę tą ikoną. Otworzy się na cały ekran, jak zwykła aplikacja.',
@@ -3365,7 +3379,7 @@ tap('instInstall', () => {
 // Share the game: the QR code for another phone or tablet, also when the game already runs from the home screen
 const SHARE_URL = `https://${GAME_URL}/`;
 function openShare() {
-  $('shQr').innerHTML = qrPic();
+  $('shQr').innerHTML = qrPic(); $('shAndroid').innerHTML = QR_ANDROID;
   $('shSend').hidden = !navigator.share;
   $('shCopy').textContent = 'Kopiuj link';
   $('scrShare').hidden = false; $('scrShare').querySelector('.card').scrollTop = 0;

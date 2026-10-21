@@ -299,7 +299,14 @@ const K2 = [
   }),
   T('Pieniądze i miary', t => {
     if (t === 1) { const a = randi(1, 7) * 10 + randi(0, 9), b = randi(1, 9 - Math.floor(a / 10)) * 10, v = a + b; return mk(`${a} zł + ${b} zł = ?`, zl(v), [zl(v + 10), zl(v - 10), zl(v + 1)], { how: H('Dodawanie dziesiątek', `Dodaj dziesiątki, jedności zostają. {${a} + ${b} = ${v}}`, `Razem ${v} zł.`) }); }
-    if (t === 2) { const [big, small, k] = pick([['zł', 'gr', 100], ['m', 'cm', 100]]), n = randi(1, 9); return mk(`${n} ${big} = ? ${small}`, n * k, [n * 10, n * k * 10, n * k + 10], { mistake: n * 10, how: H('Zamiana jednostek', `1 ${big} to ${k} ${small}.`, `{${n} · ${k} = ${n * k}}`, `Czyli ${n} ${big} to ${n * k} ${small}.`) }); }
+    if (t === 2) {      // in 2nd class numbers go up to 100, so the changes stay within 100
+      const zl = Math.random() < 0.5, big = zl ? 'zł' : 'm', small = zl ? 'gr' : 'cm', v = randi(0, 3);
+      if (v === 0) return mk(`1 ${big} = ? ${small}`, 100, [10, 1000, 50], { mistake: 10, how: H('Zamiana jednostek', `1 ${big} to 100 ${small}.`) });
+      if (v === 1) return mk(`100 ${small} = ? ${big}`, 1, [10, 100, 2], { how: H('Zamiana jednostek', `100 ${small} to 1 ${big}.`) });
+      if (v === 2) return mk(`${zl ? 'Pół złotego' : 'Pół metra'} = ? ${small}`, 50, [5, 25, 100], { mistake: 5, how: H('Połowa', `1 ${big} to 100 ${small}.`, `Połowa ze 100: {100 : 2 = 50}`) });
+      const a = randi(1, 9) * 10;
+      return mk(`${a} ${small} + ${100 - a} ${small} = ? ${big}`, 1, [100, 2, 10], { mistake: 100, how: H('Zamiana jednostek', `{${a} + ${100 - a} = 100}`, `100 ${small} to 1 ${big}.`) });
+    }
     if (t === 3) { const a = randi(11, 89), v = 100 - a; return mk(`100 zł ${M} ${a} zł = ?`, zl(v), [zl(v + 10), zl(v - 1 > 0 ? v - 1 : v + 2), zl(110 - a)].filter(x => x !== zl(v)), { sub: 'Ile reszty ze 100 zł?', how: hSub(100, a) }); }
     const [big, small] = pick([['m', 'cm'], ['zł', 'gr']]), a = randi(1, 9) * 10, v = 100 - a; return mk(`1 ${big} ${M} ${a} ${small} = ? ${small}`, v, [v + 10, v - 10, a].filter(x => x > 0 && x !== v), { mistake: 10 - a / 10 > 0 ? 10 - a / 10 : null, how: H('Zamiana jednostek', `1 ${big} to 100 ${small}.`, `{100 ${M} ${a} = ${v}}`, `Zostaje ${v} ${small}.`) });
   }),
@@ -582,7 +589,7 @@ const K6 = [
     const opts = [[1, 2], [1, 4], [3, 4], [1, 5], [2, 5], [3, 5], [4, 5], [1, 8], [3, 8], [5, 8], [7, 8], [1, 20], [7, 20], [3, 25]];
     const [n, d] = pick(opts); let p = 1; while ((n * 10 ** p) % d) p++; const k = n * 10 ** p / d, P10 = 10 ** p;
     if (t === 1) return mk(`${FR(n, d)} = ?`, D(k, p), [D(k, p + 1), D(k + 1, p), D(n, 1)].filter(x => x !== D(k, p)), { mistake: `${n},${d}`, how: H('Ułamek zwykły na dziesiętny', `Rozszerz ułamek tak, żeby w mianowniku było ${N(P10)}. Mnożymy przez ${P10 / d}.`, `{${FR(n, d)} = ${FR(k, P10)}}`, `{${FR(k, P10)} = ${D(k, p)}}`) });
-    if (t === 2) return mk(`${D(k, p)} = ?`, F(n, d), [F(n + 1, d), F(n, d + 1), F(k, P10 + 1)], { sub: 'Zapisz jako ułamek zwykły', how: H('Ułamek dziesiętny na zwykły', `${p === 1 ? 'Jedna cyfra' : p === 2 ? 'Dwie cyfry' : 'Trzy cyfry'} po przecinku, więc w mianowniku ${N(P10)}. {${D(k, p)} = ${FR(k, P10)}}`, `Skróć. {${FR(k, P10)} = ${F(n, d)}}`) });
+    if (t === 2) return mk(`${D(k, p)} = ?`, F(n, d), [F(n + 1, d), F(n, d + 1), F(d, n)], { sub: 'Zapisz jako ułamek zwykły', how: H('Ułamek dziesiętny na zwykły', `${p === 1 ? 'Jedna cyfra' : p === 2 ? 'Dwie cyfry' : 'Trzy cyfry'} po przecinku, więc w mianowniku ${N(P10)}. {${D(k, p)} = ${FR(k, P10)}}`, `Skróć. {${FR(k, P10)} = ${F(n, d)}}`) });
     if (t === 3) {
       const [a, b] = pick([[1, 3], [2, 3], [1, 6], [5, 6], [1, 7], [2, 7], [3, 7], [4, 7], [5, 7], [6, 7], [1, 9], [2, 9], [4, 9], [5, 9], [7, 9], [8, 9], [1, 12], [5, 12], [7, 12], [2, 11]]), h = Math.round(a * 100 / b), th = Math.floor(a * 1000 / b), third = th % 10;
       return mk(`${FR(a, b)} ≈ ?`, D(h, 2), [D(Math.floor(a * 100 / b) === h ? h + 1 : h - 1, 2), D(Math.round(a * 10 / b), 1), D(h + 10, 2)].filter(x => x !== D(h, 2)), { sub: 'Zaokrąglij do części setnych', sol: `${a}/${b} ≈ ${D(h, 2)}`, how: H('Zaokrąglanie', `Podziel ${a} przez ${b} do trzeciej cyfry po przecinku. Wychodzi ${D(th, 3)}…`, `Trzecia cyfra po przecinku to ${third}. ${third >= 5 ? 'To 5 albo więcej, więc druga cyfra rośnie o 1.' : 'To mniej niż 5, więc druga cyfra zostaje.'}`, `Wynik ${D(h, 2)}.`) });
@@ -619,7 +626,7 @@ const K6 = [
   T('Wyrażenia algebraiczne', t => {
     if (t === 1) { const k = randi(2, 9), c = randi(1, 15), x = randi(2, 9), v = pick(['a', 'x', 'b']); return mk(`${k}${v} + ${c} = ?`, k * x + c, [k + x + c, k * x, k * (x + c)], { sub: `dla ${v} = ${x}`, sol: `${k} · ${x} + ${c} = ${k * x + c}`, how: H('Wartość wyrażenia', `${k}${v} oznacza ${k} · ${v}. Wstaw ${x} w miejsce ${v}.`, `Najpierw mnożenie. {${k} · ${x} = ${k * x}}`, `{${k * x} + ${c} = ${k * x + c}}`) }); }
     if (t === 2) { const a = randi(2, 9), b = randi(2, 9), v = pick(['x', 'a', 'y']); return mk(`${a}${v} + ${b}${v} = ?`, term(a + b, v), [term(a * b, v), N(a + b)], { mistake: `${a + b}${v}²`, how: H('Wyrazy podobne', `Dodajemy liczby przed literą, a litera zostaje. Jak ${ile(a, 'jb')} i ${ile(b, 'jb')} to razem ${ile(a + b, 'jb')}.`, `{${a} + ${b} = ${a + b}}`, `{${a}${v} + ${b}${v} = ${term(a + b, v)}}`) }); }
-    if (t === 3) { const a = randi(5, 12), b = randi(1, a - 2), c = randi(1, 5), v = pick(['x', 'a']); return mk(`${a}${v} ${M} ${b}${v} + ${c}${v} = ?`, term(a - b + c, v), [term(a - b - c, v), term(a + b + c, v), term(a - b + c + 1, v)].filter(s => !s.startsWith(M) && s !== '0' + v), { how: H('Wyrazy podobne', 'Licz same liczby przed literą, po kolei.', `{${a} ${M} ${b} + ${c} = ${a - b + c}}`, `{${a}${v} ${M} ${b}${v} + ${c}${v} = ${term(a - b + c, v)}}`) }); }
+    if (t === 3) { const a = randi(5, 12), b = randi(1, a - 2), c = randi(1, 5), v = pick(['x', 'a']); return mk(`${a}${v} ${M} ${term(b, v)} + ${term(c, v)} = ?`, term(a - b + c, v), [term(a - b - c, v), term(a + b + c, v), term(a - b + c + 1, v)].filter(s => !s.startsWith(M) && s !== '0' + v), { how: H('Wyrazy podobne', 'Licz same liczby przed literą, po kolei.', `{${a} ${M} ${b} + ${c} = ${a - b + c}}`, `{${a}${v} ${M} ${term(b, v)} + ${term(c, v)} = ${term(a - b + c, v)}}`) }); }
     const a = randi(2, 6), b = randi(1, 8), c = randi(2, 6), d = randi(1, 8);
     if (b === d) return K6[4].gen(4);
     return mk(`${a}x + ${b} + ${c}x ${M} ${d} = ?`, lin(a + c, 'x', b - d), [lin(a + c + 1, 'x', b - d), lin(a * c, 'x', b - d)], { mistake: lin(a + c, 'x', b + d), how: H('Wyrazy podobne', 'Zbierz osobno wyrazy z x i osobno same liczby.', `{${a}x + ${c}x = ${term(a + c, 'x')}}`, `{${b} ${M} ${d} = ${N(b - d)}}`, `{${a}x + ${b} + ${c}x ${M} ${d} = ${lin(a + c, 'x', b - d)}}`) });
@@ -629,8 +636,13 @@ const K6 = [
     if (t === 1) { const b = randi(2, 20); return mk(`x + ${b} = ${x + b}`, x, [x + 1, x - 1], { sub: 'x = ?', ask: 'x', mistake: 2 * x + b, how: H('Równanie', `Odejmij ${b} od obu stron. x = {${x + b} ${M} ${b} = ${x}}`, `Sprawdź. {${x} + ${b} = ${x + b}}`) }); }
     if (t === 2) { const a = randi(2, 9); return mk(`${a}x = ${a * x}`, x, [x + 1, x - 1], { sub: 'x = ?', ask: 'x', mistake: a * x - a, how: H('Równanie', `${a}x to ${a} · x. Podziel obie strony przez ${a}. x = {${a * x} : ${a} = ${x}}`, `Sprawdź. {${a} · ${x} = ${a * x}}`) }); }
     if (t === 3) { const a = randi(2, 6), b = randi(1, 15); return mk(`${a}x ${M} ${b} = ${N(a * x - b)}`, x, [x + 1, x - 1], { sub: 'x = ?', ask: 'x', mistake: (a * x - 2 * b) % a === 0 && a * x - 2 * b > 0 ? (a * x - 2 * b) / a : null, how: H('Równanie', `Dodaj ${b} do obu stron. ${a}x = {${N(a * x - b)} + ${b} = ${a * x}}`, `Podziel przez ${a}. x = {${a * x} : ${a} = ${x}}`, `Sprawdź. {${a} · ${x} ${M} ${b} = ${N(a * x - b)}}`) }); }
-    const a = randi(3, 7), c = randi(1, a - 1), b = randi(1, 10), d = (a - c) * x + b;
-    return mk(`${a}x + ${b} = ${c}x + ${d}`, x, [x + 1, x - 1], { sub: 'x = ?', ask: 'x', mistake: (d - b) % (a + c) === 0 ? (d - b) / (a + c) : null, how: H('Równanie', `Odejmij ${term(c, 'x')} od obu stron. {${a}x ${M} ${term(c, 'x')} = ${term(a - c, 'x')}}`, `Odejmij ${b}. ${term(a - c, 'x')} = {${d} ${M} ${b} = ${d - b}}`, a - c > 1 ? `Podziel przez ${a - c}. x = {${d - b} : ${a - c} = ${x}}` : null, `Sprawdź. {${a} · ${x} + ${b} = ${c} · ${x} + ${d}}`) });
+    // degree 4: still with x on one side only, as the curriculum of classes 4–6 says, e.g. (x − 2) : 3 = 4 or 3(x + 2) = 21
+    if (Math.random() < 0.5) {
+      const a = randi(2, 5), b = randi(1, 9), c = randi(2, 9), X = a * c + b;
+      return mk(`${FR(`x ${M} ${b}`, a)} = ${c}`, X, [X + 1, X - 1], { sub: 'x = ?', ask: 'x', mistake: a * c - b > 0 ? a * c - b : null, how: H('Równanie z ułamkiem', `Pomnóż obie strony przez ${a}. x ${M} ${b} = {${c} · ${a} = ${a * c}}`, `Dodaj ${b}. x = {${a * c} + ${b} = ${X}}`, `Sprawdź. {(${X} ${M} ${b}) : ${a} = ${c}}`) });
+    }
+    const a = randi(2, 6), b = randi(1, 9), v = a * (x + b);
+    return mk(`${a}(x + ${b}) = ${v}`, x, [x + 1, x - 1], { sub: 'x = ?', ask: 'x', mistake: v - b, how: H('Równanie z nawiasem', `Podziel obie strony przez ${a}. x + ${b} = {${v} : ${a} = ${x + b}}`, `Odejmij ${b}. x = {${x + b} ${M} ${b} = ${x}}`, `Sprawdź. {${a} · (${x} + ${b}) = ${v}}`) });
   }, 1.2),
   T('Prędkość, droga i czas', t => {
     const v = pick([4, 5, 10, 12, 15, 20, 30, 40, 50, 60, 70, 80, 90]), h = randi(2, 5);
@@ -693,7 +705,7 @@ const K7 = [
     return mk(`√${x} · √${y} = ?`, v, [v + 1, x * y], { mistake: Math.sqrt(y / x), how: H('Iloczyn pierwiastków', 'Iloczyn pierwiastków to pierwiastek z iloczynu.', `{√${x} · √${y} = √${x * y}}`, `{√${x * y} = ${v}}`) });
   }),
   T('Wyrażenia algebraiczne', t => {
-    if (t === 1) { const a = randi(2, 7), b = randi(1, 6), c = randi(1, a + b - 1); const e = `${a}x + ${term(b, 'x')} ${M} ${term(c, 'x')}`; return mk(`${e} = ?`, term(a + b - c, 'x'), [term(a + b + c, 'x'), term(a + b - c + 1, 'x')], { mistake: `${a + b - c}x²`, how: H('Wyrazy podobne', 'Licz liczby przed x, a x zostaje bez zmian. Samo x to 1x.', `{${a} + ${b} ${M} ${c} = ${a + b - c}}`, `{${e} = ${term(a + b - c, 'x')}}`) }); }
+    if (t === 1) { const a = randi(2, 7), b = randi(1, 6), c = randi(1, a + b - 1); const e = `${a}x + ${term(b, 'x')} ${M} ${term(c, 'x')}`; return mk(`${e} = ?`, term(a + b - c, 'x'), [term(a + b + c, 'x'), term(a + b - c + 1, 'x')], { mistake: term(a + b - c, 'x²'), how: H('Wyrazy podobne', 'Licz liczby przed x, a x zostaje bez zmian. Samo x to 1x.', `{${a} + ${b} ${M} ${c} = ${a + b - c}}`, `{${e} = ${term(a + b - c, 'x')}}`) }); }
     if (t === 2) { const k = randi(2, 7), c = randi(1, 9), neg = Math.random() < 0.4, s = neg ? M : '+'; return mk(`${k}(x ${s} ${c}) = ?`, lin(k, 'x', neg ? -k * c : k * c), [lin(k, 'x', neg ? k * c : -k * c), lin(k + c, 'x', 0)], { mistake: lin(k, 'x', neg ? -c : c), how: H('Mnożenie nawiasu', `Pomnóż ${k} przez każdy wyraz w nawiasie.`, `{${k} · x = ${k}x}`, `{${k} · ${c} = ${k * c}}`, `{${k}(x ${s} ${c}) = ${lin(k, 'x', neg ? -k * c : k * c)}}`) }); }
     if (t === 3) {
       if (Math.random() < 0.5) { const c = randi(1, 9); return mk(`${M}(x ${M} ${c}) = ?`, lin(-1, 'x', c), [lin(1, 'x', c)], { mistake: lin(-1, 'x', -c), how: H('Minus przed nawiasem', 'Minus przed nawiasem zmienia znaki wszystkich wyrazów w nawiasie.', `{${M}(x ${M} ${c}) = ${lin(-1, 'x', c)}}`) }); }
@@ -713,7 +725,7 @@ const K7 = [
     if (t === 3) { const d = randi(2, 6), v = randi(2, 9); return mk(`${FR('x', d)} = ${v}`, d * v, [d * v + d, v], { sub: 'x = ?', ask: 'x', mistake: d + v, how: H('Równanie z ułamkiem', `x podzielone przez ${d} daje ${v}. Pomnóż obie strony przez ${d}.`, `x = {${v} · ${d} = ${d * v}}`, `Sprawdź. {${d * v} : ${d} = ${v}}`) }); }
     if (Math.random() < 0.5) { const [a, b] = pick([[4, 3], [2, 5], [3, 2], [5, 4], [5, 2]]), k = randi(2, 4); return mk(`${FR('x', b * k)} = ${FR(a, b)}`, a * k, [a + k, a * b * k], { sub: 'Proporcja: x = ?', ask: 'x', how: H('Proporcja', `Mianownik ${b * k} jest ${k} razy większy od ${b}, więc licznik też.`, `x = {${a} · ${k} = ${a * k}}`, `Sprawdź. {${FR(a * k, b * k)} = ${FR(a, b)}}`) }); }
     const a = randi(4, 8), c = randi(1, a - 2), b = randi(1, 10), d = (a - c) * x - b; if (d <= 0) return K7[5].gen(4);
-    return mk(`${a}x ${M} ${b} = ${c}x + ${d}`, x, [x + 1, x - 1], { sub: 'x = ?', ask: 'x', mistake: (d - b) % (a - c) === 0 && (d - b) / (a - c) > 0 && (d - b) / (a - c) !== x ? (d - b) / (a - c) : null, how: H('Równanie', `Odejmij ${term(c, 'x')} od obu stron. {${a}x ${M} ${term(c, 'x')} = ${term(a - c, 'x')}}`, `Dodaj ${b}. ${term(a - c, 'x')} = {${d} + ${b} = ${d + b}}`, `Podziel przez ${a - c}. x = {${d + b} : ${a - c} = ${x}}`) });
+    return mk(`${a}x ${M} ${b} = ${term(c, 'x')} + ${d}`, x, [x + 1, x - 1], { sub: 'x = ?', ask: 'x', mistake: (d - b) % (a - c) === 0 && (d - b) / (a - c) > 0 && (d - b) / (a - c) !== x ? (d - b) / (a - c) : null, how: H('Równanie', `Odejmij ${term(c, 'x')} od obu stron. {${a}x ${M} ${term(c, 'x')} = ${term(a - c, 'x')}}`, `Dodaj ${b}. ${term(a - c, 'x')} = {${d} + ${b} = ${d + b}}`, `Podziel przez ${a - c}. x = {${d + b} : ${a - c} = ${x}}`) });
   }, 1.25),
   T('Twierdzenie Pitagorasa', t => {
     const triples = [[3, 4, 5], [6, 8, 10], [9, 12, 15], [12, 16, 20], [15, 20, 25], [18, 24, 30], [5, 12, 13], [10, 24, 26],
@@ -770,7 +782,7 @@ const K8 = [
         ['jedynka albo szóstka', 2, '1, 6'], ['liczba większa od 1', 5, '2, 3, 4, 5, 6'], ['liczba pierwsza', 3, '2, 3, 5']]);
       return mk('P = ?', F(k, 6), [F(k, 12), F(6 - k, 6) === F(k, 6) ? F(k + 1, 6) : F(6 - k, 6), FR(1, k + 1)].filter(x => x !== F(k, 6)), { sub: `Rzut kostką: ${txt}`, sol: `Kostka, ${txt}: P = ${F(k, 6)}`, how: H('Prawdopodobieństwo', 'Kostka ma 6 możliwych wyników.', `Pasują ${which}, czyli ${k} z 6.`, pStep(k, 6)) });
     }
-    if (t === 2) { const r = randi(1, 6), b = randi(1, 7); return mk('P(czerwona) = ?', F(r, r + b), [F(b, r + b), F(r + 1, r + b + 1)].filter(x => x !== F(r, r + b)), { sub: `W worku ${r} czerwonych i ${b} niebieskich kul`, sol: `${r} czerwonych z ${r + b} kul: P = ${F(r, r + b)}`, mistake: F(r, b), how: H('Prawdopodobieństwo', `Wszystkich kul jest {${r} + ${b} = ${r + b}}`, `Czerwonych jest ${r} z ${r + b}. W mianowniku wszystkie kule, nie tylko niebieskie.`, pStep(r, r + b)) }); }
+    if (t === 2) { const r = randi(1, 6), b = randi(1, 7); return mk('P(czerwona) = ?', F(r, r + b), [F(b, r + b), F(r + 1, r + b + 1)].filter(x => x !== F(r, r + b)), { sub: `W worku są kule: ${r} ${pl(r, 'czerwona', 'czerwone', 'czerwonych')} i ${b} ${pl(b, 'niebieska', 'niebieskie', 'niebieskich')}`, sol: `Czerwone: ${r} z ${r + b} kul, P = ${F(r, r + b)}`, mistake: F(r, b), how: H('Prawdopodobieństwo', `Wszystkich kul jest {${r} + ${b} = ${r + b}}`, `Czerwone to ${r} z ${r + b} kul. W mianowniku wszystkie kule, nie tylko niebieskie.`, pStep(r, r + b)) }); }
     if (t === 3) {
       const n = pick([10, 12, 15, 20, 25, 30]), all = Array.from({ length: n }, (_, i) => i + 1), m = randi(Math.ceil(n / 2), n - 2), d = pick([3, 4, 5]);
       const [txt, set] = pick([['liczba parzysta', all.filter(v => v % 2 === 0)], ['liczba nieparzysta', all.filter(v => v % 2)], [`liczba podzielna przez ${d}`, all.filter(v => v % d === 0)],
@@ -780,20 +792,31 @@ const K8 = [
     }
     const word = pick(['MATEMATYKA', 'KALKULATOR', 'ABRAKADABRA', 'ANANAS', 'LOKOMOTYWA', 'POMARAŃCZA', 'KAKADU', 'PARASOL']), L = word.length, ch = pick([...word]), k = [...word].filter(x => x === ch).length;
     const kinds = new Set(word).size;
-    return mk('P = ?', F(k, L), [F(k, L - 1), F(k + 1, L), F(1, kinds)].filter(x => x !== F(k, L)), { sub: `Losujemy literę ze słowa ${word}: litera ${ch}`, sol: `${word} ma ${L} liter, w tym ${k} × ${ch}: P = ${F(k, L)}`, mistake: F(1, kinds) !== F(k, L) ? F(1, kinds) : null, how: H('Prawdopodobieństwo', `${word} ma ${L} liter, liczymy też powtórzenia.`, `Litera ${ch} występuje ${k === 1 ? 'raz' : `${k} razy`}.`, pStep(k, 10)) });
+    return mk('P = ?', F(k, L), [F(k, L - 1), F(k + 1, L), F(1, kinds)].filter(x => x !== F(k, L)), { sub: `Losujemy literę ze słowa ${word}: litera ${ch}`, sol: `${word} ma ${L} liter, w tym ${k} × ${ch}: P = ${F(k, L)}`, mistake: F(1, kinds) !== F(k, L) ? F(1, kinds) : null, how: H('Prawdopodobieństwo', `${word} ma ${L} liter, liczymy też powtórzenia.`, `Litera ${ch} występuje ${k === 1 ? 'raz' : `${k} razy`}.`, pStep(k, L)) });
   }, 1.1),
-  T('Nierówności', t => {
-    const s = pick(['>', '<', '≥', '≤']), r = randi(-5, 9);
-    if (t === 1) { const a = randi(1, 9); return mk(`x + ${a} ${s} ${N(r + a)}`, ineq(s, r), [ineq(flip(s), r), ineq(s, r + 1)], { sub: 'Rozwiąż nierówność', mistake: ineq(s, r + 2 * a), how: H('Nierówność', `Odejmij ${a} od obu stron, tak jak w równaniu. x ${s} {${N(r + a)} ${M} ${a} = ${N(r)}}`) }); }
-    if (t === 2) { const k = randi(2, 6); return mk(`${k}x ${s} ${N(k * r)}`, ineq(s, r), [ineq(flip(s), r), ineq(s, r + 1)], { sub: 'Rozwiąż nierówność', mistake: ineq(s, k * r - k), how: H('Nierówność', `Podziel obie strony przez ${k}. To liczba dodatnia, więc znak zostaje. x ${s} {${N(k * r)} : ${k} = ${N(r)}}`) }); }
-    if (t === 3) { const k = randi(2, 5), c = randi(1, 9), wrongR = (k * r - 2 * c) / k; return mk(`${k}x ${M} ${c} ${s} ${N(k * r - c)}`, ineq(s, r), [ineq(flip(s), r), ineq(s, r + 1)], { sub: 'Rozwiąż nierówność', mistake: Number.isInteger(wrongR) ? ineq(s, wrongR) : null, how: H('Nierówność', `Dodaj ${c} do obu stron. ${k}x ${s} {${N(k * r - c)} + ${c} = ${N(k * r)}}`, `Podziel przez ${k}. x ${s} {${N(k * r)} : ${k} = ${N(r)}}`) }); }
-    const k = randi(2, 5);
-    return mk(`${M}${k}x ${s} ${N(-k * r)}`, ineq(flip(s), r), [ineq(s, r), ineq(flip(s), -r)].filter(x => x !== ineq(flip(s), r)), { sub: 'Uwaga: dzielisz przez liczbę ujemną', mistake: ineq(s, r), how: H('Nierówność', `Podziel obie strony przez ${M}${k}.`, `Przy dzieleniu przez liczbę ujemną znak nierówności odwraca się: ${s} zmienia się w ${flip(s)}.`, `x ${flip(s)} {${N(-k * r)} : (${M}${k}) = ${N(r)}}`) });
-  }, 1.25),
+  // Turning a formula round to get the wanted quantity (curriculum of classes 7–8): a formula and the letter wanted
+  T('Przekształcanie wzorów', t => {
+    const div = (w, k) => `Podziel obie strony przez ${k}.`;
+    const opts = {
+      1: [() => { const w = pick(['a', 'b']), o = w === 'a' ? 'b' : 'a'; return ['P = a · b', w, FR('P', o), [`P · ${o}`, FR(o, 'P'), `P ${M} ${o}`], [div(w, o), `{${w} = ${FR('P', o)}}`]]; },
+        () => { const w = pick(['v', 't']), o = w === 'v' ? 't' : 'v'; return ['s = v · t', w, FR('s', o), [`s · ${o}`, FR(o, 's'), `s ${M} ${o}`], [div(w, o), `{${w} = ${FR('s', o)}}`]]; }],
+      2: [() => ['v = ' + FR('s', 't'), 's', 'v · t', [FR('v', 't'), FR('t', 'v'), 'v + t'], ['Pomnóż obie strony przez t.', '{s = v · t}']],
+        () => ['v = ' + FR('s', 't'), 't', FR('s', 'v'), ['v · s', FR('v', 's'), `s ${M} v`], ['Pomnóż obie strony przez t, a potem podziel przez v.', `{t = ${FR('s', 'v')}}`]],
+        () => ['d = ' + FR('m', 'V'), 'm', 'd · V', [FR('d', 'V'), FR('V', 'd'), 'd + V'], ['Pomnóż obie strony przez V.', '{m = d · V}']],
+        () => ['d = ' + FR('m', 'V'), 'V', FR('m', 'd'), ['m · d', FR('d', 'm'), `m ${M} d`], ['Pomnóż obie strony przez V, a potem podziel przez d.', `{V = ${FR('m', 'd')}}`]]],
+      3: [() => ['V = a · b · h', 'h', FR('V', 'ab'), [`V ${M} ab`, 'V · ab', FR('ab', 'V')], [div('h', 'ab'), `{h = ${FR('V', 'ab')}}`]],
+        () => { const w = pick(['a', 'h']), o = w === 'a' ? 'h' : 'a'; return ['P = ' + FR('a · h', 2), w, FR('2P', o), [FR('P', '2' + o), FR('2' + o, 'P'), `2P ${M} ${o}`], ['Pomnóż obie strony przez 2.', '{2P = a · h}', div(w, o), `{${w} = ${FR('2P', o)}}`]]; }],
+      4: [() => { const k = randi(2, 5), c = randi(1, 9); return [`y = ${k}x + ${c}`, 'x', FR(`y ${M} ${c}`, k), [`${FR('y', k)} ${M} ${c}`, FR(`y + ${c}`, k), `y ${M} ${c}`], [`Odejmij ${c} od obu stron. {y ${M} ${c} = ${k}x}`, div('x', k), `{x = ${FR(`y ${M} ${c}`, k)}}`]]; },
+        () => ['L = 2πr', 'r', FR('L', '2π'), [FR('2π', 'L'), `L ${M} 2π`, 'L · 2π'], [div('r', '2π'), `{r = ${FR('L', '2π')}}`]]],
+    };
+    const [f, w, a, wrongs, steps] = pick(opts[t])();
+    return mk(f, a, wrongs, { sub: `${w} = ?`, sol: `${f}, więc ${w} = ${a}`, how: H('Przekształcanie wzoru', `Chcesz mieć samo ${w} po jednej stronie wzoru.`, ...steps) });
+  }, 1.3),
   T('Równania i proporcje', t => {
     const x = randi(2, 12);
     if (t === 1) { const d = randi(2, 5), b = randi(1, 9); return mk(`${FR('x', d)} + ${b} = ${x + b}`, d * x, [d * x + b, d * (x + b)], { sub: 'x = ?', ask: 'x', mistake: x, how: H('Równanie z ułamkiem', `Odejmij ${b} od obu stron. ${FR('x', d)} = {${x + b} ${M} ${b} = ${x}}`, `Pomnóż obie strony przez ${d}. x = {${x} · ${d} = ${d * x}}`) }); }
-    if (t === 2) { const a = randi(2, 5), c = randi(1, 6), v = a * (x + c) - x; return mk(`${a}(x + ${c}) ${M} x = ${v}`, x, [x + 1, x - 1], { sub: 'x = ?', ask: 'x', mistake: (v - c) % (a - 1) === 0 && (v - c) / (a - 1) > 0 && (v - c) / (a - 1) !== x ? (v - c) / (a - 1) : null, how: H('Równanie z nawiasem', `Wymnóż nawias. {${a}(x + ${c}) = ${a}x + ${a * c}}`, `Zbierz wyrazy z x. {${a}x ${M} x = ${term(a - 1, 'x')}}`, `Odejmij ${a * c}. ${term(a - 1, 'x')} = {${v} ${M} ${a * c} = ${v - a * c}}`, a > 2 ? `Podziel przez ${a - 1}. x = {${v - a * c} : ${a - 1} = ${x}}` : null) }); }
+    if (t === 2) { const a = randi(2, 5), c = randi(1, 6), v = a * (x + c) - x; if (a * c === x) return K8[3].gen(2);   // the hint shows a·c; it must not look like the answer
+      return mk(`${a}(x + ${c}) ${M} x = ${v}`, x, [x + 1, x - 1], { sub: 'x = ?', ask: 'x', mistake: (v - c) % (a - 1) === 0 && (v - c) / (a - 1) > 0 && (v - c) / (a - 1) !== x ? (v - c) / (a - 1) : null, how: H('Równanie z nawiasem', `Wymnóż nawias. {${a}(x + ${c}) = ${a}x + ${a * c}}`, `Zbierz wyrazy z x. {${a}x ${M} x = ${term(a - 1, 'x')}}`, `Odejmij ${a * c}. ${term(a - 1, 'x')} = {${v} ${M} ${a * c} = ${v - a * c}}`, a > 2 ? `Podziel przez ${a - 1}. x = {${v - a * c} : ${a - 1} = ${x}}` : null) }); }
     if (t === 3) { const [a, b] = pick([[3, 4], [2, 3], [5, 2], [4, 5], [3, 2]]), k = randi(2, 5); return mk(`${FR(a, 'x')} = ${FR(a * k, b * k)}`, b, [b * k, a * k, b + 1].filter(v => v !== b), { sub: 'Proporcja: x = ?', ask: 'x', how: H('Proporcja', `Skróć prawą stronę przez ${k}. {${FR(a * k, b * k)} = ${FR(a, b)}}`, `Liczniki są równe, więc mianowniki też. x = ${b}.`) }); }
     const d = pick([2, 3, 4]), c = randi(1, 5), v = randi(2, 8), xx = d * v - c;
     return mk(`${FR(`x + ${c}`, d)} = ${v}`, xx, [d * v, xx + 1, xx - 1], { sub: 'x = ?', ask: 'x', mistake: d * v + c, how: H('Równanie z ułamkiem', `Pomnóż obie strony przez ${d}. x + ${c} = {${v} · ${d} = ${d * v}}`, `Odejmij ${c}. x = {${d * v} ${M} ${c} = ${N(xx)}}`) });
@@ -853,13 +876,23 @@ const KLASY = [
 ];
 
 // Every problem remembers how to make more of its kind (for the practice after a mistake)
-const make = (tm, t) => { const p = tm.gen(t); p.again = () => tm.gen(t); return p; };
+// In 1st and 2nd class (numbers up to 20 and up to 100) a wrong answer above that range would give the right one away
+const RANGE = [20, 100];
+function fit(p, c) {
+  const L = RANGE[c], int = x => (/^\d+( zł)?$/.test(x) ? parseInt(x, 10) : null);
+  const a = int(p.a), w = int(p.w);
+  if (!L || a === null || w === null || a > L || w <= L) return p;
+  const unit = / zł$/.test(p.a) ? ' zł' : '', alt = [a + 1, a - 1, a + 2, a - 2, a + 10, a - 10].filter(v => v >= 0 && v <= L && v !== a);
+  p.w = pick(alt) + unit;
+  return p;
+}
+const make = (tm, t, c) => { const p = fit(tm.gen(t), c); p.again = () => fit(tm.gen(t), c); return p; };
 // Stage s (0–39) of class c: 8 topics × (4 levels + a review); stage 40 is the test of the whole class
 function stage(c, s) {
   const K = KLASY[c], b = Math.floor(s / 5), pos = s % 5;
-  if (pos < 4) { const tm = K.tematy[b]; return { name: tm.nazwa, tier: pos + 1, review: false, final: false, gen: () => make(tm, pos + 1), time: tm.czas }; }
+  if (pos < 4) { const tm = K.tematy[b]; return { name: tm.nazwa, tier: pos + 1, review: false, final: false, gen: () => make(tm, pos + 1, c), time: tm.czas }; }
   const final = s === 39, pool = K.tematy.slice(0, final ? K.tematy.length : b + 1);
-  const gen = () => { const i = final ? randi(0, pool.length - 1) : (Math.random() < 0.4 ? b : randi(0, b)); return make(pool[i], randi(2, 4)); };
+  const gen = () => { const i = final ? randi(0, pool.length - 1) : (Math.random() < 0.4 ? b : randi(0, b)); return make(pool[i], randi(2, 4), c); };
   return { name: final ? `Sprawdzian: level ${c + 1}` : 'Powtórka', tier: 4, review: true, final, gen, time: Math.max(...pool.map(tm => tm.czas)) };
 }
 // Two practice problems of the same kind as p (same way of calculating, if possible)

@@ -118,9 +118,13 @@ Przy pierwszym uruchomieniu gra pyta: **„Jak chcesz grać?”**
   zgadywanie trafia w połowie przypadków: przypadkowe zaliczenie etapu zdarza się mniej więcej raz na 5,
   dwóch pod rząd raz na 30.
 
+Selekcję można zrobić też później: przycisk **„Selekcja na najemnika”** jest na górze ekranu wyboru levelu
+(znika, gdy otwarte są już wszystkie levele). Nic się wtedy nie traci: otwarte levele, gwiazdki i złoto zostają.
+Gdy wynik selekcji jest niższy niż to, co gracz ma już otwarte, wszystko zostaje po staremu.
+
 Po selekcji albo zdanym egzaminie gra dopłaca złoto do tego, co ma dobry gracz (80% złota) na początku tego levelu,
 żeby wrogowie nie byli za silni. Liczy się wszystko, co gracz ma: złoto, kupione ulepszenia i kolory armii,
-więc kto już tyle ma, nie dostaje nic, a powtarzanie egzaminu niczego nie daje.
+więc kto już tyle ma, nie dostaje nic, a powtarzanie egzaminu albo selekcji niczego nie daje.
 
 | Level (klasa) | Tematy |
 |---|---|
@@ -131,13 +135,17 @@ więc kto już tyle ma, nie dostaje nic, a powtarzanie egzaminu niczego nie daje
 | 5 | potęgi, podzielność, liczby pierwsze, NWD i NWW, działania na ułamkach, ułamki dziesiętne, kąty i pola figur, liczby całkowite |
 | 6 | ułamki zwykłe i dziesiętne razem, ułamki okresowe i zaokrąglanie, liczby całkowite, procenty, wyrażenia algebraiczne, równania, prędkość, objętość |
 | 7 | procenty, potęgi, notacja wykładnicza, pierwiastki, wyrażenia algebraiczne, równania, twierdzenie Pitagorasa, układ współrzędnych |
-| 8 | średnia i mediana, prawdopodobieństwo, nierówności, równania i proporcje, procenty w praktyce, trójkąty i symetria, graniastosłupy i ostrosłupy, koło |
+| 8 | średnia i mediana, prawdopodobieństwo, przekształcanie wzorów, równania i proporcje, procenty w praktyce, trójkąty i symetria, graniastosłupy i ostrosłupy, koło |
 
 Przydział tematów do klas oparto na podstawie programowej z 2017 r. (po zmianach z 2024 r.) oraz na rozkładach materiału
 podręczników „Matematyka z plusem” (GWO) i „Matematyka z kluczem” (Nowa Era). Tam, gdzie oba podręczniki się różnią
 (np. liczby ujemne, procenty, Pitagoras), gra idzie za jednym z nich.
 
-Uwaga: od 1 września 2026 r. w klasach 1 i 4 obowiązuje nowa podstawa programowa. Tematy tych klas nie zostały jeszcze do niej dopasowane.
+Od 1 września 2026 r. w klasach 1 i 4 obowiązuje nowa podstawa programowa (rozporządzenie z 11 marca 2026 r.), w kolejnych
+latach w następnych klasach. W październiku 2026 r. wszystkie tematy porównano z obiema podstawami: gra ma tylko tematy,
+które są w starej albo w nowej podstawie szkoły podstawowej (nierówności, których nie ma w żadnej, zastąpiło przekształcanie
+wzorów, a równania w 6. klasie mają niewiadomą tylko po jednej stronie). Podział tematów na klasy 1 i 4 trzyma się
+dotychczasowych podręczników; nowych podręczników do podstawy z 2026 r. jeszcze nie porównano.
 
 Każde zadanie losuje się na nowo. Wszystkie rodzaje zadań zostały sprawdzone automatycznie: osobny program przeliczył
 ponad 600 000 wylosowanych zadań i nie znalazł błędnego wyniku ani błędnej bramki, która byłaby jednocześnie dobra.
@@ -186,6 +194,7 @@ Strona gry ma licznik GoatCounter (bez ciasteczek i bez danych osobowych): https
 | `proba/level-N` | gra na próbę w otwartym levelu N |
 | `egzamin/level-N`, `egzamin/level-N/zdany` | rozpoczęty i zdany egzamin do levelu N |
 | `start/od-poczatku`, `start/selekcja-level-N` | jak nowy gracz zaczął i do którego levelu trafił z selekcji |
+| `selekcja/level-N` | selekcja zrobiona później, z ekranu wyboru levelu, i jej wynik |
 | `instalacja` | gra pierwszy raz otwarta z ikonki na ekranie telefonu (raz na urządzenie) |
 
 ## Pliki

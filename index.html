@@ -118,6 +118,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
 .example { display: grid; gap: 4px; background: #fff; border-radius: 16px; padding: 12px; }
 .example small { font-weight: 800; color: var(--muted); font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; }
 .example strong { font-family: var(--display); font-weight: 400; font-size: 30px; font-variant-numeric: tabular-nums; }
+.example .ex-sub { font-weight: 900; font-size: 19px; line-height: 1.25; color: var(--ink); text-wrap: balance; }
 .enemy { margin: 0; display: flex; align-items: center; justify-content: center; gap: 6px 8px; font-weight: 800; font-size: 16px; flex-wrap: wrap; line-height: 1.3; }
 .chip-red { font-family: var(--display); font-size: 19px; color: #fff; background: var(--red); border-radius: 99px; padding: 2px 12px; white-space: nowrap; }
 .hint { margin: 0; font-weight: 700; font-size: 14px; color: var(--muted); text-wrap: balance; }
@@ -228,7 +229,8 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
 .problem-text, .fight-text { font-family: var(--display); font-size: clamp(34px, 11vw, 52px); line-height: 1.12; min-height: 1.12em; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .problem-text.long, .fight-text.long { font-size: clamp(24px, 7.4vw, 38px); }
 .problem-text.xlong, .fight-text.xlong { font-size: clamp(19px, 5.6vw, 28px); line-height: 1.2; white-space: normal; text-wrap: balance; }
-.problem-sub, .fight-sub { min-height: 20px; font-weight: 800; font-size: 15px; line-height: 20px; color: var(--muted); }
+/* the second line holds the data of many problems: big and dark, so it is not missed */
+.problem-sub, .fight-sub { min-height: 24px; font-weight: 900; font-size: clamp(17px, 5vw, 21px); line-height: 1.25; color: var(--ink); text-wrap: balance; }
 .timebar { margin-top: 8px; height: 8px; border-radius: 5px; background: #eadfc8; overflow: hidden; }
 .timebar i { display: block; height: 100%; width: 100%; background: var(--blue); transform-origin: left center; }
 .problem.good, .fight.good .fight-q { background: #e0f6e8; }
@@ -270,7 +272,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
 /* ---------- after a mistake: how to calculate it, then practice ---------- */
 .lesson { gap: 12px; }
 .le-solved { font-family: var(--display); font-size: clamp(28px, 9vw, 40px); line-height: 1.15; color: var(--ink); overflow-wrap: anywhere; text-wrap: balance; font-variant-numeric: tabular-nums; }
-.le-solved small { display: block; margin-top: 4px; font-family: var(--body); font-weight: 800; font-size: 15px; color: var(--muted); }
+.le-solved small { display: block; margin-top: 4px; font-family: var(--body); font-weight: 900; font-size: 19px; line-height: 1.25; color: var(--ink); }
 .le-your { margin: -6px 0 0; font-weight: 800; font-size: 15px; color: var(--red); }
 .le-method { background: #fff; border-radius: 16px; padding: 12px 14px; display: grid; gap: 9px; text-align: left; }
 .le-method h3 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 20px; line-height: 1.15; color: var(--blue); }
@@ -296,7 +298,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
 .le-q { font-family: var(--display); font-size: clamp(28px, 9vw, 40px); line-height: 1.12; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; text-wrap: balance; }
 .le-q.long { font-size: clamp(23px, 7vw, 32px); }
 .le-q.xlong { font-size: clamp(18px, 5.4vw, 24px); line-height: 1.2; }
-.le-sub { font-weight: 800; font-size: 15px; color: var(--muted); text-wrap: balance; }
+.le-sub { font-weight: 900; font-size: clamp(18px, 5.4vw, 22px); line-height: 1.25; color: var(--ink); text-wrap: balance; }
 .le-task .fight-btns { max-width: none; }
 .le-task .ans { min-height: 68px; font-size: clamp(24px, 8vw, 34px); }
 .le-msg { margin: 0; font-family: var(--display); font-size: 28px; line-height: 1.15; }
@@ -369,8 +371,10 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
 .inst-steps b { color: var(--blue); }
 .inst-steps svg { display: block; width: 100%; height: auto; }
 .inst-steps svg text { font-family: var(--body); font-weight: 800; }
-.inst-steps svg.qr, .share-qr svg.qr { display: block; width: min(240px, 78%); height: auto; margin: 4px auto 0; border-radius: 12px; box-shadow: 0 0 0 2px #e3e8ef; }
+.inst-steps svg.qr, .share-qr svg.qr { display: block; width: min(300px, 88%); height: auto; margin: 4px auto 0; border-radius: 12px; box-shadow: 0 0 0 2px #e3e8ef; }
 .share-qr { display: grid; gap: 10px; padding: 12px; border-radius: 16px; background: #fff; }
+.qr-android { text-align: left; }
+.qr-android b { color: var(--ink); }
 .qr-url { display: block; margin: 0; text-align: center; font-size: 13px; font-weight: 700; color: var(--muted); overflow-wrap: anywhere; }
 .qr-url b { color: var(--ink); }
 .inst-steps svg .disp { font-family: var(--display); font-weight: 400; }
@@ -384,6 +388,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
 .choice span { font-weight: 800; font-size: 14px; line-height: 1.35; color: var(--muted); }
 .choice.gold { background: var(--gold); box-shadow: 0 4px 0 var(--gold-deep); }
 .choice.gold span { color: #5c4300; }
+.lv-select b { font-size: 21px; }
 .choice:active { transform: translateY(3px); }
 .select-card { gap: 12px; }
 .sarge { display: grid; grid-template-columns: 52px 1fr; gap: 10px; align-items: center; }
@@ -529,7 +534,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
     </div>
     <button class="btn btn-ghost" data-toggle="learn" aria-pressed="true">Nauka po błędzie: wł.</button>
     <button class="btn btn-ghost" id="btnInstallHelp" hidden>Jak dodać grę do ekranu telefonu</button>
-    <p class="version" id="menuVersion">Wersja 16</p>
+    <p class="version" id="menuVersion">Wersja 17</p>
   </div>
 </div>
 
@@ -547,6 +552,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
       <div class="tabs" id="classTabs"></div>
     </div>
     <div class="panel-body">
+      <button class="choice lv-select" id="btnSelect"><b>Selekcja na najemnika</b><span>Rozwiąż kilka zadań, a sierżant sprawdzi, co umiesz, i otworzy level na miarę twojej wiedzy. Otwarte levele i gwiazdki zostają.</span></button>
       <p class="legend"><i></i>Niebieskie pola to powtórki. Gra 40 to sprawdzian z całego levelu.</p>
       <div id="levelList" style="display:grid;gap:14px"></div>
     </div>
@@ -558,7 +564,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
     <div class="eyebrow" id="inWorld">Level 1 · gra 1 z 40</div>
     <h2 id="inTitle">Dodawanie do 10</h2>
     <p class="topic" id="inTopic">Liczby do 20 · stopień 1 z 4</p>
-    <div class="example"><small>Przykład</small><strong id="inExample">2 + 3 = ?</strong></div>
+    <div class="example"><small>Przykład</small><strong id="inExample">2 + 3 = ?</strong><span class="ex-sub" id="inExSub" hidden></span></div>
     <p class="enemy">Na końcu drogi: <span class="chip-red" id="inMonster">Glutek</span> <span><span id="inHp">500</span> punktów życia</span></p>
     <p class="hint" id="inHint">Przesuń palcem w stronę bramki z dobrym wynikiem.</p>
     <div class="boost-list" id="inBoost" hidden></div>
@@ -589,8 +595,9 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
     <h2 id="shTitle">Udostępnij grę</h2>
-    <p class="hint">Na drugim telefonie albo tablecie otwórz Aparat i skieruj go na ten kod. Stuknij link, który się pojawi. Nie trzeba SMS-a, WhatsAppa ani e-maila.</p>
+    <p class="hint">Na drugim telefonie albo tablecie otwórz Aparat i skieruj go na ten kod. Nie rób zdjęcia: przytrzymaj aparat chwilę nad kodem i stuknij link, który się pojawi. Nie trzeba SMS-a, WhatsAppa ani e-maila.</p>
     <div class="share-qr" id="shQr"></div>
+    <p class="hint qr-android" id="shAndroid"></p>
     <button class="btn btn-gold" id="shSend" hidden>Wyślij link</button>
     <button class="btn btn-light" id="shCopy">Kopiuj link</button>
     <button class="btn btn-ghost" id="shBack">Wróć</button>
@@ -677,6 +684,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
       <div class="chest-dots" id="seDots" aria-label="Odpowiedzi"></div>
       <div class="timebar"><i id="seTime"></i></div>
       <div class="le-q" id="seQ" aria-live="polite"></div>
+      <div class="le-sub" id="seSub" hidden></div>
       <div class="fight-btns">
         <button class="ans" id="seL" aria-label="Lewa odpowiedź">…</button>
         <button class="ans" id="seR" aria-label="Prawa odpowiedź">…</button>
@@ -698,6 +706,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
       <div class="chest-dots" id="chDots" aria-label="Odpowiedzi"></div>
       <div class="timebar chest-time"><i id="chTime"></i><b aria-hidden="true">⚡</b></div>
       <div class="le-q" id="chQ" aria-live="polite"></div>
+      <div class="le-sub" id="chSub" hidden></div>
       <div class="fight-btns">
         <button class="ans" id="chL" aria-label="Lewa odpowiedź">…</button>
         <button class="ans" id="chR" aria-label="Prawa odpowiedź">…</button>
