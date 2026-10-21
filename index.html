@@ -371,8 +371,10 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
 .inst-steps b { color: var(--blue); }
 .inst-steps svg { display: block; width: 100%; height: auto; }
 .inst-steps svg text { font-family: var(--body); font-weight: 800; }
-.inst-steps svg.qr, .share-qr svg.qr { display: block; width: min(240px, 78%); height: auto; margin: 4px auto 0; border-radius: 12px; box-shadow: 0 0 0 2px #e3e8ef; }
+.inst-steps svg.qr, .share-qr svg.qr { display: block; width: min(300px, 88%); height: auto; margin: 4px auto 0; border-radius: 12px; box-shadow: 0 0 0 2px #e3e8ef; }
 .share-qr { display: grid; gap: 10px; padding: 12px; border-radius: 16px; background: #fff; }
+.qr-android { text-align: left; }
+.qr-android b { color: var(--ink); }
 .qr-url { display: block; margin: 0; text-align: center; font-size: 13px; font-weight: 700; color: var(--muted); overflow-wrap: anywhere; }
 .qr-url b { color: var(--ink); }
 .inst-steps svg .disp { font-family: var(--display); font-weight: 400; }
@@ -591,8 +593,9 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
     <h2 id="shTitle">Udostępnij grę</h2>
-    <p class="hint">Na drugim telefonie albo tablecie otwórz Aparat i skieruj go na ten kod. Stuknij link, który się pojawi. Nie trzeba SMS-a, WhatsAppa ani e-maila.</p>
+    <p class="hint">Na drugim telefonie albo tablecie otwórz Aparat i skieruj go na ten kod. Nie rób zdjęcia: przytrzymaj aparat chwilę nad kodem i stuknij link, który się pojawi. Nie trzeba SMS-a, WhatsAppa ani e-maila.</p>
     <div class="share-qr" id="shQr"></div>
+    <p class="hint qr-android" id="shAndroid"></p>
     <button class="btn btn-gold" id="shSend" hidden>Wyślij link</button>
     <button class="btn btn-light" id="shCopy">Kopiuj link</button>
     <button class="btn btn-ghost" id="shBack">Wróć</button>

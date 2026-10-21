@@ -14,6 +14,9 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
   programowej klas 7–8, starej i nowej.
 
 ### Zmienione
+- **Kod QR do gry:** sprawdzony, prowadzi na https://jacekordowski.github.io/Yaceq-Placeq/ i odczytuje się z ekranu
+  także rozmazany i pod kątem. Jest teraz większy, a obok jest wskazówka: nie robić zdjęcia, tylko przytrzymać aparat,
+  a na Androidzie, gdy nic się nie pojawia, użyć Google Lens albo włączyć „Skanuj kody QR” w ustawieniach aparatu (Samsung).
 - **Druga linijka zadania (dane) jest większa i ciemniejsza** w bramkach, w walce, w ćwiczeniu, w selekcji i w skrzyni,
   żeby nikt jej nie przeoczył.
 - **Przegląd wszystkich zadań z podstawą programową** (z 2017 r. ze zmianami z 2024 r. i nową z 2026 r.):
