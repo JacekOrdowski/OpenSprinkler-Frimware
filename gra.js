@@ -4,7 +4,7 @@
 'use strict';
 const HAS_DOM = typeof document !== 'undefined';
 const Z = globalThis.Zadania;
-const WERSJA = 16;         // numer wersji gry; opis zmian w ZMIANY.md
+const WERSJA = 17;         // numer wersji gry; opis zmian w ZMIANY.md
 
 /* ============================================================
    Helpers
@@ -2413,7 +2413,8 @@ function openIntro(c, s, trial) {
   $('inTitle').textContent = exam ? `Egzamin do levelu ${c + 1}` : trial ? `Zajrzyj do levelu ${c + 1}` : info.name;
   $('inTopic').textContent = trial ? 'Po trochu ze wszystkich tematów tego levelu'
     : info.final ? 'Sprawdzian z całego levelu' : info.review ? 'Powtórka: wszystkie dotychczasowe tematy tego levelu' : `Stopień trudności ${info.tier} z 4`;
-  $('inExample').innerHTML = richHTML(pending.gen().q);
+  const ex = pending.gen();          // the second line holds the data of many problems (sides, speed, numbers…)
+  $('inExample').innerHTML = richHTML(ex.q); $('inExSub').innerHTML = richHTML(ex.sub || ''); $('inExSub').hidden = !ex.sub;
   $('inMonster').textContent = M.name;
   showHp();
   $('inHint').textContent = exam
@@ -2779,7 +2780,7 @@ function chestSVG(t) {
 }
 let chest = null;
 const ch = { card: $('chCard'), eyebrow: $('chEyebrow'), title: $('chTitle'), box: $('chChest'), info: $('chInfo'), tiers: $('chTiers'), quiz: $('chQuiz'),
-  dots: $('chDots'), time: $('chTime'), q: $('chQ'), L: $('chL'), R: $('chR'), loot: $('chLoot'), go: $('chGo') };
+  dots: $('chDots'), time: $('chTime'), q: $('chQ'), sub: $('chSub'), L: $('chL'), R: $('chR'), loot: $('chLoot'), go: $('chGo') };
 function openChest(g) {
   recordGame(g);
   mode = 'chest'; fight.hidden = true; hud.hidden = true; $('stink').hidden = true;
@@ -2809,7 +2810,7 @@ function chestStart() {
 function chestNext() {
   const C = chest, p = C.cur = freshProblem(C.g);
   C.left = Math.random() < 0.5; C.busy = false;
-  ch.q.innerHTML = richHTML(p.q);
+  ch.q.innerHTML = richHTML(p.q); ch.sub.innerHTML = richHTML(p.sub || ''); ch.sub.hidden = !p.sub;
   const len = plain(p.q).length;
   ch.q.classList.toggle('long', len > 13 && len <= 22); ch.q.classList.toggle('xlong', len > 22);
   ch.L.innerHTML = richHTML(C.left ? p.a : p.w); ch.R.innerHTML = richHTML(C.left ? p.w : p.a);
@@ -2894,7 +2895,7 @@ const SEL_N = 5, SEL_PASS = 4;
 const RANKS = ['Rekrut', 'Szeregowy', 'Starszy szeregowy', 'Kapral', 'Plutonowy', 'Sierżant', 'Chorąży', 'Porucznik', 'Kapitan'];
 let sel = null;
 const se = { card: $('seCard'), eyebrow: $('seEyebrow'), title: $('seTitle'), sarge: $('seSarge'), say: $('seSay'), quiz: $('seQuiz'),
-  dots: $('seDots'), time: $('seTime'), q: $('seQ'), L: $('seL'), R: $('seR'), go: $('seGo'), back: $('seBack') };
+  dots: $('seDots'), time: $('seTime'), q: $('seQ'), sub: $('seSub'), L: $('seL'), R: $('seR'), go: $('seGo'), back: $('seBack') };
 function openStart() { mode = 'start'; show('start'); }
 function chooseBegin() { save.start = 'od-poczatku'; persist(); countEvent('start/od-poczatku', 'Start: od początku'); goMenu(); }
 function openSelect() {
@@ -2923,7 +2924,7 @@ function selNext() {
   let p = S.gen();
   for (let i = 0; i < 30 && S.used.has(probKey(p)); i++) p = S.gen();
   S.used.add(probKey(p)); S.cur = p; S.left = Math.random() < 0.5; S.busy = false; S.t = 0;
-  se.q.innerHTML = richHTML(p.q);
+  se.q.innerHTML = richHTML(p.q); se.sub.innerHTML = richHTML(p.sub || ''); se.sub.hidden = !p.sub;
   const len = plain(p.q).length;
   se.q.classList.toggle('long', len > 13 && len <= 22); se.q.classList.toggle('xlong', len > 22);
   se.L.innerHTML = richHTML(S.left ? p.a : p.w); se.R.innerHTML = richHTML(S.left ? p.w : p.a);

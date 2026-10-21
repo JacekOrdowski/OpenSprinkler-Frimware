@@ -7,6 +7,16 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 
 ---
 
+## Wersja 17 (21 października 2026)
+
+### Zmienione
+- **Poprawka: w selekcji na najemnika, w skrzyni po potworze i w przykładzie na karcie przed grą brakowało drugiej linijki
+  zadania**, czyli danych. Na przykład było samo „Obwód = ? cm” bez „Prostokąt 7 cm na 4 cm”. Dotyczyło to około jednej
+  trzeciej zadań (obwody, prędkość, Pitagoras, średnia, prawdopodobieństwo, procenty i inne). W zwykłej grze, w walce
+  i w ćwiczeniu po błędzie dane były zawsze. Sprawdzone: cała selekcja (40 zadań), każde zadanie z drugą linijką ją pokazuje.
+
+---
+
 ## Wersja 16 (21 października 2026)
 
 Zapis w repozytorium: `d0bb862`
