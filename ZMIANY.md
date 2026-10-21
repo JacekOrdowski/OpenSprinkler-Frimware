@@ -7,6 +7,20 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 
 ---
 
+## Wersja 16 (21 października 2026)
+
+### Dodane
+- **Licznik widzi więcej** (dalej bez imion i bez danych osobowych):
+  - `instalacja`: gra pierwszy raz otwarta z ikonki na ekranie telefonu, czyli dodana do telefonu (raz na urządzenie),
+  - `start/od-poczatku` i `start/selekcja-level-N`: jak nowy gracz zaczął i do którego levelu trafił z selekcji,
+  - `egzamin/level-N`: rozpoczęty egzamin, `egzamin/level-N/zdany`: zdany egzamin,
+  - `proba/level-N`: gra na próbę w otwartym levelu.
+
+### Zmienione
+- `gra/level-N` liczy teraz tylko prawdziwe gry (bez gier na próbę i egzaminów).
+
+---
+
 ## Wersja 15 (20 października 2026)
 
 Zapis w repozytorium: `61d24b4`

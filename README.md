@@ -175,6 +175,19 @@ Na ekranie pojawi się ikona i gra otwiera się jak zwykła aplikacja.
 
 Postęp (gwiazdki, otwarte gry) zapisuje się w telefonie, na którym grasz.
 
+## Licznik odwiedzin
+
+Strona gry ma licznik GoatCounter (bez ciasteczek i bez danych osobowych): https://smierdzipacha.goatcounter.com
+(po zalogowaniu). Oprócz wejść na stronę liczy:
+
+| Wpis | Co znaczy |
+|---|---|
+| `gra/level-N` | rozpoczęta gra w levelu N |
+| `proba/level-N` | gra na próbę w otwartym levelu N |
+| `egzamin/level-N`, `egzamin/level-N/zdany` | rozpoczęty i zdany egzamin do levelu N |
+| `start/od-poczatku`, `start/selekcja-level-N` | jak nowy gracz zaczął i do którego levelu trafił z selekcji |
+| `instalacja` | gra pierwszy raz otwarta z ikonki na ekranie telefonu (raz na urządzenie) |
+
 ## Pliki
 
 - `ZMIANY.md` – historia wersji: co dodano, zmieniono i usunięto

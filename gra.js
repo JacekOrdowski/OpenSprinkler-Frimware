@@ -4,7 +4,7 @@
 'use strict';
 const HAS_DOM = typeof document !== 'undefined';
 const Z = globalThis.Zadania;
-const WERSJA = 15;         // numer wersji gry; opis zmian w ZMIANY.md
+const WERSJA = 16;         // numer wersji gry; opis zmian w ZMIANY.md
 
 /* ============================================================
    Helpers
@@ -2446,7 +2446,20 @@ function startStage(g) {
 }
 const restart = g => startStage(createGame(g.cls, g.s, false, g.trial ? null : playKit(), g.trial, true));
 // The counter also notes every game started, by level (nothing about the player; does nothing when the counter is not on the page)
-function countGame(g) { try { if (window.goatcounter && window.goatcounter.count) window.goatcounter.count({ path: `gra/level-${g.cls + 1}`, title: `Gra: level ${g.cls + 1}`, event: true }); } catch (e) { /* counter blocked */ } }
+// (and a few more events: the first start from the home screen icon, the choice at the start, the exams);
+// if the counter has not loaded yet, it tries again for a few seconds
+function countEvent(path, title, tries = 0) {
+  try {
+    if (window.goatcounter && window.goatcounter.count) window.goatcounter.count({ path, title, event: true });
+    else if (tries < 10 && document.querySelector('script[data-goatcounter]')) setTimeout(() => countEvent(path, title, tries + 1), 1000);
+  } catch (e) { /* counter blocked */ }
+}
+function countGame(g) {
+  const n = g.cls + 1, exam = g.trial && !levelOpen(g.cls);
+  if (exam) countEvent(`egzamin/level-${n}`, `Egzamin: level ${n}`);
+  else if (g.trial) countEvent(`proba/level-${n}`, `Gra na próbę: level ${n}`);
+  else countEvent(`gra/level-${n}`, `Gra: level ${n}`);
+}
 function pauseGame() { if (mode !== 'play') return; mode = 'pause'; show('pause'); Snd.duck(true); }
 function resumeGame() { if (mode !== 'pause') return; mode = 'play'; show(null); last = performance.now(); Snd.resume(); Snd.duck(false); }
 
@@ -2883,7 +2896,7 @@ let sel = null;
 const se = { card: $('seCard'), eyebrow: $('seEyebrow'), title: $('seTitle'), sarge: $('seSarge'), say: $('seSay'), quiz: $('seQuiz'),
   dots: $('seDots'), time: $('seTime'), q: $('seQ'), L: $('seL'), R: $('seR'), go: $('seGo'), back: $('seBack') };
 function openStart() { mode = 'start'; show('start'); }
-function chooseBegin() { save.start = 'od-poczatku'; persist(); goMenu(); }
+function chooseBegin() { save.start = 'od-poczatku'; persist(); countEvent('start/od-poczatku', 'Start: od początku'); goMenu(); }
 function openSelect() {
   mode = 'select';
   sel = { c: 0, n: 0, ok: 0, phase: 'intro', used: new Set(), passed: -1, t: 0, busy: false };
@@ -2952,6 +2965,7 @@ function selFinish() {
   S.phase = 'done';
   const add = openUpTo(c);
   save.start = 'selekcja'; save.tab = c; persist();
+  countEvent(`start/selekcja-level-${c + 1}`, `Start: selekcja, przydział level ${c + 1}`);
   S.add = add;
   Snd.win(); confettiBurst();
   se.eyebrow.textContent = `Stopień: ${RANKS[S.passed + 1]}`;
@@ -3091,7 +3105,10 @@ function recordGame(g) {
   g.pay = { stars: 0, answers: 0, chest: 0 };
   if (g.trial) {                                               // the keyhole game gives nothing and changes nothing,
     g.exam = !levelOpen(c);                                    // but in a closed level it is the exam:
-    if (g.exam && won && g.stars === 3) { g.passed = true; g.pay.exam = openUpTo(c); }   // won without a mistake, the level opens
+    if (g.exam && won && g.stars === 3) {                    // won without a mistake, the level opens
+      g.passed = true; g.pay.exam = openUpTo(c);
+      countEvent(`egzamin/level-${c + 1}/zdany`, `Egzamin zdany: level ${c + 1}`);
+    }
     return;
   }
   const before = save.stars[i];
@@ -3451,6 +3468,8 @@ function boot() {
   }
   $('btnInstallHelp').hidden = !canOfferInstall();
   if (!save.start && !save.stars.some(x => x > 0)) openStart();   // a new player: "Jak chcesz grać?"
+  // the first start from the home screen icon: the game was added to this phone (counted once per phone)
+  if (isStandalone() && !save.installed) { save.installed = true; persist(); countEvent('instalacja', 'Gra dodana do ekranu telefonu'); }
   if (canOfferInstall()) openInstall();
   if (document.fonts && document.fonts.load) document.fonts.load(`40px ${FD}`, 'Aąćęńśźż').catch(() => {});
   requestAnimationFrame(t => { last = t; frame(t); });
