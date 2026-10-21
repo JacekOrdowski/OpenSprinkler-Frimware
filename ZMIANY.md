@@ -10,6 +10,10 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 ## Wersja 17 (21 października 2026)
 
 ### Dodane
+- **Przycisk „Selekcja na najemnika” na ekranie wyboru levelu.** Selekcję można teraz zrobić w każdej chwili,
+  nie tylko przy pierwszym uruchomieniu (np. gdy ktoś przypadkiem kliknął „Od początku”). Nic się nie traci:
+  otwarte levele, gwiazdki i złoto zostają, a gdy wynik jest niższy niż to, co już otwarte, wszystko zostaje po staremu.
+  Przycisk znika, gdy otwarte są wszystkie levele. W liczniku jest to wpis `selekcja/level-N`.
 - **Nowy temat w levelu 8: przekształcanie wzorów** (np. V = a · b · h, wyznacz h; v = s : t, wyznacz t). Jest w podstawie
   programowej klas 7–8, starej i nowej.
 

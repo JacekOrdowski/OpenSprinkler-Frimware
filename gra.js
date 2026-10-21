@@ -2898,13 +2898,14 @@ const se = { card: $('seCard'), eyebrow: $('seEyebrow'), title: $('seTitle'), sa
   dots: $('seDots'), time: $('seTime'), q: $('seQ'), sub: $('seSub'), L: $('seL'), R: $('seR'), go: $('seGo'), back: $('seBack') };
 function openStart() { mode = 'start'; show('start'); }
 function chooseBegin() { save.start = 'od-poczatku'; persist(); countEvent('start/od-poczatku', 'Start: od początku'); goMenu(); }
-function openSelect() {
+// from: 'start' (the first start) or 'levels' (the button on the level screen, any time later)
+function openSelect(from = 'start') {
   mode = 'select';
-  sel = { c: 0, n: 0, ok: 0, phase: 'intro', used: new Set(), passed: -1, t: 0, busy: false };
+  sel = { c: 0, n: 0, ok: 0, phase: 'intro', used: new Set(), passed: -1, t: 0, busy: false, from };
   se.sarge.src = armySprite(save.skin, 0).toDataURL();
   se.eyebrow.textContent = 'Selekcja najemników';
   se.title.textContent = 'Baczność, rekrucie!';
-  se.say.textContent = `Pokaż, co umiesz. Każdy etap to ${SEL_N} zadań z jednej klasy, po trochu ze wszystkich tematów. ${SEL_PASS} dobre odpowiedzi i idziesz wyżej. Na końcu przydzielę cię do oddziału.`;
+  se.say.textContent = `Pokaż, co umiesz. Każdy etap to ${SEL_N} zadań z jednej klasy, po trochu ze wszystkich tematów. ${SEL_PASS} dobre odpowiedzi i idziesz wyżej. Na końcu przydzielę cię do oddziału.` + (from === 'levels' ? ' Nic nie tracisz: otwarte levele, gwiazdki i złoto zostają.' : '');
   se.quiz.hidden = true; se.go.textContent = 'Do boju!'; se.go.hidden = false; se.back.textContent = 'Wróć'; se.back.hidden = false;
   show('select'); se.card.scrollTop = 0;
 }
@@ -2963,19 +2964,26 @@ function selStageEnd() {
 }
 function selFinish() {
   const S = sel, c = Math.max(0, S.passed);
+  let had = 0; for (let k = 1; k < NCLS; k++) if (levelOpen(k)) had = k;   // the highest level open before
   S.phase = 'done';
-  const add = openUpTo(c);
-  save.start = 'selekcja'; save.tab = c; persist();
-  countEvent(`start/selekcja-level-${c + 1}`, `Start: selekcja, przydział level ${c + 1}`);
+  const add = openUpTo(c), lower = c < had;
+  if (!save.start) save.start = 'selekcja';
+  if (!lower) save.tab = c;
+  persist();
+  if (S.from === 'levels') countEvent(`selekcja/level-${c + 1}`, `Selekcja z ekranu leveli: level ${c + 1}`);
+  else countEvent(`start/selekcja-level-${c + 1}`, `Start: selekcja, przydział level ${c + 1}`);
   S.add = add;
   Snd.win(); confettiBurst();
   se.eyebrow.textContent = `Stopień: ${RANKS[S.passed + 1]}`;
-  se.title.textContent = `Przydział: level ${c + 1}`;
-  se.say.textContent = (S.passed < 0
+  se.title.textContent = lower ? `Wynik: level ${c + 1}` : `Przydział: level ${c + 1}`;
+  se.say.textContent = (lower
+    ? (S.passed < 0 ? 'Tym razem żaden etap nie zaliczony.' : `Melduję: zaliczone etapy do levelu ${S.passed + 1}.`)
+      + ` Masz już otwarte levele do levelu ${had + 1}, więc wszystko zostaje po staremu.`
+    : S.passed < 0
     ? 'Zaczynasz od podstaw, od levelu 1. Do roboty, rekrucie!'
     : `Melduję: zaliczone etapy do levelu ${S.passed + 1}. Przydział: level ${c + 1}.` + (c ? ' Niższe levele też masz otwarte.' : ''))
     + (add ? ` Na start dostajesz ${group(add)} złota. Wydaj je w Zbrojowni, zanim ruszysz do boju!` : '')
-    + (c + 1 < NCLS ? ` Wyższy level otworzysz, przechodząc ten albo zdając egzamin.` : '');
+    + (!lower && c + 1 < NCLS ? ` Wyższy level otworzysz, przechodząc ten albo zdając egzamin.` : '');
   se.go.textContent = add ? 'Do Zbrojowni' : 'Do oddziału!'; se.go.hidden = false;
   se.back.textContent = 'Do menu'; se.back.hidden = !add;
 }
@@ -2989,7 +2997,7 @@ function selGo() {
 function selBack() {
   const S = sel;
   if (!S) return;
-  if (S.phase === 'intro') { sel = null; openStart(); }
+  if (S.phase === 'intro') { sel = null; if (S.from === 'levels') { mode = 'levels'; buildLevelList(); show('levels'); } else openStart(); }
   else if (S.phase === 'done') { sel = null; goMenu(); }
 }
 function chestGo() {
@@ -3174,6 +3182,7 @@ function buildLevelList() {
   const c = save.tab, K = Z.KLASY[c];
   const done = save.stars.slice(c * STAGES, c * STAGES + STAGES).filter(x => x > 0).length;
   $('lvClass').textContent = `Level ${c + 1}`;
+  $('btnSelect').hidden = levelOpen(NCLS - 1);   // with every level open the selection has nothing left to open
   $('lvAbout').textContent = `${c + 1}. klasa · ${K.opis} · ukończone: ${done} z ${STAGES}`;
   box.innerHTML = '';
   // a closed level says what opens it; every level has "gra na próbę"
@@ -3242,6 +3251,7 @@ tap('seGo', selGo);
 tap('seBack', selBack);
 tap('stBegin', chooseBegin);
 tap('stSelect', openSelect);
+tap('btnSelect', () => openSelect('levels'));
 ch.L.addEventListener('click', () => chestPick(true));
 ch.R.addEventListener('click', () => chestPick(false));
 tap('chGo', chestGo);

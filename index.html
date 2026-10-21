@@ -388,6 +388,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
 .choice span { font-weight: 800; font-size: 14px; line-height: 1.35; color: var(--muted); }
 .choice.gold { background: var(--gold); box-shadow: 0 4px 0 var(--gold-deep); }
 .choice.gold span { color: #5c4300; }
+.lv-select b { font-size: 21px; }
 .choice:active { transform: translateY(3px); }
 .select-card { gap: 12px; }
 .sarge { display: grid; grid-template-columns: 52px 1fr; gap: 10px; align-items: center; }
@@ -551,6 +552,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow:
       <div class="tabs" id="classTabs"></div>
     </div>
     <div class="panel-body">
+      <button class="choice lv-select" id="btnSelect"><b>Selekcja na najemnika</b><span>Rozwiąż kilka zadań, a sierżant sprawdzi, co umiesz, i otworzy level na miarę twojej wiedzy. Otwarte levele i gwiazdki zostają.</span></button>
       <p class="legend"><i></i>Niebieskie pola to powtórki. Gra 40 to sprawdzian z całego levelu.</p>
       <div id="levelList" style="display:grid;gap:14px"></div>
     </div>
