@@ -9,11 +9,33 @@ Do każdej wersji można wrócić: przy każdej podany jest identyfikator zapisu
 
 ## Wersja 17 (21 października 2026)
 
+### Dodane
+- **Nowy temat w levelu 8: przekształcanie wzorów** (np. V = a · b · h, wyznacz h; v = s : t, wyznacz t). Jest w podstawie
+  programowej klas 7–8, starej i nowej.
+
 ### Zmienione
+- **Druga linijka zadania (dane) jest większa i ciemniejsza** w bramkach, w walce, w ćwiczeniu, w selekcji i w skrzyni,
+  żeby nikt jej nie przeoczył.
+- **Przegląd wszystkich zadań z podstawą programową** (z 2017 r. ze zmianami z 2024 r. i nową z 2026 r.):
+  - level 6, równania, stopień 4: niewiadoma tylko po jednej stronie (np. 3(x + 2) = 21, (x − 2) : 3 = 4),
+    bo tak mówi podstawa dla klas 4–6 (wcześniej było np. 6x + 5 = x + 35, czyli materiał 7. klasy),
+  - level 2: zamiana jednostek w zakresie 100 (np. 1 zł = ? gr, pół metra = ? cm), bo w 2. klasie liczy się do 100
+    (wcześniej np. 4 m = 400 cm),
+  - levele 1 i 2: zła odpowiedź nie wychodzi poza liczby, na których pracuje klasa (np. przy liczeniu do 20 nie ma już 22),
+    bo wtedy łatwo było zgadnąć dobrą,
+  - „1x” zapisane jak w szkole: „x” (np. 4x − 6 = x + 14, zła odpowiedź „x²”),
+  - level 8: „W worku są kule: 3 czerwone i 1 niebieska” zamiast „3 czerwonych i 1 niebieskich kul”,
+  - level 6: zamiast dziwnej złej odpowiedzi (np. 0,75 = 75/101) odwrócony ułamek (4/3), czyli częsty błąd,
+  - level 8: podpowiedź do losowania litery liczyła ze złej liczby liter (np. KAKADU: 2/10 zamiast 2/6),
+  - level 8, równania z nawiasem: w podpowiedzi nie pojawia się już liczba wyglądająca jak wynik.
+- Sprawdzone automatycznie: 384 000 zadań bez błędnego wyniku i bez złej odpowiedzi równej dobrej, 48 000 podpowiedzi bez wyniku.
 - **Poprawka: w selekcji na najemnika, w skrzyni po potworze i w przykładzie na karcie przed grą brakowało drugiej linijki
   zadania**, czyli danych. Na przykład było samo „Obwód = ? cm” bez „Prostokąt 7 cm na 4 cm”. Dotyczyło to około jednej
   trzeciej zadań (obwody, prędkość, Pitagoras, średnia, prawdopodobieństwo, procenty i inne). W zwykłej grze, w walce
   i w ćwiczeniu po błędzie dane były zawsze. Sprawdzone: cała selekcja (40 zadań), każde zadanie z drugą linijką ją pokazuje.
+
+### Usunięte
+- Temat „Nierówności” z levelu 8: nie ma go w podstawie programowej szkoły podstawowej (ani starej, ani nowej), jest dopiero w szkole średniej.
 
 ---
 
