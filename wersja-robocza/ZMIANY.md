@@ -10,6 +10,8 @@ Gra jest pod adresem https://jacekordowski.github.io/Yaceq-Placeq/wersja-robocza
 
 ## Wersja 1 (24 października 2026)
 
+Zapis w repozytorium: `bb29de7`
+
 ### Dodane
 - **Bitwa:** z nieba spadają płonące meteory, a baza pod kopułą ma 3000 życia. Meteor, który doleci do kopuły, zabiera życie.
   Rodzaje: zwykłe meteory, szybkie czarne kryształy, twarde czerwone kryształy i duże meteory (dochodzą z czasem).
