@@ -3,6 +3,8 @@
 Gra na telefon z matematyką ze szkoły podstawowej, od 1. do 8. klasy. Nazwę wybrały dzieci.
 Wcześniej gra nazywała się „Armia Liczb” (wersje 1–4) i „Głupia Gra” (wersja 5).
 
+W folderze `wersja-robocza` powstaje osobna, nowa gra (obrona bazy przed meteorami), opisana w `wersja-robocza/ZMIANY.md`.
+
 Armia biegnie przez różne światy. Przed każdą bramką pojawia się działanie, a na bramkach dwie odpowiedzi.
 Wbiegasz w bramkę z dobrym wynikiem i dostajesz tylu żołnierzy, ile pokazuje zielona liczba (na przykład +14).
 Zła odpowiedź zabiera tyle samo. Strona dobrej bramki jest losowana przy każdej bramce, a zadania nie powtarzają się

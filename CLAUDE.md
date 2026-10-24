@@ -32,3 +32,13 @@ Gdy zmiany w grze są gotowe i zapisywane w repozytorium:
 
 - Siła wrogów to tabela `ENEMY_P` w `gra.js`. Po zmianie ulepszeń, ich cen albo złota uruchom `node narzedzia/balans.js`
   (kilka minut) i wklej wypisaną tabelę do `gra.js`.
+
+## Wersja robocza (nowa gra w folderze `wersja-robocza/`)
+
+- Osobna gra, na razie bez zadań: obrona bazy przed meteorami, wzorowana na Galaxy Defense: Fortress TD.
+  Adres: https://jacekordowski.github.io/Yaceq-Placeq/wersja-robocza/. Śmierdzipachy przy niej nie ruszamy.
+- Nowa wersja: podnieś `WERSJA` w `wersja-robocza/gra.js` i dopisz sekcję w `wersja-robocza/ZMIANY.md`
+  (te same zasady co wyżej, w tym skrót commita w następnym commicie).
+- Liczby trudności są w `BAL` w `wersja-robocza/gra.js`. Po zmianie broni, kart albo trudności uruchom
+  `node narzedzia/balans-robocza.js` (kilkanaście sekund) i sprawdź, ile bitew wygrywa się na kolejnych etapach.
+- Muzyka bierze pliki z `muzyka/` (ścieżka `../muzyka/`).
